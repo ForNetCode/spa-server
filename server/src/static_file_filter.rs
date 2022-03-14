@@ -1,4 +1,5 @@
 use crate::domain_storage::DomainStorage;
+use crate::with;
 use std::sync::Arc;
 use warp::fs::{conditionals, ArcPath, File};
 use warp::host::Authority;
@@ -31,7 +32,7 @@ pub fn static_file_filter(
         .unify()
         .and(warp::path::tail())
         .and(warp::host::optional())
-        .and(warp::any().map(move || domain_storage.clone()))
+        .and(with(domain_storage))
         .and_then(get_real_path)
         .and(conditionals())
         .and_then(warp::fs::file_reply)

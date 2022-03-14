@@ -13,9 +13,6 @@ name = "spa-server"
 path = "src/bin/main.rs"
 
 [dependencies]
-# dsl
-anyhow = "1.0"
-
 # web
 hyper = { version = "0.14", features = ["server"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "io-std"] }
@@ -31,14 +28,13 @@ log = "0.4"
 env_logger = "0.9"
 
 #config
-#clap = {version ="3.1", features=["yaml"]}
+clap = "3.1"
 hocon = "0.7"
 serde = { version = "1.0", features = ["derive"] }
 
-# file system enhance
-#walkdir = "2.3"
 
 # util
 regex = "1.5"
 lazy_static = "1.4"
 chrono = "0.4"
+anyhow = "1.0"

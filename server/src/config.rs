@@ -8,6 +8,7 @@ pub struct Config {
     pub port: u32,
     pub addr: String,
     pub file_dir: String,
+    pub admin_config: Option<AdminConfig>,
 }
 
 //TODO: create config with lots of default value
@@ -25,4 +26,10 @@ impl Config {
 
         //hocon::de::from_str::<Config>(&config_str).expect("parse config file error")
     }
+}
+#[derive(Deserialize, Debug, Clone)]
+pub struct AdminConfig {
+    pub port: u32,
+    pub addr: String,
+    pub token: String,
 }

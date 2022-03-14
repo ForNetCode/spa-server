@@ -20,16 +20,6 @@ impl Server {
         let bind_address =
             SocketAddr::from_str(&format!("{}:{}", &self.conf.addr, &self.conf.port)).unwrap();
         let domain_storage = Arc::new(DomainStorage::init(&self.conf.file_dir).unwrap());
-        // let server = hyper::Server::bind(&bind_address)
-        //     .serve(make_service_fn(|_| {
-        //         let domain_storage = domain_storage.clone();
-        //         async move {
-        //             Ok::<_, hyper::Error>(service_fn(move |_req| {
-        //                 static_file_service(domain_storage.clone(), _req)
-        //             }))
-        //         }
-        //     }))
-        //     .await;
         let filter = static_file_filter(domain_storage);
         warp::serve(filter).run(bind_address).await;
         Ok(())
