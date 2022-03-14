@@ -13,17 +13,22 @@ pub fn static_file_filter(
         host: Option<Authority>,
         domain_storage: Arc<DomainStorage>,
     ) -> Result<ArcPath, Rejection> {
-        if let Some(Some(prefix)) = host.map(|h| domain_storage.get_version_path(h.as_str())) {
-            let tail = p.as_str();
-            let file = warp::fs::sanitize_path(prefix, tail).map(|mut buf| {
-                if tail.is_empty() {
-                    buf.push("index.html");
+        match host {
+            Some(h) => {
+                if let Some(prefix) = domain_storage.get_version_path(h.as_str()).await {
+                    let tail = p.as_str();
+                    let file = warp::fs::sanitize_path(prefix, tail).map(|mut buf| {
+                        if tail.is_empty() {
+                            buf.push("index.html");
+                        }
+                        ArcPath(Arc::new(buf))
+                    });
+                    file
+                } else {
+                    Err(reject::not_found())
                 }
-                ArcPath(Arc::new(buf))
-            });
-            file
-        } else {
-            Err(reject::not_found())
+            }
+            None => Err(reject::not_found()),
         }
     }
 

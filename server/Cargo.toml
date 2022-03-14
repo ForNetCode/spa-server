@@ -15,7 +15,7 @@ path = "src/bin/main.rs"
 [dependencies]
 # web
 hyper = { version = "0.14", features = ["server"] }
-tokio = { version = "1", features = ["macros", "rt-multi-thread", "io-std"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "io-std", "sync"] }
 futures = "0.3"
 warp = { path = "../warp"}
 

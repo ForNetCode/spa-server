@@ -3,7 +3,7 @@ use std::env;
 
 const CONFIG_PATH: &str = "config.conf";
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Config {
     pub port: u32,
     pub addr: String,

@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
+use tokio::sync::RwLock;
 
 pub(crate) const URI_REGEX_STR: &str =
     "[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+\\.?";
@@ -15,7 +16,7 @@ lazy_static! {
 }
 
 pub struct DomainStorage {
-    meta: HashMap<String, (PathBuf, i32)>,
+    meta: RwLock<HashMap<String, (PathBuf, i32)>>,
     prefix: PathBuf,
 }
 
@@ -63,7 +64,7 @@ impl DomainStorage {
                 }
             }
             Ok(DomainStorage {
-                meta: domain_version,
+                meta: RwLock::new(domain_version),
                 prefix: path_prefix.to_path_buf(),
             })
         } else {
@@ -71,12 +72,27 @@ impl DomainStorage {
         }
     }
 
-    pub fn get_version_path(&self, host: &str) -> Option<&PathBuf> {
-        self.meta.get(host).map(|(p, _)| p)
+    pub async fn upload_domain_with_version(
+        &self,
+        domain: String,
+        version: i32,
+    ) -> anyhow::Result<()> {
+        let new_path = self.prefix.join(&domain).join(version.to_string());
+        if new_path.is_dir() {
+            let mut meta = self.meta.write().await;
+            meta.insert(domain, (new_path, version));
+            Ok(())
+        } else {
+            Err(anyhow!("{:?} does not exits", new_path))
+        }
     }
 
-    pub fn get_new_upload_path(&self, domain: &str) -> PathBuf {
-        match self.get_domain_info_by_domain(domain) {
+    pub async fn get_version_path(&self, host: &str) -> Option<PathBuf> {
+        self.meta.read().await.get(host).map(|(p, _)| p.clone())
+    }
+
+    pub async fn get_new_upload_path(&self, domain: &str) -> PathBuf {
+        match self.get_domain_info_by_domain(domain).await {
             Some(domain_info) => {
                 let max_version = domain_info.versions.iter().max().unwrap_or(&0);
                 self.prefix.join(domain).join((max_version + 1).to_string())
@@ -84,15 +100,16 @@ impl DomainStorage {
             None => self.prefix.join(domain).join(1.to_string()),
         }
     }
-    pub fn get_domain_info_by_domain(&self, domain: &str) -> Option<DomainInfo> {
+    pub async fn get_domain_info_by_domain(&self, domain: &str) -> Option<DomainInfo> {
         self.get_domain_info()
+            .await
             .into_iter()
             .find(|x| x.domain == domain)
     }
 
-    pub fn get_domain_info(&self) -> Vec<DomainInfo> {
+    pub async fn get_domain_info(&self) -> Vec<DomainInfo> {
         let mut result: Vec<DomainInfo> = Vec::new();
-        for (domain, (path, version)) in self.meta.iter() {
+        for (domain, (path, version)) in self.meta.read().await.iter() {
             let mut versions: Vec<i32> = Vec::new();
             if let Ok(version_dir) = fs::read_dir(path.parent().unwrap()) {
                 for version in version_dir {

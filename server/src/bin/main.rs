@@ -16,6 +16,5 @@ async fn main() -> Result<()> {
             )
         })
         .init();
-
-    spa_server::Server::new().run().await
+    spa_server::run_server().await
 }
