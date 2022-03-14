@@ -2,6 +2,10 @@
 
 #[macro_use]
 extern crate log;
-mod config;
+
 pub mod server;
-mod static_file_service;
+
+mod config;
+mod domain_storage;
+mod static_file_filter;
+pub use server::Server;
