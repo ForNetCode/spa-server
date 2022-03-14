@@ -28,6 +28,7 @@ impl AdminServer {
             SocketAddr::from_str(&format!("{}:{}", &self.conf.addr, &self.conf.port)).unwrap();
         info!("admin server bind {}", &bind_address);
         let routes = warp::get()
+            .and(self.auth())
             .and(
                 warp::path("status")
                     .and(warp::query::<GetDomainOption>())
@@ -35,10 +36,20 @@ impl AdminServer {
                     .and_then(service::get_domain_info)
                     .or(self.get_domain_upload_path()),
             )
-            .or(self.update_domain_version());
+            .or(warp::post()
+                .and(self.auth())
+                .and(self.update_domain_version()));
 
         warp::serve(routes).run(bind_address).await;
         Ok(())
+    }
+
+    fn auth(&self) -> impl Filter<Extract = (), Error = Rejection> + Clone {
+        // this will not trigger memory leak, but be careful to use it
+        warp::header::exact(
+            "authorization",
+            Box::leak(format!("Bearer {}", &self.conf.token).into_boxed_str()),
+        )
     }
 
     fn get_domain_upload_path(

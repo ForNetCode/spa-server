@@ -15,21 +15,17 @@ RUST_LOG=info cargo run bin/main.rs
 
 will change back until this issue can be solved
 
-### Roadmap
-#### version 0.x
+### Roadmap 
+#### before release
 - [x] very simple http1 spa server
+- [x] very simple admin server(http api)
+- [ ] single tls
+- [ ] docker release
 
 #### version 1.x
-- [ ] client upload file and control server 
-- [ ] tls (wildcard domain firstly)
-- [ ] docker release
-- [ ] S3 storage(just copy s3 files to local file system)
-
-#### version 2.x
 - [ ] cache(and reimplement s3 storage, do not need to copy files to local file system)
 - [ ] compression
 - [ ] http2
-
-#### version 3.x
-- [ ] make server more fast
+- [ ] multiple tls(need to replace warp by hyper to support)
 - [ ] domain visit count/data analysis
+- [ ] make server more fast
