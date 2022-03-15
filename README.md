@@ -20,9 +20,10 @@ will change back until this issue can be solved
 - [x] very simple http1 spa server
 - [x] very simple admin server(http api)
 - [x] single tls (support http://cookcode.cc/selfsign self sign, others does not test now)
-- [ ] docker release
+- [x] docker release(simple)
 
 #### version 1.x
+- [ ] 80 and 443 both support
 - [ ] compression
 - [ ] http2
 - [ ] multiple tls(need to replace warp by hyper to support)
