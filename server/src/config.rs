@@ -9,6 +9,8 @@ pub struct Config {
     pub addr: String,
     pub file_dir: String,
     pub admin_config: Option<AdminConfig>,
+    #[serde(default)]
+    pub ssl: SSLConfig,
 }
 
 //TODO: create config with lots of default value
@@ -32,4 +34,19 @@ pub struct AdminConfig {
     pub port: u32,
     pub addr: String,
     pub token: String,
+}
+
+// TLS
+#[derive(Deserialize, Debug, Clone)]
+pub struct SSLConfig(pub Vec<SSLItem>);
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct SSLItem {
+    pub private: String,
+    pub public: String,
+}
+impl Default for SSLConfig {
+    fn default() -> Self {
+        SSLConfig(vec![])
+    }
 }

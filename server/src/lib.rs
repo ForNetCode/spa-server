@@ -15,6 +15,7 @@ mod static_file_filter;
 use crate::admin_server::AdminServer;
 use crate::config::Config;
 use crate::domain_storage::DomainStorage;
+use futures::future::join;
 pub use server::Server;
 use std::convert::Infallible;
 use std::sync::Arc;
@@ -30,11 +31,14 @@ pub async fn run_server() -> anyhow::Result<()> {
     let config = Config::load();
     let domain_storage = Arc::new(DomainStorage::init(&config.file_dir.clone()).unwrap());
     let server = Server::new(config.clone(), domain_storage.clone());
-    server.run().await?;
 
     if let Some(admin_config) = config.admin_config {
+        info!("admin server enabled.");
         let admin_server = AdminServer::new(admin_config, domain_storage.clone());
-        admin_server.run().await?;
+        let _ret = join(server.run(), admin_server.run()).await;
+    } else {
+        info!("admin server disabled.");
+        server.run().await?;
     }
     Ok(())
 }

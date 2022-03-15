@@ -19,13 +19,14 @@ will change back until this issue can be solved
 #### before release
 - [x] very simple http1 spa server
 - [x] very simple admin server(http api)
-- [ ] single tls
+- [x] single tls (support http://cookcode.cc/selfsign self sign, others does not test now)
 - [ ] docker release
 
 #### version 1.x
-- [ ] cache(and reimplement s3 storage, do not need to copy files to local file system)
 - [ ] compression
 - [ ] http2
 - [ ] multiple tls(need to replace warp by hyper to support)
 - [ ] domain visit count/data analysis
 - [ ] make server more fast
+- [ ] s3 storage(just copy files to local file system?)
+- [ ] memory fs(and reimplement s3 storage, do not need to copy files to local file system)

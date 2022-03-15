@@ -26,7 +26,6 @@ impl AdminServer {
     pub async fn run(&self) -> anyhow::Result<()> {
         let bind_address =
             SocketAddr::from_str(&format!("{}:{}", &self.conf.addr, &self.conf.port)).unwrap();
-        info!("admin server bind {}", &bind_address);
         let routes = warp::get()
             .and(self.auth())
             .and(

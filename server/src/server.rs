@@ -19,7 +19,18 @@ impl Server {
         let bind_address =
             SocketAddr::from_str(&format!("{}:{}", &self.conf.addr, &self.conf.port)).unwrap();
         let filter = static_file_filter(self.storage.clone());
-        warp::serve(filter).run(bind_address).await;
+        let server = warp::serve(filter);
+        // only support one ssl
+        if let Some(ssl_config) = self.conf.ssl.0.get(0) {
+            server
+                .tls()
+                .cert_path(&ssl_config.public)
+                .key_path(&ssl_config.private)
+                .run(bind_address)
+                .await;
+        } else {
+            server.run(bind_address).await;
+        }
         Ok(())
     }
 }
