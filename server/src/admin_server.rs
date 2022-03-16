@@ -151,7 +151,7 @@ mod request {
         pub version: i32,
     }
 }
-// TODO: the code structure is friendly with Unit Test, need refactor it.
+// TODO: the code structure is not friendly with Unit Test, need refactor it.
 #[cfg(test)]
 mod test {
     use crate::admin_server::request::UpdateDomainOption;

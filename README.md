@@ -8,10 +8,10 @@ More details are described at [SPA 发布辅助工具](https://github.com/timzaa
 You can get config description in file: `config.release.conf`. If you want to change the server config file path, 
 please set environment variable `SPA_CONFIG=${config_path}`.
 
-```
+```shell
 git clone git@github.com:timzaak/spa-server.git
 git submodule init && git submodule update
-RUST_LOG=info cargo run bin/main.rs
+RUST_LOG=info cargo run --bin spa-server 
 ```
 
 You can build docker image by `docker build . -t=?`, and push it to your private docker repo. There no plan to release it to docker hub.
@@ -40,7 +40,7 @@ curl "http://$ADMIN_SERVER/upload/path?domain=$DOMAIN" -H "Authorization: Bearer
 # *it will use the newest version after server restart*
 # *it will use the newest version after server restart*
 VERSION=2
-curl "http://$ADMIN_SERVER/update_version?domain=$DOMAIN&version=${VERSION}" -H "Authorization: Bearer $TOKEN"
+curl "http://$ADMIN_SERVER/update_version?domain=$DOMAIN&version=$VERSION" -H "Authorization: Bearer $TOKEN"
 # return status code: 200(update version success) or 404(can not find files, please make sure you have upload files to correct place)
 ```
 
