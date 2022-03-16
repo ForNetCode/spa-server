@@ -54,13 +54,13 @@ Will change back until this issue can be solved
 - [x] very simple http1 spa server
 - [x] very simple admin server(http api)
 - [x] single tls (support http://cookcode.cc/selfsign self sign, others does not test now)
-- [x] docker release(simple)
+- [x] docker release
 - [x] simple usage doc
 
 #### version 1.x
-- [ ] 80 and 443 both support, (80 redirect to 443 config option)
+- [x] 80 and 443 both support
 - [ ] compression
 - [ ] http2
-- [ ] multiple tls(need to replace warp by hyper to support)
+~~- [ ] multiple tls support~~ the feature may do not need.
 - [ ] domain visit count/data analysis
 - [ ] memory fs
