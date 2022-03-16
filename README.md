@@ -60,7 +60,6 @@ Will change back until this issue can be solved
 #### version 1.x
 - [x] 80 and 443 both support
 - [ ] compression
-- [ ] http2
-~~- [ ] multiple tls support~~ the feature may do not need.
+- [x] ~~multiple tls support~~ the feature may do not need.
 - [ ] domain visit count/data analysis
-- [ ] memory fs
+- [ ] memory fs ([hgzimmerman/rocket-file-cache](https://github.com/hgzimmerman/rocket-file-cache))
