@@ -63,5 +63,4 @@ Will change back until this issue can be solved
 - [ ] http2
 - [ ] multiple tls(need to replace warp by hyper to support)
 - [ ] domain visit count/data analysis
-- [ ] s3 storage(just copy files to local file system?)
-- [ ] memory fs(and reimplement s3 storage, do not need to copy files to local file system)
+- [ ] memory fs
