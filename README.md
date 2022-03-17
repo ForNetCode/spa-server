@@ -59,7 +59,10 @@ Will change back until this issue can be solved
 
 #### version 1.x
 - [x] 80 and 443 both support
-- [ ] compression
+- [x] ~~compression~~ it can be done by frontend pack tool.
 - [x] ~~multiple tls support~~ the feature may do not need.
+- [x] cache file
+
+#### version 2.x
 - [ ] domain visit count/data analysis
-- [ ] memory fs ([hgzimmerman/rocket-file-cache](https://github.com/hgzimmerman/rocket-file-cache))
+

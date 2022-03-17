@@ -1,11 +1,12 @@
+use crate::file_cache::{CacheItem, FileCache};
 use anyhow::anyhow;
+use dashmap::DashMap;
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-use tokio::sync::RwLock;
+use std::sync::Arc;
 
 pub(crate) const URI_REGEX_STR: &str =
     "[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+\\.?";
@@ -16,16 +17,18 @@ lazy_static! {
 }
 
 pub struct DomainStorage {
-    meta: RwLock<HashMap<String, (PathBuf, i32)>>,
+    meta: DashMap<String, (PathBuf, i32)>,
     prefix: PathBuf,
+    cache: FileCache,
 }
 
 impl DomainStorage {
     pub fn init<T: AsRef<Path>>(path_prefix: T) -> anyhow::Result<DomainStorage> {
+        let cache = FileCache::new();
         let path_prefix = path_prefix.as_ref();
         let path_prefix_buf = path_prefix.to_path_buf();
         if path_prefix.exists() {
-            let mut domain_version: HashMap<String, (PathBuf, i32)> = HashMap::new();
+            let domain_version: DashMap<String, (PathBuf, i32)> = DashMap::new();
             let domain_dirs = fs::read_dir(path_prefix)?;
             for domain_dir in domain_dirs {
                 let domain_dir = domain_dir?;
@@ -51,25 +54,28 @@ impl DomainStorage {
                     }
                     if max_version > 0 {
                         info!("serve domain: {},version: {}", domain_dir_name, max_version);
-                        domain_version.insert(
-                            domain_dir_name.to_owned(),
-                            (
-                                path_prefix_buf
-                                    .join(domain_dir_name)
-                                    .join(max_version.to_string()),
-                                max_version,
-                            ),
-                        );
+                        let path_buf = path_prefix_buf
+                            .join(domain_dir_name)
+                            .join(max_version.to_string());
+                        let key = format!("{}/{}", domain_dir_name, max_version);
+                        let data = cache.cache_dir(&path_buf)?;
+                        cache.update(domain_dir_name.to_string(), data);
+                        domain_version.insert(domain_dir_name.to_owned(), (path_buf, max_version));
                     }
                 }
             }
             Ok(DomainStorage {
-                meta: RwLock::new(domain_version),
+                meta: domain_version,
                 prefix: path_prefix.to_path_buf(),
+                cache,
             })
         } else {
             Err(anyhow!("{:?} does not exist", path_prefix))
         }
+    }
+
+    pub fn get_file(&self, host: &str, key: &str) -> Option<Arc<CacheItem>> {
+        self.cache.get_item(host, key)
     }
 
     pub async fn upload_domain_with_version(
@@ -79,16 +85,18 @@ impl DomainStorage {
     ) -> anyhow::Result<()> {
         let new_path = self.prefix.join(&domain).join(version.to_string());
         if new_path.is_dir() {
-            let mut meta = self.meta.write().await;
-            meta.insert(domain, (new_path, version));
+            self.meta
+                .insert(domain.clone(), (new_path.clone(), version));
+            let data = self.cache.cache_dir(&new_path)?;
+            self.cache.update(domain, data);
             Ok(())
         } else {
             Err(anyhow!("{:?} does not exits", new_path))
         }
     }
 
-    pub async fn get_version_path(&self, host: &str) -> Option<PathBuf> {
-        self.meta.read().await.get(host).map(|(p, _)| p.clone())
+    pub fn get_version_path(&self, host: &str) -> Option<PathBuf> {
+        self.meta.get(host).map(|d| d.value().0.clone())
     }
 
     pub async fn get_new_upload_path(&self, domain: &str) -> PathBuf {
@@ -100,6 +108,7 @@ impl DomainStorage {
             None => self.prefix.join(domain).join(1.to_string()),
         }
     }
+
     pub async fn get_domain_info_by_domain(&self, domain: &str) -> Option<DomainInfo> {
         self.get_domain_info()
             .await
@@ -109,7 +118,8 @@ impl DomainStorage {
 
     pub async fn get_domain_info(&self) -> Vec<DomainInfo> {
         let mut result: Vec<DomainInfo> = Vec::new();
-        for (domain, (path, version)) in self.meta.read().await.iter() {
+        for item in self.meta.iter() {
+            let (path, version) = item.value();
             let mut versions: Vec<i32> = Vec::new();
             if let Ok(version_dir) = fs::read_dir(path.parent().unwrap()) {
                 for version in version_dir {
@@ -123,7 +133,7 @@ impl DomainStorage {
                 }
             }
             result.push(DomainInfo {
-                domain: domain.to_string(),
+                domain: item.key().to_string(),
                 current_version: *version,
                 versions,
             })

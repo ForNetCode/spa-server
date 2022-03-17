@@ -18,11 +18,12 @@ hyper = { version = "0.14", features = ["server"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "io-std", "sync"] }
 futures = "0.3"
 warp = { path = "../warp", features = ["tls"]}
-#tokio-rustls = "0.23"
-#hyper-rustls = "0.23"
-#futures-util = "0.3"
-#rustls-pemfile = "0.3"
 
+# warp inner
+percent-encoding = "2.1"
+headers = "0.3"
+mime = "0.3"
+mime_guess = "2.0"
 
 # tokio trace and log
 tracing = "0.1"
@@ -30,15 +31,18 @@ tracing-subscriber = "0.2"
 tracing-log = { version = "0.1", features = ["env_logger"] }
 log = "0.4"
 env_logger = "0.9"
+chrono = "0.4"
 
 #config
-clap = "3.1"
 hocon = "0.7"
 serde = { version = "1.0", features = ["derive"] }
 
+#cache
+dashmap = "5.2"
 
 # util
 regex = "1.5"
 lazy_static = "1.4"
-chrono = "0.4"
 anyhow = "1.0"
+
+walkdir = "2.3"
