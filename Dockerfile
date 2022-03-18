@@ -16,7 +16,7 @@ ADD . .
 # Build our application.
 RUN cargo build --release
 
-FROM rust:1.59
+FROM debian:buster-slim
 
 RUN mkdir /data
 COPY --from=builder ./config.release.conf ./config.conf

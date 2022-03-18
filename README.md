@@ -54,10 +54,9 @@ Will change back until this issue can be solved
 
 #### version 1.x
 - [x] more doc(how to update static files)
-- [ ] rewrite Dockerfile to reduce docker images size
-- [ ] add github CI/CD
+- [x] rewrite Dockerfile to reduce docker images size
 - [ ] cache improve(big file ignore config option and if-range header support)
-- [ ] more log for debug
+- [ ] more log for debug and trace
 - [ ] refactor for test
 - [ ] domain visit count/data analysis
 - [ ] header `etag` 
