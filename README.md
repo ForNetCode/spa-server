@@ -57,12 +57,17 @@ Will change back until this issue can be solved
 - [x] docker release
 - [x] simple usage doc
 
-#### version 1.x
+#### version 0.x
 - [x] 80 and 443 both support
 - [x] ~~compression~~ it can be done by frontend pack tool.
 - [x] ~~multiple tls support~~ the feature may do not need.
-- [x] cache file
+- [x] cache file(cache all files in memory without LRU)
 
-#### version 2.x
+#### version 1.x
+- [ ] more doc(how to update static files)
+- [ ] rewrite Dockerfile to reduce docker images size
+- [ ] add github CI/CD
+- [ ] cache improve(big file ignore config option and if-range header support)
+- [ ] more log for debug
+- [ ] refactor for test
 - [ ] domain visit count/data analysis
-
