@@ -3,9 +3,8 @@ This project is to create a static web server which make deploy and manage multi
 
 More details are described at [SPA 发布辅助工具](https://github.com/timzaak/blog/issues/80) in Chinese.
 
-
 ### Run Server
-You can get config description in file: `config.release.conf`. If you want to change the server config file path, 
+You can get config description in file: [`config.release.conf`](./config.release.conf). If you want to change the server config file path, 
 please set environment variable `SPA_CONFIG=${config_path}`.
 
 ```shell
@@ -16,33 +15,23 @@ RUST_LOG=info cargo run --bin spa-server
 
 You can build docker image by `docker build . -t=?`, and push it to your private docker repo. There no plan to release it to docker hub.
 
-#### Admin Server
-Admin server provide http api to control static web files version upgrade, be careful to it access config, and it's disabled by default.
+### How To Use
+Before running the server up, please read the config.release.conf file firstly. It's simple now.
+
+After the server up. Copy your spa files to the directory where the admin server told, all the admin server api is in the [wiki](https://github.com/timzaak/spa-server/wiki/Admin-Server-API):
+
 ```shell
-ADMIN_SERVER='127.0.0.1:9000' 
-TOKEN='token'
 
-# get all domains status
-curl "http://$ADMIN_SERVER/status" -H "Authorization: Bearer $TOKEN"
-# return json: [{"domain":"www.example.com","current_version":1,"versions":[1]}]
+scp $SPA_DIRECTORY user@ip:$(curl "http://$ADMIN_SERVER/upload/path?domain=$DOMAIN" -H "Authorization: Bearer $TOKEN")
 
-# get specific domain status
-DOMAIN='www.example.com'
-curl "http://$ADMIN_SERVER/status?domain=$DOMAIN" -H "Authorization: Bearer $TOKEN"
-# return json: {"domain":"www.example.com","current_version":1,"versions":[1]} or status code:404
-
-# get the domain upload file path, it can be used with `rsync/scp` to upload web static files to the server.
-curl "http://$ADMIN_SERVER/upload/path?domain=$DOMAIN" -H "Authorization: Bearer $TOKEN"
-# return string: /$FILE_PATH/$DOMAIN/$NEW_VERSION ,like /data/www.example.com/2
-
-# update the domain version. please be attention:
-# *it will use the newest version after server restart*
-# *it will use the newest version after server restart*
-# *it will use the newest version after server restart*
-VERSION=2
-curl "http://$ADMIN_SERVER/update_version?domain=$DOMAIN&version=$VERSION" -H "Authorization: Bearer $TOKEN"
-# return status code: 200(update version success) or 404(can not find files, please make sure you have upload files to correct place)
 ```
+
+Request the admin server to change spa version.
+```shell
+curl "http://$ADMIN_SERVER/update_version?domain=$DOMAIN&version=$VERSION" -H "Authorization: Bearer $TOKEN"
+```
+
+That's all!
 
 ### why use self maintained warp
 [#171 Add reply::file(path) helper](https://github.com/seanmonstar/warp/issues/171)
@@ -64,10 +53,12 @@ Will change back until this issue can be solved
 - [x] cache file(cache all files in memory without LRU)
 
 #### version 1.x
-- [ ] more doc(how to update static files)
+- [x] more doc(how to update static files)
 - [ ] rewrite Dockerfile to reduce docker images size
 - [ ] add github CI/CD
 - [ ] cache improve(big file ignore config option and if-range header support)
 - [ ] more log for debug
 - [ ] refactor for test
 - [ ] domain visit count/data analysis
+- [ ] header `etag` 
+
