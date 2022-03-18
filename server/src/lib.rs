@@ -1,9 +1,6 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
-#[macro_use]
-extern crate log;
-
 pub mod server;
 
 pub mod admin_server;
@@ -34,11 +31,11 @@ pub async fn run_server() -> anyhow::Result<()> {
     let server = Server::new(config.clone(), domain_storage.clone());
 
     if let Some(admin_config) = config.admin_config {
-        info!("admin server enabled.");
+        tracing::info!("admin server enabled.");
         let admin_server = AdminServer::new(admin_config, domain_storage.clone());
         let _ret = join(server.run(), admin_server.run()).await;
     } else {
-        info!("admin server disabled.");
+        tracing::info!("admin server disabled.");
         server.run().await?;
     }
     Ok(())

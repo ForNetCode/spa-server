@@ -89,7 +89,7 @@ impl AdminServer {
                 Ok(_) => {
                     let text =
                         format!("domain:{} has changed to {}", option.domain, option.version);
-                    info!("{}", &text);
+                    tracing::info!("{}", &text);
                     Ok(text.into_response())
                 }
                 Err(_) => Ok(StatusCode::NOT_FOUND.into_response()),

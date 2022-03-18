@@ -53,7 +53,11 @@ impl DomainStorage {
                         }
                     }
                     if max_version > 0 {
-                        info!("serve domain: {},version: {}", domain_dir_name, max_version);
+                        tracing::info!(
+                            "serve domain: {},version: {}",
+                            domain_dir_name,
+                            max_version
+                        );
                         let path_buf = path_prefix_buf
                             .join(domain_dir_name)
                             .join(max_version.to_string());
