@@ -44,6 +44,7 @@ pub struct HttpsConfig {
     pub public: String,
     pub port: i32,
     pub addr: String,
+    pub http_redirect_to_https: Option<bool>,
 }
 #[derive(Deserialize, Debug, Clone)]
 pub struct CacheConfig {

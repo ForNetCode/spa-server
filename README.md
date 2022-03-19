@@ -57,6 +57,7 @@ That's all!
 - [ ] refactor for test
 - [ ] domain visit count/data analysis
 - [ ] header `etag` `cache-control` `expires` `age` for client cache
+- [x] 80 redirect to 443 config option
 
 ### why use self maintained warp
 [#171 Add reply::file(path) helper](https://github.com/seanmonstar/warp/issues/171)

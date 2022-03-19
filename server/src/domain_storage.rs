@@ -103,7 +103,7 @@ impl DomainStorage {
     }
 
     pub async fn get_new_upload_path(&self, domain: &str) -> PathBuf {
-        match self.get_domain_info_by_domain(domain).await {
+        match self.get_domain_info_by_domain(domain) {
             Some(domain_info) => {
                 let max_version = domain_info.versions.iter().max().unwrap_or(&0);
                 self.prefix.join(domain).join((max_version + 1).to_string())
@@ -112,14 +112,13 @@ impl DomainStorage {
         }
     }
 
-    pub async fn get_domain_info_by_domain(&self, domain: &str) -> Option<DomainInfo> {
+    pub fn get_domain_info_by_domain(&self, domain: &str) -> Option<DomainInfo> {
         self.get_domain_info()
-            .await
             .into_iter()
             .find(|x| x.domain == domain)
     }
 
-    pub async fn get_domain_info(&self) -> Vec<DomainInfo> {
+    pub fn get_domain_info(&self) -> Vec<DomainInfo> {
         let mut result: Vec<DomainInfo> = Vec::new();
         for item in self.meta.iter() {
             let (path, version) = item.value();

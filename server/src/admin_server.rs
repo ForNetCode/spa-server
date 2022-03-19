@@ -119,7 +119,7 @@ mod service {
         option: GetDomainOption,
         storage: Arc<DomainStorage>,
     ) -> Result<Response, Infallible> {
-        let domain_info = storage.get_domain_info().await;
+        let domain_info = storage.get_domain_info();
         match option.domain {
             Some(domain) => {
                 if let Some(data) = domain_info.iter().find(|x| x.domain == domain) {

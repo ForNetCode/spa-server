@@ -7,6 +7,7 @@ pub mod admin_server;
 pub mod config;
 pub mod domain_storage;
 pub mod file_cache;
+mod redirect_https;
 mod static_file_filter;
 
 // utils
