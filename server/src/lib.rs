@@ -13,6 +13,7 @@ mod static_file_filter;
 use crate::admin_server::AdminServer;
 use crate::config::Config;
 use crate::domain_storage::DomainStorage;
+use crate::file_cache::FileCache;
 use futures::future::join;
 pub use server::Server;
 use std::convert::Infallible;
@@ -27,7 +28,8 @@ pub fn with<T: Send + Sync>(
 
 pub async fn run_server() -> anyhow::Result<()> {
     let config = Config::load();
-    let domain_storage = Arc::new(DomainStorage::init(&config.file_dir.clone()).unwrap());
+    let cache = FileCache::new(config.cache.clone());
+    let domain_storage = Arc::new(DomainStorage::init(&config.file_dir.clone(), cache).unwrap());
     let server = Server::new(config.clone(), domain_storage.clone());
 
     if let Some(admin_config) = config.admin_config {

@@ -1,3 +1,4 @@
+use crate::config::CacheConfig;
 use anyhow::anyhow;
 use dashmap::DashMap;
 use hyper::body::Bytes;
@@ -8,15 +9,17 @@ use std::io::{BufReader, Read};
 use std::path::PathBuf;
 use std::sync::Arc;
 use walkdir::WalkDir;
+use warp::fs::ArcPath;
 
 pub struct FileCache {
-    // host => <path, data>
-    pub data: DashMap<String, HashMap<String, Arc<CacheItem>>>,
+    conf: CacheConfig,
+    data: DashMap<String, HashMap<String, Arc<CacheItem>>>,
 }
 
 impl FileCache {
-    pub fn new() -> Self {
+    pub fn new(conf: CacheConfig) -> Self {
         FileCache {
+            conf,
             data: DashMap::new(),
         }
     }
@@ -45,23 +48,35 @@ impl FileCache {
                         let mut bytes: Vec<u8> = vec![];
                         reader.read_to_end(&mut bytes).ok()?;
                         let mime = mime_guess::from_path(path).first_or_octet_stream();
-                        entry.into_path().to_str().map(|x| {
+                        let entry_path = entry.into_path();
+                        return entry_path.clone().to_str().map(|x| {
                             let key = x.replace(&prefix, "");
+                            if let Some(max_size) = self.conf.max_size {
+                                if max_size < metadata.len() {
+                                    return (
+                                        key,
+                                        Arc::new(CacheItem {
+                                            mime,
+                                            meta: metadata,
+                                            data: DataBlock::FileBlock(ArcPath(Arc::new(
+                                                entry_path,
+                                            ))),
+                                        }),
+                                    );
+                                }
+                            }
                             (
                                 key,
                                 Arc::new(CacheItem {
                                     mime,
                                     meta: metadata,
-                                    data: Bytes::from(bytes),
+                                    data: DataBlock::CacheBlock(Bytes::from(bytes)),
                                 }),
                             )
-                        })
-                    } else {
-                        None
+                        });
                     }
-                } else {
-                    None
                 }
+                None
             })
             .collect();
 
@@ -76,8 +91,14 @@ impl FileCache {
     }
 }
 
+pub enum DataBlock {
+    CacheBlock(Bytes),
+    // for use warp
+    FileBlock(ArcPath),
+}
+
 pub struct CacheItem {
     pub meta: Metadata,
-    pub data: Bytes,
+    pub data: DataBlock,
     pub mime: Mime,
 }

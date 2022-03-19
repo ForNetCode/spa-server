@@ -10,6 +10,8 @@ pub struct Config {
     pub file_dir: String,
     pub admin_config: Option<AdminConfig>,
     pub https: Option<HttpsConfig>,
+    #[serde(default)]
+    pub cache: CacheConfig,
 }
 
 //TODO: create config with lots of default value
@@ -42,4 +44,14 @@ pub struct HttpsConfig {
     pub public: String,
     pub port: i32,
     pub addr: String,
+}
+#[derive(Deserialize, Debug, Clone)]
+pub struct CacheConfig {
+    pub max_size: Option<u64>,
+}
+
+impl Default for CacheConfig {
+    fn default() -> Self {
+        CacheConfig { max_size: None }
+    }
 }

@@ -23,8 +23,7 @@ pub struct DomainStorage {
 }
 
 impl DomainStorage {
-    pub fn init<T: AsRef<Path>>(path_prefix: T) -> anyhow::Result<DomainStorage> {
-        let cache = FileCache::new();
+    pub fn init<T: AsRef<Path>>(path_prefix: T, cache: FileCache) -> anyhow::Result<DomainStorage> {
         let path_prefix = path_prefix.as_ref();
         let path_prefix_buf = path_prefix.to_path_buf();
         if path_prefix.exists() {

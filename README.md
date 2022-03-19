@@ -10,6 +10,7 @@ please set environment variable `SPA_CONFIG=${config_path}`.
 ```shell
 git clone git@github.com:timzaak/spa-server.git
 git submodule init && git submodule update
+# please remember to change `file_dir` in config.conf
 cp config.release.conf config.conf
 RUST_LOG=info cargo run --bin spa-server 
 ```
@@ -34,11 +35,6 @@ curl "http://$ADMIN_SERVER/update_version?domain=$DOMAIN&version=$VERSION" -H "A
 
 That's all!
 
-### why use self maintained warp
-[#171 Add reply::file(path) helper](https://github.com/seanmonstar/warp/issues/171)
-
-Will change back until this issue can be solved
-
 ### Roadmap 
 #### before release
 - [x] very simple http1 spa server
@@ -56,9 +52,13 @@ Will change back until this issue can be solved
 #### version 1.x
 - [x] more doc(how to update static files)
 - [x] rewrite Dockerfile to reduce docker image size
-- [ ] cache improve(big file ignore config option and if-range header support)
+- [x] cache improve(big file ignore config option and if-range header support)
 - [ ] more log for debug and trace
 - [ ] refactor for test
 - [ ] domain visit count/data analysis
-- [ ] header `etag` 
+- [ ] header `etag` `cache-control` `expires` `age` for client cache
 
+### why use self maintained warp
+[#171 Add reply::file(path) helper](https://github.com/seanmonstar/warp/issues/171)
+
+This project used lots of api in war/fs.rs which is private, will change back until this issue can be solved.
