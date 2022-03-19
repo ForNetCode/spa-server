@@ -20,7 +20,7 @@ You can build docker image by `docker build . -t=?`, and push it to your private
 ### How To Use
 Before running the server up, please read the config.release.conf file firstly. It's simple now.
 
-After the server up. Copy your spa files to the directory where the admin server told, all the admin server api is in the [wiki](https://github.com/timzaak/spa-server/wiki/Admin-Server-API):
+After the server up. Copy your spa files to the directory where the admin server told, all the admin server api is in the [doc](./doc/Admin_Server_API.md):
 
 ```shell
 
