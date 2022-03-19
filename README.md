@@ -4,12 +4,13 @@ This project is to create a static web server which make deploy and manage multi
 More details are described at [SPA 发布辅助工具](https://github.com/timzaak/blog/issues/80) in Chinese.
 
 ### Run Server
-You can get config description in file: [`config.release.conf`](./config.release.conf). If you want to change the server config file path, 
+You can get all config description in file: [`config.release.conf`](./config.release.conf). If you want to change the server config file path, 
 please set environment variable `SPA_CONFIG=${config_path}`.
 
 ```shell
 git clone git@github.com:timzaak/spa-server.git
 git submodule init && git submodule update
+cp config.release.conf config.conf
 RUST_LOG=info cargo run --bin spa-server 
 ```
 
@@ -42,7 +43,7 @@ Will change back until this issue can be solved
 #### before release
 - [x] very simple http1 spa server
 - [x] very simple admin server(http api)
-- [x] single tls (support http://cookcode.cc/selfsign self sign, others does not test now)
+- [x] ssl(including wildcard domain ssl)
 - [x] docker release
 - [x] simple usage doc
 
@@ -54,7 +55,7 @@ Will change back until this issue can be solved
 
 #### version 1.x
 - [x] more doc(how to update static files)
-- [x] rewrite Dockerfile to reduce docker images size
+- [x] rewrite Dockerfile to reduce docker image size
 - [ ] cache improve(big file ignore config option and if-range header support)
 - [ ] more log for debug and trace
 - [ ] refactor for test
