@@ -2,25 +2,43 @@ use crate::config::CacheConfig;
 use anyhow::anyhow;
 use dashmap::DashMap;
 use hyper::body::Bytes;
+use if_chain::if_chain;
 use mime::Mime;
 use std::collections::HashMap;
 use std::fs::{File, Metadata};
 use std::io::{BufReader, Read};
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
 use walkdir::WalkDir;
 use warp::fs::ArcPath;
 
 pub struct FileCache {
     conf: CacheConfig,
     data: DashMap<String, HashMap<String, Arc<CacheItem>>>,
+    expire_config: HashMap<String, Duration>,
 }
 
 impl FileCache {
     pub fn new(conf: CacheConfig) -> Self {
+        let expire_config: HashMap<String, Duration> = conf
+            .client_cache
+            .clone()
+            .unwrap_or(Vec::new())
+            .into_iter()
+            .map(|item| {
+                item.extension_names
+                    .into_iter()
+                    .map(|extension_name| (extension_name, item.expire.clone()))
+                    .collect::<Vec<(String, Duration)>>()
+            })
+            .flatten()
+            .collect();
+
         FileCache {
             conf,
             data: DashMap::new(),
+            expire_config,
         }
     }
     pub fn update(
@@ -51,26 +69,26 @@ impl FileCache {
                         let entry_path = entry.into_path();
                         return entry_path.clone().to_str().map(|x| {
                             let key = x.replace(&prefix, "");
-                            if let Some(max_size) = self.conf.max_size {
-                                if max_size < metadata.len() {
-                                    return (
-                                        key,
-                                        Arc::new(CacheItem {
-                                            mime,
-                                            meta: metadata,
-                                            data: DataBlock::FileBlock(ArcPath(Arc::new(
-                                                entry_path,
-                                            ))),
-                                        }),
-                                    );
+                            let extension_name = key
+                                .split('.')
+                                .last()
+                                .map_or("".to_string(), |x| x.to_string());
+                            let data_block = if_chain!(
+                                if let Some(max_size) = self.conf.max_size;
+                                if max_size < metadata.len();
+                                then {
+                                    DataBlock::FileBlock(ArcPath(Arc::new(entry_path)))
+                                } else {
+                                    DataBlock::CacheBlock(Bytes::from(bytes))
                                 }
-                            }
+                            );
                             (
                                 key,
                                 Arc::new(CacheItem {
                                     mime,
                                     meta: metadata,
-                                    data: DataBlock::CacheBlock(Bytes::from(bytes)),
+                                    data: data_block,
+                                    expire: self.expire_config.get(&extension_name).cloned(),
                                 }),
                             )
                         });
@@ -101,4 +119,5 @@ pub struct CacheItem {
     pub meta: Metadata,
     pub data: DataBlock,
     pub mime: Mime,
+    pub expire: Option<Duration>,
 }

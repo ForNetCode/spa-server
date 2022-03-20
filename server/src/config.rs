@@ -1,5 +1,7 @@
+use hocon::de::wrappers::Serde;
 use serde::Deserialize;
 use std::env;
+use std::time::Duration;
 
 const CONFIG_PATH: &str = "config.conf";
 
@@ -10,7 +12,7 @@ pub struct Config {
     pub file_dir: String,
     pub admin_config: Option<AdminConfig>,
     pub https: Option<HttpsConfig>,
-    #[serde(default)]
+    // #[serde(default)]
     pub cache: CacheConfig,
 }
 
@@ -49,10 +51,21 @@ pub struct HttpsConfig {
 #[derive(Deserialize, Debug, Clone)]
 pub struct CacheConfig {
     pub max_size: Option<u64>,
+    pub client_cache: Option<Vec<ClientCacheItem>>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct ClientCacheItem {
+    #[serde(deserialize_with = "Serde::<Duration>::with")]
+    pub expire: Duration,
+    pub extension_names: Vec<String>,
 }
 
 impl Default for CacheConfig {
     fn default() -> Self {
-        CacheConfig { max_size: None }
+        CacheConfig {
+            max_size: None,
+            client_cache: None,
+        }
     }
 }

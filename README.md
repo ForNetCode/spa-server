@@ -49,15 +49,17 @@ That's all!
 - [x] ~~multiple tls support~~ the feature may do not need.
 - [x] cache file(cache all files in memory without LRU)
 
-#### version 1.x
+#### version 1.1.x
 - [x] more doc(how to update static files)
 - [x] rewrite Dockerfile to reduce docker image size
 - [x] cache improve(big file ignore config option and if-range header support)
 - [ ] more log for debug and trace
 - [ ] refactor for test
 - [ ] domain visit count/data analysis
-- [ ] header `etag` `cache-control` `expires` `age` for client cache
+- [ ] header`cache-control` for client cache
+- [ ] header `etag` for client cache
 - [x] 80 redirect to 443 config option
+- [ ] cors
 
 ### why use self maintained warp
 [#171 Add reply::file(path) helper](https://github.com/seanmonstar/warp/issues/171)

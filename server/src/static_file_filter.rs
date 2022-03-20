@@ -1,7 +1,10 @@
 use crate::domain_storage::DomainStorage;
 use crate::file_cache::{CacheItem, DataBlock};
 use crate::with;
-use headers::{AcceptRanges, ContentLength, ContentRange, ContentType, HeaderMapExt, LastModified};
+use headers::{
+    AcceptRanges, CacheControl, ContentLength, ContentRange, ContentType, HeaderMapExt,
+    LastModified,
+};
 use hyper::Body;
 use percent_encoding::percent_decode_str;
 use std::sync::Arc;
@@ -33,24 +36,18 @@ async fn cache_reply(
     conditionals: Conditionals,
 ) -> Result<Response<Body>, Rejection> {
     let modified = item.meta.modified().map(LastModified::from).ok();
-    let mut len = item.meta.len();
 
     let resp = match conditionals.check(modified) {
         Cond::NoBody(resp) => Ok(resp),
         Cond::WithBody(range) => match &item.data {
             DataBlock::CacheBlock(bytes) => {
                 let mut resp = Response::new(Body::from(bytes.clone()));
-                resp.headers_mut().typed_insert(ContentLength(len));
-                resp.headers_mut()
-                    .typed_insert(ContentType::from(item.mime.clone()));
-                resp.headers_mut().typed_insert(AcceptRanges::bytes());
-                if let Some(last_modified) = modified {
-                    resp.headers_mut().typed_insert(last_modified);
-                }
+                cache_item_to_response_header(&mut resp, item, modified);
                 Ok(resp)
             }
             DataBlock::FileBlock(path) => {
-                // copy from warp::fs file_replyZ
+                // copy from warp::fs file_reply
+                let len = item.meta.len();
                 match File::open(path.clone()).await {
                     Ok(file) => {
                         let resp = bytes_range(range, len)
@@ -60,21 +57,14 @@ async fn cache_reply(
                                 let stream = file_stream(file, buf_size, (start, end));
                                 let body = Body::wrap_stream(stream);
                                 let mut resp = Response::new(body);
+                                cache_item_to_response_header(&mut resp, item, modified);
                                 if sub_len != len {
                                     *resp.status_mut() = StatusCode::PARTIAL_CONTENT;
                                     resp.headers_mut().typed_insert(
                                         ContentRange::bytes(start..end, len)
                                             .expect("valid ContentRange"),
                                     );
-                                    len = sub_len;
-                                }
-                                let mime = item.mime.clone();
-                                resp.headers_mut().typed_insert(ContentLength(len));
-                                resp.headers_mut().typed_insert(ContentType::from(mime));
-                                resp.headers_mut().typed_insert(AcceptRanges::bytes());
-
-                                if let Some(last_modified) = modified {
-                                    resp.headers_mut().typed_insert(last_modified);
+                                    resp.headers_mut().typed_insert(ContentLength(sub_len));
                                 }
                                 resp
                             })
@@ -119,6 +109,30 @@ async fn cache_reply(
     };
     resp
 }
+
+fn cache_item_to_response_header(
+    resp: &mut Response<Body>,
+    item: Arc<CacheItem>,
+    modified: Option<LastModified>,
+) {
+    let mime = item.mime.clone();
+    resp.headers_mut()
+        .typed_insert(ContentLength(item.meta.len()));
+    resp.headers_mut().typed_insert(ContentType::from(mime));
+    resp.headers_mut().typed_insert(AcceptRanges::bytes());
+    if let Some(expire) = item.expire {
+        if !expire.is_zero() {
+            resp.headers_mut()
+                .typed_insert(CacheControl::new().with_max_age(expire));
+        } else {
+            resp.headers_mut()
+                .typed_insert(CacheControl::new().with_no_cache());
+        }
+    }
+    if let Some(last_modified) = modified {
+        resp.headers_mut().typed_insert(last_modified);
+    }
+}
 pub fn static_file_filter(
     domain_storage: Arc<DomainStorage>,
 ) -> impl Filter<Extract = (Response<Body>,), Error = Rejection> + Clone {
@@ -155,40 +169,4 @@ pub fn static_file_filter(
         .and_then(get_cache_file)
         .and(conditionals())
         .and_then(cache_reply)
-    /*
-    async fn get_real_path(
-        p: warp::path::Tail,
-        host: Option<Authority>,
-        domain_storage: Arc<DomainStorage>,
-    ) -> Result<ArcPath, Rejection> {
-        match host {
-            Some(h) => {
-                if let Some(prefix) = domain_storage.get_version_path(h.as_str()) {
-                    let tail = p.as_str();
-                    let file = warp::fs::sanitize_path(prefix, tail).map(|mut buf| {
-                        if tail.is_empty() {
-                            buf.push("index.html");
-                        }
-                        ArcPath(Arc::new(buf))
-                    });
-                    file
-                } else {
-                    Err(reject::not_found())
-                }
-            }
-            None => Err(reject::not_found()),
-        }
-    }
-
-    warp::get()
-        .or(warp::head())
-        .unify()
-        .and(warp::path::tail())
-        .and(warp::host::optional())
-        .and(with(domain_storage))
-        .and_then(get_real_path)
-        .and(conditionals())
-        .and_then(warp::fs::file_reply)
-
-     */
 }

@@ -2,5 +2,4 @@
 Cargo.lock
 .idea
 /tmp
-private.conf
 config.conf
