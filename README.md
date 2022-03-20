@@ -57,7 +57,7 @@ That's all!
 - [ ] refactor for test
 - [ ] domain visit count/data analysis
 - [x] header`cache-control` for client cache
-- [ ] header `etag` for client cache
+- [ ] ~~header `etag` for client cache~~ [warp #462](https://github.com/seanmonstar/warp/issues/462)
 - [x] 80 redirect to 443 config option
 
 ### why use self maintained warp
