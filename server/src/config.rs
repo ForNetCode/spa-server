@@ -48,7 +48,8 @@ pub struct HttpsConfig {
     pub public: String,
     pub port: i32,
     pub addr: String,
-    pub http_redirect_to_https: Option<bool>,
+    #[serde(default)]
+    pub http_redirect_to_https: bool,
 }
 // should write Deserialize by hand.
 #[derive(Deserialize, Debug, Clone)]

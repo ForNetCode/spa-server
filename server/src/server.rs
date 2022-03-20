@@ -34,6 +34,7 @@ impl Server {
                 SocketAddr::from_str(&format!("{}:{}", &config.addr, &config.port)).unwrap();
             let filter = static_file_filter(self.storage.clone());
             if self.conf.cors {
+                tracing::debug!("enable CORS for https server");
                 warp::serve(filter.with(self.get_cors_config()))
                     .tls()
                     .cert_path(&config.public)
@@ -56,18 +57,15 @@ impl Server {
         if self.conf.port > 0 {
             let bind_address =
                 SocketAddr::from_str(&format!("{}:{}", &self.conf.addr, &self.conf.port)).unwrap();
-            if self
-                .conf
-                .https
-                .clone()
-                .map(|x| x.http_redirect_to_https.to_owned())
-                .flatten()
-                .is_some()
+            if (&self.conf.https)
+                .as_ref()
+                .map_or(false, |x| x.http_redirect_to_https)
             {
                 hyper_redirect_server(bind_address, self.storage.clone()).await?;
             } else {
                 let filter = static_file_filter(self.storage.clone());
                 if self.conf.cors {
+                    tracing::debug!("enable CORS for http server");
                     warp::serve(filter.with(self.get_cors_config()))
                         .run(bind_address)
                         .await;
