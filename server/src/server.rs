@@ -57,7 +57,9 @@ impl Server {
         if self.conf.port > 0 {
             let bind_address =
                 SocketAddr::from_str(&format!("{}:{}", &self.conf.addr, &self.conf.port)).unwrap();
-            if (&self.conf.https)
+            if self
+                .conf
+                .https
                 .as_ref()
                 .map_or(false, |x| x.http_redirect_to_https)
             {

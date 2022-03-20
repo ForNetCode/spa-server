@@ -56,16 +56,20 @@ That's all!
 - [x] header`cache-control` for client cache
 - [ ] ~~header `etag` for client cache~~ [warp #462](https://github.com/seanmonstar/warp/issues/462)
 - [x] 80 redirect to 443 config option
-- [x] compression for js/icon/json/css/html (only support gzip algo, only compress cached files, and will occur error when client don't support gzip)
+- [x] compression for js/icon/json/css/html (only support gzip algo, only compress cached files, and ~~will occur error when client don't support gzip~~(fix @ v1.2))
 
 #### version 1.2.x
 - [ ] more log for debug and trace
 - [ ] refactor for test
 - [ ] domain visit count/data analysis
 - [x] basic CORS
-- [ ] compression regression support
+- [x] compression regression support(if client don't send accept-encoding header(including gzip), will send back data from file instead of cache) 
 - [ ] different config for different domain
 
+
+### Version Choice
+if you just want a static web server without any cache/cors feature support, please just use version v1.0.x, it's simple and efficient,
+you are free to open any issue about this version. Otherwise, please use the most recent version.
 
 ### why use self maintained warp
 [#171 Add reply::file(path) helper](https://github.com/seanmonstar/warp/issues/171)

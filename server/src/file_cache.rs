@@ -88,22 +88,22 @@ impl FileCache {
                             let data_block = if self.conf.max_size < metadata.len() {
                                 DataBlock::FileBlock(ArcPath(Arc::new(entry_path)))
                             } else {
-                                if self.conf.compression
+                                let (bytes, compressed) = if self.conf.compression
                                     && COMPRESSION_FILE_TYPE.contains(&extension_name)
                                 {
                                     let mut encoded_bytes = Vec::new();
                                     let mut encoder =
                                         GzEncoder::new(&bytes[..], Compression::default());
                                     encoder.read_to_end(&mut encoded_bytes).unwrap();
-                                    DataBlock::CacheBlock {
-                                        bytes: Bytes::from(encoded_bytes),
-                                        compressed: true,
-                                    }
+
+                                    (Bytes::from(encoded_bytes), true)
                                 } else {
-                                    DataBlock::CacheBlock {
-                                        bytes: Bytes::from(bytes),
-                                        compressed: false,
-                                    }
+                                    (Bytes::from(bytes), false)
+                                };
+                                DataBlock::CacheBlock {
+                                    bytes,
+                                    compressed,
+                                    path: ArcPath(Arc::new(entry_path)),
                                 }
                             };
                             (
@@ -134,7 +134,11 @@ impl FileCache {
 }
 
 pub enum DataBlock {
-    CacheBlock { bytes: Bytes, compressed: bool },
+    CacheBlock {
+        bytes: Bytes,
+        compressed: bool,
+        path: ArcPath,
+    },
     // for use warp
     FileBlock(ArcPath),
 }

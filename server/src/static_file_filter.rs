@@ -3,14 +3,16 @@ use crate::file_cache::{CacheItem, DataBlock};
 use crate::with;
 use headers::{
     AcceptRanges, CacheControl, ContentEncoding, ContentLength, ContentRange, ContentType,
-    HeaderMapExt, LastModified,
+    HeaderMapExt, LastModified, Range,
 };
 use hyper::Body;
 use percent_encoding::percent_decode_str;
 use std::sync::Arc;
 use tokio::fs::File;
 use tokio::io;
-use warp::fs::{bytes_range, conditionals, file_stream, optimal_buf_size, Cond, Conditionals};
+use warp::fs::{
+    bytes_range, conditionals, file_stream, optimal_buf_size, ArcPath, Cond, Conditionals,
+};
 use warp::host::Authority;
 use warp::http::{Response, StatusCode};
 use warp::{reject, Filter, Rejection};
@@ -31,86 +33,101 @@ fn sanitize_path(tail: &str) -> Result<String, Rejection> {
     }
 }
 
-async fn cache_reply(
+// copy from warp::fs file_reply
+async fn file_reply(
+    item: Arc<CacheItem>,
+    path: ArcPath,
+    range: Option<Range>,
+    modified: Option<LastModified>,
+) -> Result<Response<Body>, Rejection> {
+    let len = item.meta.len();
+    match File::open(path.clone()).await {
+        Ok(file) => {
+            let resp = bytes_range(range, len)
+                .map(|(start, end)| {
+                    let sub_len = end - start;
+                    let buf_size = optimal_buf_size(&item.meta);
+                    let stream = file_stream(file, buf_size, (start, end));
+                    let body = Body::wrap_stream(stream);
+                    let mut resp = Response::new(body);
+                    cache_item_to_response_header(&mut resp, item, modified);
+                    if sub_len != len {
+                        *resp.status_mut() = StatusCode::PARTIAL_CONTENT;
+                        resp.headers_mut().typed_insert(
+                            ContentRange::bytes(start..end, len).expect("valid ContentRange"),
+                        );
+                        resp.headers_mut().typed_insert(ContentLength(sub_len));
+                    } else {
+                        resp.headers_mut().typed_insert(ContentLength(len));
+                    }
+                    resp
+                })
+                .unwrap_or_else(|_| {
+                    // bad byte range
+                    let mut resp = Response::new(Body::empty());
+                    *resp.status_mut() = StatusCode::RANGE_NOT_SATISFIABLE;
+                    resp.headers_mut()
+                        .typed_insert(ContentRange::unsatisfied_bytes(len));
+                    resp
+                });
+            Ok(resp)
+        }
+        Err(err) => {
+            let rej = match err.kind() {
+                io::ErrorKind::NotFound => {
+                    tracing::debug!("file not found: {:?}", path.as_ref().display());
+                    reject::not_found()
+                }
+                io::ErrorKind::PermissionDenied => {
+                    tracing::warn!("file permission denied: {:?}", path.as_ref().display());
+                    reject::not_found()
+                    //reject::known(FilePermissionError { _p: () })
+                }
+                _ => {
+                    tracing::error!(
+                        "file open error (path={:?}): {} ",
+                        path.as_ref().display(),
+                        err
+                    );
+                    reject::not_found()
+                }
+            };
+            Err(rej)
+        }
+    }
+}
+async fn cache_or_file_reply(
     item: Arc<CacheItem>,
     conditionals: Conditionals,
+    accept_encoding: Option<String>,
 ) -> Result<Response<Body>, Rejection> {
     let modified = item.meta.modified().map(LastModified::from).ok();
 
     let resp = match conditionals.check(modified) {
         Cond::NoBody(resp) => Ok(resp),
         Cond::WithBody(range) => match &item.data {
-            DataBlock::CacheBlock { bytes, compressed } => {
-                let mut resp = Response::new(Body::from(bytes.clone()));
-                cache_item_to_response_header(&mut resp, item.clone(), modified);
-                resp.headers_mut()
-                    .typed_insert(ContentLength(bytes.len() as u64));
-                if *compressed {
-                    resp.headers_mut().typed_insert(ContentEncoding::gzip());
+            DataBlock::CacheBlock {
+                bytes,
+                compressed,
+                path,
+            } => {
+                if accept_encoding.filter(|x| x.contains("gzip")).is_none() && *compressed {
+                    file_reply(item.clone(), path.clone(), range, modified).await
+                } else {
+                    let mut resp = Response::new(Body::from(bytes.clone()));
+                    cache_item_to_response_header(&mut resp, item.clone(), modified);
+                    resp.headers_mut()
+                        .typed_insert(ContentLength(bytes.len() as u64));
+                    if *compressed {
+                        resp.headers_mut()
+                            .typed_insert(ContentLength(bytes.len() as u64));
+                        resp.headers_mut().typed_insert(ContentEncoding::gzip());
+                    }
+                    Ok(resp)
                 }
-                Ok(resp)
             }
             DataBlock::FileBlock(path) => {
-                // copy from warp::fs file_reply
-                let len = item.meta.len();
-                match File::open(path.clone()).await {
-                    Ok(file) => {
-                        let resp = bytes_range(range, len)
-                            .map(|(start, end)| {
-                                let sub_len = end - start;
-                                let buf_size = optimal_buf_size(&item.meta);
-                                let stream = file_stream(file, buf_size, (start, end));
-                                let body = Body::wrap_stream(stream);
-                                let mut resp = Response::new(body);
-                                cache_item_to_response_header(&mut resp, item, modified);
-                                if sub_len != len {
-                                    *resp.status_mut() = StatusCode::PARTIAL_CONTENT;
-                                    resp.headers_mut().typed_insert(
-                                        ContentRange::bytes(start..end, len)
-                                            .expect("valid ContentRange"),
-                                    );
-                                    resp.headers_mut().typed_insert(ContentLength(sub_len));
-                                } else {
-                                    resp.headers_mut().typed_insert(ContentLength(len));
-                                }
-                                resp
-                            })
-                            .unwrap_or_else(|_| {
-                                // bad byte range
-                                let mut resp = Response::new(Body::empty());
-                                *resp.status_mut() = StatusCode::RANGE_NOT_SATISFIABLE;
-                                resp.headers_mut()
-                                    .typed_insert(ContentRange::unsatisfied_bytes(len));
-                                resp
-                            });
-                        Ok(resp)
-                    }
-                    Err(err) => {
-                        let rej = match err.kind() {
-                            io::ErrorKind::NotFound => {
-                                tracing::debug!("file not found: {:?}", path.as_ref().display());
-                                reject::not_found()
-                            }
-                            io::ErrorKind::PermissionDenied => {
-                                tracing::warn!(
-                                    "file permission denied: {:?}",
-                                    path.as_ref().display()
-                                );
-                                reject::not_found()
-                                //reject::known(FilePermissionError { _p: () })
-                            }
-                            _ => {
-                                tracing::error!(
-                                    "file open error (path={:?}): {} ",
-                                    path.as_ref().display(),
-                                    err
-                                );
-                                reject::not_found()
-                            }
-                        };
-                        Err(rej)
-                    }
-                }
+                file_reply(item.clone(), path.clone(), range, modified).await
             }
         },
     };
@@ -129,6 +146,9 @@ fn cache_item_to_response_header(
         if !expire.is_zero() {
             resp.headers_mut()
                 .typed_insert(CacheControl::new().with_max_age(expire));
+            //for
+            //resp.headers_mut()
+            //    .typed_insert(Expires::from(SystemTime::now().add(expire)));
         } else {
             resp.headers_mut()
                 .typed_insert(CacheControl::new().with_no_cache());
@@ -173,5 +193,6 @@ pub fn static_file_filter(
         .and(with(domain_storage.clone()))
         .and_then(get_cache_file)
         .and(conditionals())
-        .and_then(cache_reply)
+        .and(warp::header::optional::<String>("accept-encoding"))
+        .and_then(cache_or_file_reply)
 }
