@@ -1,6 +1,8 @@
 use std::net::SocketAddr;
 use std::str::FromStr;
 use std::sync::Arc;
+use warp::cors::Cors;
+use warp::Filter;
 
 use crate::config::Config;
 use crate::domain_storage::DomainStorage;
@@ -18,20 +20,38 @@ impl Server {
         Server { conf, storage }
     }
 
+    fn get_cors_config(&self) -> Cors {
+        warp::cors()
+            .allow_any_origin()
+            .allow_methods(vec!["GET", "OPTION", "HEAD"])
+            .max_age(3600)
+            .build()
+    }
+
     async fn start_https_server(&self) -> anyhow::Result<()> {
         if let Some(config) = &self.conf.https {
             let bind_address =
                 SocketAddr::from_str(&format!("{}:{}", &config.addr, &config.port)).unwrap();
             let filter = static_file_filter(self.storage.clone());
-            warp::serve(filter.clone())
-                .tls()
-                .cert_path(&config.public)
-                .key_path(&config.private)
-                .run(bind_address)
-                .await;
+            if self.conf.cors {
+                warp::serve(filter.with(self.get_cors_config()))
+                    .tls()
+                    .cert_path(&config.public)
+                    .key_path(&config.private)
+                    .run(bind_address)
+                    .await;
+            } else {
+                warp::serve(filter)
+                    .tls()
+                    .cert_path(&config.public)
+                    .key_path(&config.private)
+                    .run(bind_address)
+                    .await;
+            }
         }
         Ok(())
     }
+
     async fn start_http_server(&self) -> anyhow::Result<()> {
         if self.conf.port > 0 {
             let bind_address =
@@ -47,7 +67,13 @@ impl Server {
                 hyper_redirect_server(bind_address, self.storage.clone()).await?;
             } else {
                 let filter = static_file_filter(self.storage.clone());
-                warp::serve(filter).run(bind_address).await;
+                if self.conf.cors {
+                    warp::serve(filter.with(self.get_cors_config()))
+                        .run(bind_address)
+                        .await;
+                } else {
+                    warp::serve(filter).run(bind_address).await;
+                }
             }
         }
         Ok(())

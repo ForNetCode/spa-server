@@ -4,7 +4,6 @@ use dashmap::DashMap;
 use flate2::read::GzEncoder;
 use flate2::Compression;
 use hyper::body::Bytes;
-use if_chain::if_chain;
 use lazy_static::lazy_static;
 use mime::Mime;
 use std::collections::HashMap;
@@ -37,7 +36,6 @@ impl FileCache {
         let expire_config: HashMap<String, Duration> = conf
             .client_cache
             .clone()
-            .unwrap_or(Vec::new())
             .into_iter()
             .map(|item| {
                 item.extension_names
@@ -72,7 +70,6 @@ impl FileCache {
             .into_iter()
             .filter_map(|x| x.ok())
             .filter_map(|entry| {
-
                 if let Ok(metadata) = entry.metadata() {
                     if metadata.is_file() {
                         let path = entry.path();
@@ -88,22 +85,27 @@ impl FileCache {
                                 .split('.')
                                 .last()
                                 .map_or("".to_string(), |x| x.to_string());
-                            let data_block = if_chain!(
-                                if let Some(max_size) = self.conf.max_size;
-                                if max_size < metadata.len();
-                                then {
-                                    DataBlock::FileBlock(ArcPath(Arc::new(entry_path)))
+                            let data_block = if self.conf.max_size < metadata.len() {
+                                DataBlock::FileBlock(ArcPath(Arc::new(entry_path)))
+                            } else {
+                                if self.conf.compression
+                                    && COMPRESSION_FILE_TYPE.contains(&extension_name)
+                                {
+                                    let mut encoded_bytes = Vec::new();
+                                    let mut encoder =
+                                        GzEncoder::new(&bytes[..], Compression::default());
+                                    encoder.read_to_end(&mut encoded_bytes).unwrap();
+                                    DataBlock::CacheBlock {
+                                        bytes: Bytes::from(encoded_bytes),
+                                        compressed: true,
+                                    }
                                 } else {
-                                    if self.conf.compression.unwrap_or(false) && COMPRESSION_FILE_TYPE.contains(&extension_name){
-                                        let mut encoded_bytes = Vec::new();
-                                        let mut encoder = GzEncoder::new(&bytes[..], Compression::default());
-                                        encoder.read_to_end(&mut encoded_bytes).unwrap();
-                                        DataBlock::CacheBlock{bytes:Bytes::from(encoded_bytes),compressed: true}
-                                    } else {
-                                        DataBlock::CacheBlock{bytes:Bytes::from(bytes), compressed:false}
+                                    DataBlock::CacheBlock {
+                                        bytes: Bytes::from(bytes),
+                                        compressed: false,
                                     }
                                 }
-                            );
+                            };
                             (
                                 key,
                                 Arc::new(CacheItem {

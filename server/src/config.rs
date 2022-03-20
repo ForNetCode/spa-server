@@ -10,9 +10,11 @@ pub struct Config {
     pub port: u32,
     pub addr: String,
     pub file_dir: String,
+    #[serde(default)]
+    pub cors: bool,
     pub admin_config: Option<AdminConfig>,
     pub https: Option<HttpsConfig>,
-    // #[serde(default)]
+    #[serde(default)]
     pub cache: CacheConfig,
 }
 
@@ -51,9 +53,12 @@ pub struct HttpsConfig {
 // should write Deserialize by hand.
 #[derive(Deserialize, Debug, Clone)]
 pub struct CacheConfig {
-    pub max_size: Option<u64>,
-    pub compression: Option<bool>,
-    pub client_cache: Option<Vec<ClientCacheItem>>,
+    #[serde(default)]
+    pub max_size: u64,
+    #[serde(default)]
+    pub compression: bool,
+    #[serde(default)]
+    pub client_cache: Vec<ClientCacheItem>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -66,9 +71,9 @@ pub struct ClientCacheItem {
 impl Default for CacheConfig {
     fn default() -> Self {
         CacheConfig {
-            max_size: None,
-            client_cache: None,
-            compression: None,
+            max_size: 0,
+            client_cache: Vec::new(),
+            compression: false,
         }
     }
 }

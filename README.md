@@ -62,7 +62,10 @@ That's all!
 - [ ] more log for debug and trace
 - [ ] refactor for test
 - [ ] domain visit count/data analysis
-- [ ] cors
+- [x] basic CORS
+- [ ] compression regression support
+- [ ] different config for different domain
+
 
 ### why use self maintained warp
 [#171 Add reply::file(path) helper](https://github.com/seanmonstar/warp/issues/171)
