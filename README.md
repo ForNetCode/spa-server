@@ -53,12 +53,16 @@ That's all!
 - [x] more doc(how to update static files)
 - [x] rewrite Dockerfile to reduce docker image size
 - [x] cache improve(big file ignore config option and if-range header support)
-- [ ] more log for debug and trace
-- [ ] refactor for test
-- [ ] domain visit count/data analysis
 - [x] header`cache-control` for client cache
 - [ ] ~~header `etag` for client cache~~ [warp #462](https://github.com/seanmonstar/warp/issues/462)
 - [x] 80 redirect to 443 config option
+- [x] compression for js/icon/json/css/html (only support gzip algo, only compress cached files, and will occur error when client don't support gzip)
+
+#### version 1.2.x
+- [ ] more log for debug and trace
+- [ ] refactor for test
+- [ ] domain visit count/data analysis
+- [ ] cors
 
 ### why use self maintained warp
 [#171 Add reply::file(path) helper](https://github.com/seanmonstar/warp/issues/171)

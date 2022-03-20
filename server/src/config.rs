@@ -48,9 +48,11 @@ pub struct HttpsConfig {
     pub addr: String,
     pub http_redirect_to_https: Option<bool>,
 }
+// should write Deserialize by hand.
 #[derive(Deserialize, Debug, Clone)]
 pub struct CacheConfig {
     pub max_size: Option<u64>,
+    pub compression: Option<bool>,
     pub client_cache: Option<Vec<ClientCacheItem>>,
 }
 
@@ -66,6 +68,7 @@ impl Default for CacheConfig {
         CacheConfig {
             max_size: None,
             client_cache: None,
+            compression: None,
         }
     }
 }

@@ -2,8 +2,8 @@ use crate::domain_storage::DomainStorage;
 use crate::file_cache::{CacheItem, DataBlock};
 use crate::with;
 use headers::{
-    AcceptRanges, CacheControl, ContentLength, ContentRange, ContentType, HeaderMapExt,
-    LastModified,
+    AcceptRanges, CacheControl, ContentEncoding, ContentLength, ContentRange, ContentType,
+    HeaderMapExt, LastModified,
 };
 use hyper::Body;
 use percent_encoding::percent_decode_str;
@@ -40,9 +40,14 @@ async fn cache_reply(
     let resp = match conditionals.check(modified) {
         Cond::NoBody(resp) => Ok(resp),
         Cond::WithBody(range) => match &item.data {
-            DataBlock::CacheBlock(bytes) => {
+            DataBlock::CacheBlock { bytes, compressed } => {
                 let mut resp = Response::new(Body::from(bytes.clone()));
-                cache_item_to_response_header(&mut resp, item, modified);
+                cache_item_to_response_header(&mut resp, item.clone(), modified);
+                resp.headers_mut()
+                    .typed_insert(ContentLength(bytes.len() as u64));
+                if *compressed {
+                    resp.headers_mut().typed_insert(ContentEncoding::gzip());
+                }
                 Ok(resp)
             }
             DataBlock::FileBlock(path) => {
@@ -65,6 +70,8 @@ async fn cache_reply(
                                             .expect("valid ContentRange"),
                                     );
                                     resp.headers_mut().typed_insert(ContentLength(sub_len));
+                                } else {
+                                    resp.headers_mut().typed_insert(ContentLength(len));
                                 }
                                 resp
                             })
@@ -116,8 +123,6 @@ fn cache_item_to_response_header(
     modified: Option<LastModified>,
 ) {
     let mime = item.mime.clone();
-    resp.headers_mut()
-        .typed_insert(ContentLength(item.meta.len()));
     resp.headers_mut().typed_insert(ContentType::from(mime));
     resp.headers_mut().typed_insert(AcceptRanges::bytes());
     if let Some(expire) = item.expire {

@@ -24,6 +24,9 @@ percent-encoding = "2.1"
 headers = "0.3"
 mime = "0.3"
 mime_guess = "2.0"
+#async-compression = "0.3"
+
+flate2 = "1.0"
 
 # tokio trace and log
 tracing = "0.1"
