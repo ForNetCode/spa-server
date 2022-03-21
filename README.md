@@ -65,6 +65,7 @@ That's all!
 - [x] basic CORS
 - [x] compression regression support(if client don't send accept-encoding header(including gzip), will send back data from file instead of cache) 
 - [ ] different config for different domain
+- [ ] config reload
 
 
 ### Version Choice

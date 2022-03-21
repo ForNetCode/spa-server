@@ -35,13 +35,13 @@ fn sanitize_path(tail: &str) -> Result<String, Rejection> {
 
 // copy from warp::fs file_reply
 async fn file_reply(
-    item: Arc<CacheItem>,
+    item: &CacheItem,
     path: ArcPath,
     range: Option<Range>,
     modified: Option<LastModified>,
 ) -> Result<Response<Body>, Rejection> {
     let len = item.meta.len();
-    match File::open(path.clone()).await {
+    match File::open(path.as_ref()).await {
         Ok(file) => {
             let resp = bytes_range(range, len)
                 .map(|(start, end)| {
@@ -50,7 +50,7 @@ async fn file_reply(
                     let stream = file_stream(file, buf_size, (start, end));
                     let body = Body::wrap_stream(stream);
                     let mut resp = Response::new(body);
-                    cache_item_to_response_header(&mut resp, item, modified);
+                    cache_item_to_response_header(&mut resp, &item, modified);
                     if sub_len != len {
                         *resp.status_mut() = StatusCode::PARTIAL_CONTENT;
                         resp.headers_mut().typed_insert(
@@ -73,14 +73,12 @@ async fn file_reply(
             Ok(resp)
         }
         Err(err) => {
-            let rej = match err.kind() {
+            match err.kind() {
                 io::ErrorKind::NotFound => {
                     tracing::debug!("file not found: {:?}", path.as_ref().display());
-                    reject::not_found()
                 }
                 io::ErrorKind::PermissionDenied => {
                     tracing::warn!("file permission denied: {:?}", path.as_ref().display());
-                    reject::not_found()
                     //reject::known(FilePermissionError { _p: () })
                 }
                 _ => {
@@ -89,13 +87,13 @@ async fn file_reply(
                         path.as_ref().display(),
                         err
                     );
-                    reject::not_found()
                 }
             };
-            Err(rej)
+            Err(reject::not_found())
         }
     }
 }
+
 async fn cache_or_file_reply(
     item: Arc<CacheItem>,
     conditionals: Conditionals,
@@ -112,10 +110,10 @@ async fn cache_or_file_reply(
                 path,
             } => {
                 if accept_encoding.filter(|x| x.contains("gzip")).is_none() && *compressed {
-                    file_reply(item.clone(), path.clone(), range, modified).await
+                    file_reply(&item, path.clone(), range, modified).await
                 } else {
                     let mut resp = Response::new(Body::from(bytes.clone()));
-                    cache_item_to_response_header(&mut resp, item.clone(), modified);
+                    cache_item_to_response_header(&mut resp, &item, modified);
                     resp.headers_mut()
                         .typed_insert(ContentLength(bytes.len() as u64));
                     if *compressed {
@@ -126,9 +124,7 @@ async fn cache_or_file_reply(
                     Ok(resp)
                 }
             }
-            DataBlock::FileBlock(path) => {
-                file_reply(item.clone(), path.clone(), range, modified).await
-            }
+            DataBlock::FileBlock(path) => file_reply(&item, path.clone(), range, modified).await,
         },
     };
     resp
@@ -136,7 +132,7 @@ async fn cache_or_file_reply(
 
 fn cache_item_to_response_header(
     resp: &mut Response<Body>,
-    item: Arc<CacheItem>,
+    item: &CacheItem,
     modified: Option<LastModified>,
 ) {
     let mime = item.mime.clone();
