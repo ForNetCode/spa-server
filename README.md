@@ -74,4 +74,4 @@ you are free to open any issue about this version. Otherwise, please use the mos
 ### why use self maintained warp
 [#171 Add reply::file(path) helper](https://github.com/seanmonstar/warp/issues/171)
 
-This project used lots of api in war/fs.rs which is private, will change back until this issue can be solved.
+This project uses private api of warp/fs.rs.
