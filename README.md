@@ -10,8 +10,7 @@ please set environment variable `SPA_CONFIG=${config_path}`.
 ```shell
 git clone git@github.com:timzaak/spa-server.git
 git submodule init && git submodule update
-# please remember to change `file_dir` in config.conf
-cp config.release.conf config.conf
+cp config.release.conf config.conf # please remember to change `file_dir` in config.conf
 RUST_LOG=info cargo run --bin spa-server 
 ```
 
@@ -43,10 +42,10 @@ That's all!
 - [x] docker release
 - [x] simple usage doc
 
-#### version 0.x
+#### version 1.0.x
 - [x] 80 and 443 both support
-- [x] ~~compression~~ it can be done by frontend pack tool.
-- [x] ~~multiple tls support~~ the feature may do not need.
+- [x] ~~compression~~ ~~it can be done by frontend pack tool~~ done @ v1.2.0.
+- [ ] ~~multiple tls support~~ the feature may do not need.
 - [x] cache file(cache all files in memory without LRU)
 
 #### version 1.1.x
@@ -65,11 +64,11 @@ That's all!
 - [x] basic CORS
 - [x] compression regression support(if client don't send accept-encoding header(including gzip), will send back data from file instead of cache) 
 - [ ] different config for different domain
-- [ ] config reload
+- [ ] ~~config reload(ssl update and cache reload)~~ the feature may do not need.
 
 
 ### Version Choice
-if you just want a static web server without any cache/cors feature support, please just use version v1.0.x, it's simple and efficient,
+if you only want a static web server without any cache/ssl/CORS feature support(serving for cdn), please use version v1.0.x, it's simple and efficient,
 you are free to open any issue about this version. Otherwise, please use the most recent version.
 
 ### why use self maintained warp

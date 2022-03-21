@@ -5,6 +5,8 @@ use std::time::Duration;
 
 const CONFIG_PATH: &str = "config.conf";
 
+//pub struct DynamicConfig(Arc<Mutex<Config>>);
+
 #[derive(Deserialize, Debug, Clone)]
 pub struct Config {
     pub port: u32,
