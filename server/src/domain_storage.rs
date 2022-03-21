@@ -91,6 +91,7 @@ impl DomainStorage {
             self.meta
                 .insert(domain.clone(), (new_path.clone(), version));
             let data = self.cache.cache_dir(&new_path)?;
+            tracing::info!("update domain:{}, version:{} ", &domain, version);
             self.cache.update(domain, data);
             Ok(())
         } else {

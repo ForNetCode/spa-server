@@ -1,3 +1,4 @@
+use std::path::Path;
 use crate::domain_storage::DomainStorage;
 use crate::file_cache::{CacheItem, DataBlock};
 use crate::with;
@@ -11,7 +12,7 @@ use std::sync::Arc;
 use tokio::fs::File;
 use tokio::io;
 use warp::fs::{
-    bytes_range, conditionals, file_stream, optimal_buf_size, ArcPath, Cond, Conditionals,
+    bytes_range, conditionals, file_stream, optimal_buf_size, Cond, Conditionals,
 };
 use warp::host::Authority;
 use warp::http::{Response, StatusCode};
@@ -36,12 +37,12 @@ fn sanitize_path(tail: &str) -> Result<String, Rejection> {
 // copy from warp::fs file_reply
 async fn file_reply(
     item: &CacheItem,
-    path: ArcPath,
+    path: &Path,
     range: Option<Range>,
     modified: Option<LastModified>,
 ) -> Result<Response<Body>, Rejection> {
     let len = item.meta.len();
-    match File::open(path.as_ref()).await {
+    match File::open(path).await {
         Ok(file) => {
             let resp = bytes_range(range, len)
                 .map(|(start, end)| {
@@ -75,16 +76,16 @@ async fn file_reply(
         Err(err) => {
             match err.kind() {
                 io::ErrorKind::NotFound => {
-                    tracing::debug!("file not found: {:?}", path.as_ref().display());
+                    tracing::debug!("file not found: {:?}", path.display());
                 }
                 io::ErrorKind::PermissionDenied => {
-                    tracing::warn!("file permission denied: {:?}", path.as_ref().display());
+                    tracing::warn!("file permission denied: {:?}", path.display());
                     //reject::known(FilePermissionError { _p: () })
                 }
                 _ => {
                     tracing::error!(
                         "file open error (path={:?}): {} ",
-                        path.as_ref().display(),
+                        path.display(),
                         err
                     );
                 }
@@ -109,8 +110,9 @@ async fn cache_or_file_reply(
                 compressed,
                 path,
             } => {
-                if accept_encoding.filter(|x| x.contains("gzip")).is_none() && *compressed {
-                    file_reply(&item, path.clone(), range, modified).await
+                if (accept_encoding.as_ref().filter(|x| x.contains("gzip")).is_none()) && *compressed {
+                    tracing::debug!("{} don't use cache for accept_encoding:{:?}", path.as_ref().display(), &accept_encoding);
+                    file_reply(&item, path.as_ref(), range, modified).await
                 } else {
                     let mut resp = Response::new(Body::from(bytes.clone()));
                     cache_item_to_response_header(&mut resp, &item, modified);
@@ -124,7 +126,7 @@ async fn cache_or_file_reply(
                     Ok(resp)
                 }
             }
-            DataBlock::FileBlock(path) => file_reply(&item, path.clone(), range, modified).await,
+            DataBlock::FileBlock(path) => file_reply(&item, path.as_ref(), range, modified).await,
         },
     };
     resp

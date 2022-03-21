@@ -65,7 +65,7 @@ impl FileCache {
             .to_str()
             .map(|x| Ok(format!("{}/", x.to_string())))
             .unwrap_or(Err(anyhow!("can not parse path")))?;
-        //TODO: what about error handle? need refactor
+        tracing::info!("prepare to cache_dir: {}", &prefix);
         let result: HashMap<String, Arc<CacheItem>> = WalkDir::new(path)
             .into_iter()
             .filter_map(|x| x.ok())
@@ -85,7 +85,9 @@ impl FileCache {
                                 .split('.')
                                 .last()
                                 .map_or("".to_string(), |x| x.to_string());
-                            let data_block = if self.conf.max_size < metadata.len() {
+                            let data_block = if self.conf.max_size.is_none()
+                                || self.conf.max_size.filter(|size| *size > metadata.len()).is_some() {
+                                tracing::debug!("file block:{:?}", entry_path.display());
                                 DataBlock::FileBlock(ArcPath(Arc::new(entry_path)))
                             } else {
                                 let (bytes, compressed) = if self.conf.compression
@@ -100,6 +102,7 @@ impl FileCache {
                                 } else {
                                     (Bytes::from(bytes), false)
                                 };
+                                tracing::debug!("cache block:{:?}, compressed:{}", entry_path.display(), compressed);
                                 DataBlock::CacheBlock {
                                     bytes,
                                     compressed,

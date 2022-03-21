@@ -29,6 +29,7 @@ pub fn with<T: Send + Sync>(
 
 pub async fn run_server() -> anyhow::Result<()> {
     let config = Config::load();
+    tracing::debug!("config load:{:?}", &config);
     let cache = FileCache::new(config.cache.clone());
     let domain_storage = Arc::new(DomainStorage::init(&config.file_dir.clone(), cache).unwrap());
     let server = Server::new(config.clone(), domain_storage.clone());

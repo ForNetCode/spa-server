@@ -56,7 +56,7 @@ pub async fn hyper_redirect_server(
         }
     });
     let server = Server::bind(&addr).serve(service);
-    tracing::info!("listening on http://{}", addr);
+    tracing::info!("http redirect to https, listening on http://{}", addr);
     server.await?;
     Ok(())
 }

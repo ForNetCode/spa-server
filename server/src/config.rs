@@ -57,7 +57,7 @@ pub struct HttpsConfig {
 #[derive(Deserialize, Debug, Clone)]
 pub struct CacheConfig {
     #[serde(default)]
-    pub max_size: u64,
+    pub max_size: Option<u64>,
     #[serde(default)]
     pub compression: bool,
     #[serde(default)]
@@ -74,7 +74,7 @@ pub struct ClientCacheItem {
 impl Default for CacheConfig {
     fn default() -> Self {
         CacheConfig {
-            max_size: 0,
+            max_size: None,
             client_cache: Vec::new(),
             compression: false,
         }

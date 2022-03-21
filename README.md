@@ -44,7 +44,7 @@ That's all!
 
 #### version 1.0.x
 - [x] 80 and 443 both support
-- [x] ~~compression~~ ~~it can be done by frontend pack tool~~ done @ v1.2.0.
+- [ ] ~~compression~~ done @ v1.2.0.
 - [ ] ~~multiple tls support~~ the feature may do not need.
 - [x] cache file(cache all files in memory without LRU)
 
@@ -58,20 +58,18 @@ That's all!
 - [x] compression for js/icon/json/css/html (only support gzip algo, only compress cached files, and ~~will occur error when client don't support gzip~~(fix @ v1.2))
 
 #### version 1.2.x
-- [ ] more log for debug and trace
-- [ ] refactor for test
-- [ ] domain visit count/data analysis
+- [x] more log for debug and trace
 - [x] basic CORS
-- [x] compression regression support(if client don't send accept-encoding header(including gzip), will send back data from file instead of cache) 
-- [ ] different config for different domain
-- [ ] ~~config reload(ssl update and cache reload)~~ the feature may do not need.
+- [x] compress regression support(if client don't send accept-encoding header(including gzip), will send back data from file instead of cache) 
+- [ ] different config(cors/cache strategy/https and so on) for different domain
+- [ ] ~~config reload(ssl update and cache reload)~~ the feature may do not need
 
 
 ### Version Choice
-if you only want a static web server without any cache/ssl/CORS feature support(serving for cdn), please use version v1.0.x, it's simple and efficient,
+If you only want a static web server without any cache/ssl/CORS feature support(serving for cdn), please use version v1.0.x, it's simple and efficient,
 you are free to open any issue about this version. Otherwise, please use the most recent version.
 
 ### why use self maintained warp
 [#171 Add reply::file(path) helper](https://github.com/seanmonstar/warp/issues/171)
 
-This project uses private api of warp/fs.rs.
+This project uses lots of private api at warp/src/filters/fs.rs.
