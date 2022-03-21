@@ -62,7 +62,7 @@ That's all!
 - [x] basic CORS
 - [x] compress regression support(if client don't send accept-encoding header(including gzip), will send back data from file instead of cache) 
 - [ ] different config(cors/cache strategy/https and so on) for different domain
-- [ ] ~~config reload(ssl update and cache reload)~~ the feature may do not need
+- [ ] hot reload web static server(use SO_REUSEPORT *nix api, so it may be wrong with Windows).
 
 
 ### Version Choice
