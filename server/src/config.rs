@@ -1,3 +1,4 @@
+use anyhow::Context;
 use hocon::de::wrappers::Serde;
 use serde::Deserialize;
 use std::env;
@@ -22,18 +23,16 @@ pub struct Config {
 
 //TODO: create config with lots of default value
 impl Config {
-    pub fn load() -> Self {
+    pub fn load() -> anyhow::Result<Self> {
         let config_path = env::var("SPA_CONFIG").unwrap_or(CONFIG_PATH.to_string());
-        //hocon::HoconLoader::load_file(&config_path);
 
-        hocon::HoconLoader::new()
+        let load_file = hocon::HoconLoader::new()
             .load_file(&config_path)
-            .expect("can not read config file")
-            .resolve::<Config>()
-            .expect("parse config file error")
-        //let config_str = fs::read_to_string(&config_path).expect("can not read config file");
+            .with_context(|| "can not read config file")?;
 
-        //hocon::de::from_str::<Config>(&config_str).expect("parse config file error")
+        load_file
+            .resolve::<Config>()
+            .with_context(|| "parse config file error")
     }
 }
 #[derive(Deserialize, Debug, Clone)]

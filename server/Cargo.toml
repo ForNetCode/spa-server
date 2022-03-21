@@ -15,7 +15,7 @@ path = "src/bin/main.rs"
 [dependencies]
 # web
 hyper = { version = "0.14", features = ["stream", "server", "http1", "http2", "tcp"] }
-tokio = { version = "1", features = ["macros", "rt-multi-thread", "io-std", "sync", "time"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "io-std", "sync", "time", "tokio-macros"] }
 futures = "0.3"
 warp = { path = "../warp", features = ["tls"]}
 socket2 = "0.4"
@@ -27,6 +27,10 @@ mime = "0.3"
 mime_guess = "2.0"
 #async-compression = "0.3"
 flate2 = "1.0"
+rustls = "0.20"
+rustls-pemfile = "0.2"
+tokio-rustls = "0.23"
+futures-util = "0.3"
 
 # tokio trace and log
 tracing = "0.1"

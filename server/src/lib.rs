@@ -9,10 +9,11 @@ pub mod domain_storage;
 pub mod file_cache;
 mod redirect_https;
 mod static_file_filter;
+pub mod tls;
 
 // utils
 use crate::admin_server::AdminServer;
-use crate::config::Config;
+use crate::config::{AdminConfig, Config};
 use crate::domain_storage::DomainStorage;
 use crate::file_cache::FileCache;
 use futures::future::join;
@@ -27,20 +28,36 @@ pub fn with<T: Send + Sync>(
     warp::any().map(move || d.clone())
 }
 
-pub async fn run_server() -> anyhow::Result<()> {
-    let config = Config::load();
-    tracing::debug!("config load:{:?}", &config);
-    let cache = FileCache::new(config.cache.clone());
-    let domain_storage = Arc::new(DomainStorage::init(&config.file_dir.clone(), cache).unwrap());
-    let server = Server::new(config.clone(), domain_storage.clone());
-
-    if let Some(admin_config) = config.admin_config {
+async fn run_admin_server(
+    config: &Option<AdminConfig>,
+    storage: &Arc<DomainStorage>,
+) -> anyhow::Result<()> {
+    if let Some(admin_config) = config {
         tracing::info!("admin server enabled.");
-        let admin_server = AdminServer::new(admin_config, domain_storage.clone());
-        let _ret = join(server.run(), admin_server.run()).await;
+        let admin_server = AdminServer::new(admin_config.clone(), storage.clone());
+        return admin_server.run().await;
     } else {
         tracing::info!("admin server disabled.");
-        server.run().await?;
     }
+    Ok(())
+}
+
+fn load_config_and_cache() -> anyhow::Result<(Config, Arc<DomainStorage>)> {
+    let config = Config::load()?;
+    tracing::debug!("config load:{:?}", &config);
+    let cache = FileCache::new(config.cache.clone());
+    let domain_storage = Arc::new(DomainStorage::init(&config.file_dir.clone(), cache)?);
+    Ok((config, domain_storage))
+}
+
+pub async fn run_server() -> anyhow::Result<()> {
+    let (config, domain_storage) = load_config_and_cache().expect("prepare config and cache file");
+    let server = Server::new(config.clone(), domain_storage.clone());
+
+    let _ret = join(
+        server.run(),
+        run_admin_server(&config.admin_config, &domain_storage),
+    )
+    .await;
     Ok(())
 }

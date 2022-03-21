@@ -1,3 +1,4 @@
+use crate::server::get_socket;
 use crate::DomainStorage;
 use hyper::header::LOCATION;
 use hyper::http::uri::PathAndQuery;
@@ -55,7 +56,8 @@ pub async fn hyper_redirect_server(
             }))
         }
     });
-    let server = Server::bind(&addr).serve(service);
+    let server = Server::from_tcp(get_socket(addr)?)?.serve(service);
+    //let server = Server::bind(&addr).serve(service);
     tracing::info!("http redirect to https, listening on http://{}", addr);
     server.await?;
     Ok(())

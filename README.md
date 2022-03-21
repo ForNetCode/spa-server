@@ -9,6 +9,7 @@ please set environment variable `SPA_CONFIG=${config_path}`.
 
 ```shell
 git clone git@github.com:timzaak/spa-server.git
+cd spa-server
 git submodule init && git submodule update
 cp config.release.conf config.conf # please remember to change `file_dir` in config.conf
 RUST_LOG=info cargo run --bin spa-server 
