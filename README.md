@@ -61,13 +61,16 @@ That's all!
 #### version 1.2.x
 - [x] more log for debug and trace
 - [x] basic CORS
-- [x] compress regression support(if client don't send accept-encoding header(including gzip), will send back data from file instead of cache) 
-- [ ] different config(cors/cache strategy/https and so on) for different domain
-- [ ] hot reload web static server(use SO_REUSEPORT *nix api, so it may be wrong with Windows).
+- [x] compress regression support(if client don't send accept-encoding header(including gzip), will send back data from file instead of cache)
+- [x] hot reload web static server(use SO_REUSEPORT *nix api, so it may be wrong with Windows).
+- [ ] ~~different config(cors/cache strategy/https and so on) for different domain.~~ (if this is needed?)
+
+#### version 1.3.x
+There is no feature plan about v1.3.x, if you have any idea, feel free to open issue.
 
 
 ### Version Choice
-If you only want a static web server without any cache/ssl/CORS feature support(serving for cdn), please use version v1.0.x(branch v1.0.x), it's simple and efficient,
+If you only want a static web server without any cache/compression/CORS feature support(serving for cdn), please use version v1.0.x, it's simple and efficient,
 you are free to open any issue about this version. Otherwise, please use the most recent version.
 
 ### why use self maintained warp

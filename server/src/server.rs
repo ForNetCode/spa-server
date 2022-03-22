@@ -1,12 +1,15 @@
 use hyper::server::Server as HServer;
 use socket2::{Domain, Socket, Type};
 use std::convert::Infallible;
+use std::future::Future;
 use std::net::{SocketAddr, TcpListener};
 
 use hyper::server::conn::AddrIncoming;
 use std::str::FromStr;
 use std::sync::Arc;
+use chrono::Local;
 use tokio::net::TcpListener as TKTcpListener;
+use tokio::sync::oneshot::Receiver;
 use warp::cors::Cors;
 use warp::Filter;
 
@@ -20,6 +23,7 @@ use crate::tls::{get_tls_config, TlsAcceptor};
 pub struct Server {
     conf: Config,
     storage: Arc<DomainStorage>,
+
 }
 
 impl Server {
@@ -35,12 +39,14 @@ impl Server {
             .build()
     }
 
-    async fn start_https_server(&self) -> anyhow::Result<()> {
+    async fn start_https_server<F>(&self, func:F) -> anyhow::Result<()>
+        where F: Future<Output = ()>  {
         if let Some(config) = &self.conf.https {
+            let tls_server_config = get_tls_config(&config.public, &config.private)?;
             let bind_address =
                 SocketAddr::from_str(&format!("{}:{}", &config.addr, &config.port)).unwrap();
             let filter = static_file_filter(self.storage.clone());
-            let tls_server_config = get_tls_config(&config.public, &config.private)?;
+            tracing::info!("listenins on https://{}", &bind_address);
             let incoming =
                 AddrIncoming::from_listener(TKTcpListener::from_std(get_socket(bind_address)?)?)?;
             if self.conf.cors {
@@ -50,8 +56,9 @@ impl Server {
                     let service = service.clone();
                     async move { Ok::<_, Infallible>(service) }
                 });
+
                 HServer::builder(TlsAcceptor::new(tls_server_config, incoming))
-                    .serve(make_svc)
+                    .serve(make_svc).with_graceful_shutdown(func)
                     .await?;
                 // warp::serve(filter.with(self.get_cors_config()))
                 //     .tls()
@@ -66,7 +73,7 @@ impl Server {
                     async move { Ok::<_, Infallible>(service) }
                 });
                 HServer::builder(TlsAcceptor::new(tls_server_config, incoming))
-                    .serve(make_svc)
+                    .serve(make_svc).with_graceful_shutdown(func)
                     .await?;
                 // warp::serve(filter)
                 //     .tls()
@@ -79,7 +86,8 @@ impl Server {
         Ok(())
     }
 
-    async fn start_http_server(&self) -> anyhow::Result<()> {
+    async fn start_http_server<F>(&self, func:F) -> anyhow::Result<()>
+    where  F: Future<Output = ()>  {
         if self.conf.port > 0 {
             let bind_address =
                 SocketAddr::from_str(&format!("{}:{}", &self.conf.addr, &self.conf.port)).unwrap();
@@ -99,8 +107,9 @@ impl Server {
                         let service = service.clone();
                         async move { Ok::<_, Infallible>(service) }
                     });
+                    tracing::info!("listening on http://{}", &bind_address);
                     HServer::from_tcp(get_socket(bind_address)?)?
-                        .serve(make_svc)
+                        .serve(make_svc).with_graceful_shutdown(func)
                         .await?;
                     // warp::serve(filter.with(self.get_cors_config()))
                     //     .run(bind_address)
@@ -111,9 +120,9 @@ impl Server {
                         let service = service.clone();
                         async move { Ok::<_, Infallible>(service) }
                     });
-
+                    tracing::info!("listening on http://{}", &bind_address);
                     HServer::from_tcp(get_socket(bind_address)?)?
-                        .serve(make_svc)
+                        .serve(make_svc).with_graceful_shutdown(func)
                         .await?;
                     //warp::serve(filter).run(bind_address).await;
                 }
@@ -121,12 +130,25 @@ impl Server {
         }
         Ok(())
     }
-    pub async fn run(&self) -> anyhow::Result<()> {
+    pub async fn run(&self, http_rx:Option<Receiver<()>>, https_rx:Option<Receiver<()>>) -> anyhow::Result<()> {
         //disable http server
         if self.conf.port <= 0 && self.conf.https.is_none() {
             panic!("should set http or https server config");
         }
-        let _re = join(self.start_http_server(), self.start_https_server()).await;
+        let time = Local::now();
+        let _re = join(self.start_http_server(async move {
+            if let Some(rx) = http_rx {
+                rx.await.ok();
+                tracing::info!("prepare to close http server which start at {}", time.format("%Y-%m-%d %H:%M:%S"));
+            }
+        }), self.start_https_server(async move {
+            if let Some(rx) = https_rx {
+                rx.await.ok();
+                tracing::info!("prepare to close https server which start at {}", time.format("%Y-%m-%d %H:%M:%S"));
+            }
+        })).await;
+        _re.0?;
+        _re.1?;
         Ok(())
     }
 }

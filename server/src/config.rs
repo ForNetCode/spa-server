@@ -35,7 +35,7 @@ impl Config {
             .with_context(|| "parse config file error")
     }
 }
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone, Eq, PartialEq)]
 pub struct AdminConfig {
     pub port: u32,
     pub addr: String,

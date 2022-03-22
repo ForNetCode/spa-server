@@ -103,7 +103,7 @@ impl DomainStorage {
         self.meta.get(host).map(|d| d.value().0.clone())
     }
 
-    pub async fn get_new_upload_path(&self, domain: &str) -> PathBuf {
+    pub fn get_new_upload_path(&self, domain: &str) -> PathBuf {
         match self.get_domain_info_by_domain(domain) {
             Some(domain_info) => {
                 let max_version = domain_info.versions.iter().max().unwrap_or(&0);

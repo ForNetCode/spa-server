@@ -28,4 +28,7 @@ curl "http://$ADMIN_SERVER/upload/path?domain=$DOMAIN" -H "Authorization: Bearer
 VERSION=2
 curl  -X POST "http://$ADMIN_SERVER/update_version?domain=$DOMAIN&version=$VERSION" -H "Authorization: Bearer $TOKEN"
 # return status code: 200(update version success) or 404(can not find files, please make sure you have upload files to correct place)
+
+# reload static web server
+curl -X POST "http://$ADMIN_SERVER/reload" -H "Authorization: Bearer $TOKEN"
 ```
