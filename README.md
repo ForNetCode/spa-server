@@ -24,7 +24,7 @@ RUST_LOG=info cargo run --bin spa-server
 
 You can build docker image by `docker build . -t=?`, and push it to your private docker repo. There no plan to release it to docker hub.
 
-## How To Use
+## How To Upload SPA Files
 Before running server up, please read the config.release.conf file firstly. It's easy to understand.
 
 After the server up. Copy your spa files to the directory where the admin server told, all the admin server api is in the [doc](./doc/Admin_Server_API.md).
