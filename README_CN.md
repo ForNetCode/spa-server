@@ -10,13 +10,14 @@
 - 支持热更新(Mac and Linux).
 - 支持 CORS 跨域
 - http/https 同时服务（http 也可用返回 redirect https）.
+- 支持 Docker 镜像 
 
 ## 服务跑起来
 
 配置文件说明: [`config.release.conf`](./config.release.conf). 
 
 可以通过修改环境变量 `SPA_CONFIG=${config_path}`， 来更改配置文件地址。
-
+### 通过源码
 ```shell
 git clone git@github.com:timzaak/spa-server.git
 cd spa-server
@@ -24,8 +25,11 @@ git submodule init && git submodule update
 cp config.release.conf config.conf # please remember to change `file_dir` in config.conf
 RUST_LOG=info cargo run --bin spa-server 
 ```
+### 通过镜像
+```shell
+docker run -d -p 80 -p 443 -v $HOST_VOLUME:/data -v $CONFIG:/config.conf timzaak/spa-server:latest
+```
 
-提供 Dockerfile 来编译成 Docker 镜像， 目前没计划发布镜像到 Docker Hub.
 
 ## 如何部署静态文件
 

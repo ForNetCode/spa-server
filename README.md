@@ -11,11 +11,12 @@ This project is to create a static web server which make deploy and manage multi
 - Hot reload support(Mac and Linux).
 - CORS
 - http redirect to https or both serving at the same time.
+- Docker Support
 
 ## Run Server
 You can get all config description in file: [`config.release.conf`](./config.release.conf). If you want to change the server config file path, 
 please set environment variable `SPA_CONFIG=${config_path}`.
-
+### Run By Code
 ```shell
 git clone git@github.com:timzaak/spa-server.git
 cd spa-server
@@ -23,8 +24,10 @@ git submodule init && git submodule update
 cp config.release.conf config.conf # please remember to change `file_dir` in config.conf
 RUST_LOG=info cargo run --bin spa-server 
 ```
-
-You can build docker image by `docker build . -t=?`, and push it to your private docker repo. There no plan to release it to docker hub.
+### Run Docker
+```shell
+docker run -d -p 80 -p 443 -v $HOST_VOLUME:/data -v $CONFIG:/config.conf timzaak/spa-server:latest
+```
 
 ## How To Upload SPA Files
 Before running server up, please read the config.release.conf file firstly. It's easy to understand.
