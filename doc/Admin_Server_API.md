@@ -22,10 +22,10 @@ curl "http://$ADMIN_SERVER/upload/path?domain=$DOMAIN" -H "Authorization: Bearer
 # return string: /$FILE_PATH/$DOMAIN/$NEW_VERSION ,like /data/www.example.com/2
 
 # update the domain version. please be attention:
-# *it will use the newest version after server restart*
-# *it will use the newest version after server restart*
-# *it will use the newest version after server restart*
+# *it will use the newest version after server restart/reload*
+# *it will use the newest version after server restart/reload*
+# *it will use the newest version after server restart/reload*
 VERSION=2
-curl "http://$ADMIN_SERVER/update_version?domain=$DOMAIN&version=$VERSION" -H "Authorization: Bearer $TOKEN"
+curl  -X POST "http://$ADMIN_SERVER/update_version?domain=$DOMAIN&version=$VERSION" -H "Authorization: Bearer $TOKEN"
 # return status code: 200(update version success) or 404(can not find files, please make sure you have upload files to correct place)
 ```

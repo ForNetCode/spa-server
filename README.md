@@ -67,7 +67,7 @@ That's all!
 
 
 ### Version Choice
-If you only want a static web server without any cache/ssl/CORS feature support(serving for cdn), please use version v1.0.x, it's simple and efficient,
+If you only want a static web server without any cache/ssl/CORS feature support(serving for cdn), please use version v1.0.x(branch v1.0.x), it's simple and efficient,
 you are free to open any issue about this version. Otherwise, please use the most recent version.
 
 ### why use self maintained warp

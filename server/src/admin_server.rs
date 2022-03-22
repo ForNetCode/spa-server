@@ -1,14 +1,11 @@
 use crate::admin_server::request::{GetDomainOption, GetDomainPathOption, UpdateDomainOption};
 use crate::config::AdminConfig;
-use crate::domain_storage::{DomainStorage, URI_REGEX};
+use crate::domain_storage::{DomainStorage};
 use crate::with;
-use std::convert::Infallible;
 use std::net::SocketAddr;
 use std::str::FromStr;
 use std::sync::Arc;
-use warp::http::StatusCode;
-use warp::reply::Response;
-use warp::{Filter, Rejection, Reply};
+use warp::{Filter, Rejection};
 
 pub struct AdminServer {
     conf: AdminConfig,
@@ -23,23 +20,21 @@ impl AdminServer {
         }
     }
 
-    pub async fn run(&self) -> anyhow::Result<()> {
-        let bind_address =
-            SocketAddr::from_str(&format!("{}:{}", &self.conf.addr, &self.conf.port)).unwrap();
-        let routes = warp::get()
+    fn routes(&self) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+        warp::get()
             .and(self.auth())
             .and(
-                warp::path("status")
-                    .and(warp::query::<GetDomainOption>())
-                    .and(with(self.domain_storage.clone()))
-                    .and_then(service::get_domain_info)
-                    .or(self.get_domain_upload_path()),
+                self.get_domain_info().or(self.get_domain_upload_path()),
             )
             .or(warp::post()
                 .and(self.auth())
-                .and(self.update_domain_version()));
+                .and(self.update_domain_version()))
+    }
 
-        warp::serve(routes).run(bind_address).await;
+    pub async fn run(&self) -> anyhow::Result<()> {
+        let bind_address =
+            SocketAddr::from_str(&format!("{}:{}", &self.conf.addr, &self.conf.port)).unwrap();
+        warp::serve(self.routes()).run(bind_address).await;
         Ok(())
     }
 
@@ -51,50 +46,25 @@ impl AdminServer {
         )
     }
 
+    fn get_domain_info(&self) -> impl Filter<Extract = (impl warp::Reply,), Error = Rejection> + Clone {
+        warp::path("status")
+            .and(warp::query::<GetDomainOption>())
+            .and(with(self.domain_storage.clone()))
+            .and_then(service::get_domain_info)
+    }
+
     fn get_domain_upload_path(
         &self,
     ) -> impl Filter<Extract = (impl warp::Reply,), Error = Rejection> + Clone {
-        async fn handle(
-            option: GetDomainPathOption,
-            storage: Arc<DomainStorage>,
-        ) -> Result<Response, Infallible> {
-            if URI_REGEX.is_match(&option.domain) {
-                Ok(storage
-                    .get_new_upload_path(&option.domain)
-                    .await
-                    .to_string_lossy()
-                    .to_string()
-                    .into_response())
-            } else {
-                Ok(StatusCode::BAD_REQUEST.into_response())
-            }
-        }
         warp::path!("upload" / "path")
             .and(warp::query::<GetDomainPathOption>())
             .and(with(self.domain_storage.clone()))
-            .and_then(handle)
+            .and_then(service::get_domain_upload_path)
     }
 
     fn update_domain_version(
         &self,
     ) -> impl Filter<Extract = (impl warp::Reply,), Error = Rejection> + Clone {
-        async fn handle(
-            option: UpdateDomainOption,
-            storage: Arc<DomainStorage>,
-        ) -> Result<Response, Infallible> {
-            match storage
-                .upload_domain_with_version(option.domain.clone(), option.version)
-                .await
-            {
-                Ok(_) => {
-                    let text =
-                        format!("domain:{} has changed to {}", option.domain, option.version);
-                    tracing::info!("{}", &text);
-                    Ok(text.into_response())
-                }
-                Err(_) => Ok(StatusCode::NOT_FOUND.into_response()),
-            }
-        }
         warp::path("update_version")
             .and(warp::path::end())
             .and(
@@ -102,20 +72,20 @@ impl AdminServer {
                     .and(warp::body::json::<UpdateDomainOption>()),
             )
             .and(with(self.domain_storage.clone()))
-            .and_then(handle)
+            .and_then(service::update_domain_version)
     }
 }
 
-mod service {
-    use crate::admin_server::request::GetDomainOption;
-    use crate::domain_storage::DomainStorage;
+pub mod service {
+    use crate::admin_server::request::{GetDomainOption, GetDomainPathOption, UpdateDomainOption};
+    use crate::domain_storage::{DomainStorage, URI_REGEX};
     use std::convert::Infallible;
     use std::sync::Arc;
     use warp::http::StatusCode;
     use warp::reply::Response;
     use warp::Reply;
 
-    pub async fn get_domain_info(
+    pub(super) async fn get_domain_info(
         option: GetDomainOption,
         storage: Arc<DomainStorage>,
     ) -> Result<Response, Infallible> {
@@ -129,6 +99,39 @@ mod service {
                 }
             }
             None => Ok(warp::reply::json(&domain_info).into_response()),
+        }
+    }
+
+    pub(super) async fn update_domain_version(
+        option: UpdateDomainOption,
+        storage: Arc<DomainStorage>,
+    ) -> Result<Response, Infallible> {
+        match storage
+            .upload_domain_with_version(option.domain.clone(), option.version)
+            .await
+        {
+            Ok(_) => {
+                let text =
+                    format!("domain:{} has changed to {}", option.domain, option.version);
+                tracing::info!("{}", &text);
+                Ok(text.into_response())
+            }
+            Err(_) => Ok(StatusCode::NOT_FOUND.into_response()),
+        }
+    }
+    pub(super) async fn get_domain_upload_path(
+        option: GetDomainPathOption,
+        storage: Arc<DomainStorage>,
+    ) -> Result<Response, Infallible> {
+        if URI_REGEX.is_match(&option.domain) {
+            Ok(storage
+                .get_new_upload_path(&option.domain)
+                .await
+                .to_string_lossy()
+                .to_string()
+                .into_response())
+        } else {
+            Ok(StatusCode::BAD_REQUEST.into_response())
         }
     }
 }
