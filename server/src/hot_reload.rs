@@ -1,8 +1,8 @@
-use std::sync::Arc;
-use anyhow::anyhow;
-use tokio::sync::{Mutex, oneshot};
-use tokio::sync::oneshot::{Receiver, Sender};
 use crate::Config;
+use anyhow::anyhow;
+use std::sync::Arc;
+use tokio::sync::oneshot::{Receiver, Sender};
+use tokio::sync::{oneshot, Mutex};
 
 pub struct HotReloadManager(Arc<Mutex<HotReloadState>>);
 
@@ -25,7 +25,6 @@ impl HotReloadManager {
         Ok(())
     }
 }
-
 
 pub struct HotReloadState {
     http_signal: Option<Sender<()>>,

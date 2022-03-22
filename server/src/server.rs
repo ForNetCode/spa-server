@@ -1,13 +1,12 @@
 use hyper::server::Server as HServer;
 use socket2::{Domain, Socket, Type};
 use std::convert::Infallible;
-use std::future::Future;
 use std::net::{SocketAddr, TcpListener};
 
+use chrono::{DateTime, Local};
 use hyper::server::conn::AddrIncoming;
 use std::str::FromStr;
 use std::sync::Arc;
-use chrono::Local;
 use tokio::net::TcpListener as TKTcpListener;
 use tokio::sync::oneshot::Receiver;
 use warp::cors::Cors;
@@ -20,10 +19,39 @@ use crate::redirect_https::hyper_redirect_server;
 use crate::static_file_filter::static_file_filter;
 use crate::tls::{get_tls_config, TlsAcceptor};
 
+async fn handler(rx: Receiver<()>, time: DateTime<Local>, http_or_https: &'static str) {
+    rx.await.ok();
+    tracing::info!(
+        "prepare to close {} server which start at {}",
+        http_or_https,
+        time.format("%Y-%m-%d %H:%M:%S"),
+    );
+}
+macro_rules! run_server {
+    ($server:ident, $rx:ident) => {
+        let time = Local::now();
+        if $rx.is_some() {
+            let h = handler($rx.unwrap(), time, "http");
+            $server.with_graceful_shutdown(h).await?;
+        } else {
+            $server.await?;
+        }
+    };
+
+    (tls: $server:ident, $rx:ident) => {
+        let time = Local::now();
+        if $rx.is_some() {
+            let h = handler($rx.unwrap(), time, "https");
+            $server.with_graceful_shutdown(h).await?;
+        } else {
+            $server.await?;
+        };
+    };
+}
+
 pub struct Server {
     conf: Config,
     storage: Arc<DomainStorage>,
-
 }
 
 impl Server {
@@ -39,8 +67,7 @@ impl Server {
             .build()
     }
 
-    async fn start_https_server<F>(&self, func:F) -> anyhow::Result<()>
-        where F: Future<Output = ()>  {
+    async fn start_https_server(&self, rx: Option<Receiver<()>>) -> anyhow::Result<()> {
         if let Some(config) = &self.conf.https {
             let tls_server_config = get_tls_config(&config.public, &config.private)?;
             let bind_address =
@@ -57,9 +84,9 @@ impl Server {
                     async move { Ok::<_, Infallible>(service) }
                 });
 
-                HServer::builder(TlsAcceptor::new(tls_server_config, incoming))
-                    .serve(make_svc).with_graceful_shutdown(func)
-                    .await?;
+                let server =
+                    HServer::builder(TlsAcceptor::new(tls_server_config, incoming)).serve(make_svc);
+                run_server!(tls: server, rx);
                 // warp::serve(filter.with(self.get_cors_config()))
                 //     .tls()
                 //     .cert_path(&config.public)
@@ -72,9 +99,9 @@ impl Server {
                     let service = service.clone();
                     async move { Ok::<_, Infallible>(service) }
                 });
-                HServer::builder(TlsAcceptor::new(tls_server_config, incoming))
-                    .serve(make_svc).with_graceful_shutdown(func)
-                    .await?;
+                let server =
+                    HServer::builder(TlsAcceptor::new(tls_server_config, incoming)).serve(make_svc);
+                run_server!(tls: server, rx);
                 // warp::serve(filter)
                 //     .tls()
                 //     .cert_path(&config.public)
@@ -86,8 +113,7 @@ impl Server {
         Ok(())
     }
 
-    async fn start_http_server<F>(&self, func:F) -> anyhow::Result<()>
-    where  F: Future<Output = ()>  {
+    async fn start_http_server(&self, rx: Option<Receiver<()>>) -> anyhow::Result<()> {
         if self.conf.port > 0 {
             let bind_address =
                 SocketAddr::from_str(&format!("{}:{}", &self.conf.addr, &self.conf.port)).unwrap();
@@ -108,9 +134,9 @@ impl Server {
                         async move { Ok::<_, Infallible>(service) }
                     });
                     tracing::info!("listening on http://{}", &bind_address);
-                    HServer::from_tcp(get_socket(bind_address)?)?
-                        .serve(make_svc).with_graceful_shutdown(func)
-                        .await?;
+                    let server = HServer::from_tcp(get_socket(bind_address)?)?.serve(make_svc);
+                    run_server!(server, rx);
+
                     // warp::serve(filter.with(self.get_cors_config()))
                     //     .run(bind_address)
                     //     .await;
@@ -121,32 +147,25 @@ impl Server {
                         async move { Ok::<_, Infallible>(service) }
                     });
                     tracing::info!("listening on http://{}", &bind_address);
-                    HServer::from_tcp(get_socket(bind_address)?)?
-                        .serve(make_svc).with_graceful_shutdown(func)
-                        .await?;
+                    let server = HServer::from_tcp(get_socket(bind_address)?)?.serve(make_svc);
+                    run_server!(server, rx);
                     //warp::serve(filter).run(bind_address).await;
                 }
             }
         }
         Ok(())
     }
-    pub async fn run(&self, http_rx:Option<Receiver<()>>, https_rx:Option<Receiver<()>>) -> anyhow::Result<()> {
-        //disable http server
-        if self.conf.port <= 0 && self.conf.https.is_none() {
-            panic!("should set http or https server config");
-        }
+    pub async fn run(
+        &self,
+        http_rx: Option<Receiver<()>>,
+        https_rx: Option<Receiver<()>>,
+    ) -> anyhow::Result<()> {
         let time = Local::now();
-        let _re = join(self.start_http_server(async move {
-            if let Some(rx) = http_rx {
-                rx.await.ok();
-                tracing::info!("prepare to close http server which start at {}", time.format("%Y-%m-%d %H:%M:%S"));
-            }
-        }), self.start_https_server(async move {
-            if let Some(rx) = https_rx {
-                rx.await.ok();
-                tracing::info!("prepare to close https server which start at {}", time.format("%Y-%m-%d %H:%M:%S"));
-            }
-        })).await;
+        let _re = join(
+            self.start_http_server(http_rx),
+            self.start_https_server(https_rx),
+        )
+        .await;
         _re.0?;
         _re.1?;
         Ok(())
