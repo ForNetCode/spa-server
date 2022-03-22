@@ -25,14 +25,10 @@ impl AdminServer {
     }
 
     fn routes(&self) -> impl Filter<Extract=impl warp::Reply, Error=warp::Rejection> + Clone {
-        warp::get()
-            .and(self.auth())
+        self.auth()
             .and(
-                self.get_domain_info().or(self.get_domain_upload_path()),
-            )
-            .or(warp::post()
-                .and(self.auth())
-                .and(self.update_domain_version()).or(self.reload_server()))
+                (warp::get().and(self.get_domain_info().or(self.get_domain_upload_path())))
+            .or(warp::post().and(self.update_domain_version()).or(self.reload_server())))
     }
 
     pub async fn run(&self) -> anyhow::Result<()> {
@@ -43,7 +39,7 @@ impl AdminServer {
     }
 
     fn auth(&self) -> impl Filter<Extract=(), Error=Rejection> + Clone {
-        // this will not trigger memory leak, but be careful to use it
+        // this will not trigger memory leak, be careful to use it
         warp::header::exact(
             "authorization",
             Box::leak(format!("Bearer {}", &self.conf.token).into_boxed_str()),
@@ -80,7 +76,6 @@ impl AdminServer {
     }
 
     fn reload_server(&self) -> impl Filter<Extract=(impl warp::Reply, ), Error=Rejection> + Clone {
-
         let admin_config = Arc::new(self.conf.clone());
         let reload_manager = Arc::new(self.reload_manager.clone());
 
@@ -153,13 +148,13 @@ pub mod service {
     }
 
     pub(super) async fn reload_server(
-        reload_manager:Arc<HotReloadManager>,
-        admin_config:Arc<AdminConfig>,
-    ) -> Result<Response,Infallible> {
+        reload_manager: Arc<HotReloadManager>,
+        admin_config: Arc<AdminConfig>,
+    ) -> Result<Response, Infallible> {
         let resp = match crate::reload_server(&admin_config, reload_manager.as_ref()).await {
             Ok(_) => {
                 Response::default()
-            },
+            }
             Err(e) => {
                 let mut resp = Response::new(Body::from(format!("error:{}", e)));
                 *resp.status_mut() = StatusCode::BAD_REQUEST;
