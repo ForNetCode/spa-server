@@ -1,6 +1,7 @@
 # SPA-SERVER
 本项目是用来创建一个托管静态web页面的服务，目标是使单页应用部署简便、开销少。
 
+[ENGLISH README](./README.md)
 ## 特性
 - 基于 Hyper 和 warp 构建。
 - SSL 基于 Rustls.

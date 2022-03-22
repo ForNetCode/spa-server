@@ -1,6 +1,8 @@
 # SPA-SERVER
 This project is to create a static web server which make deploy and manage multiple single page applications easy and cost less.
 
+[中文 README](./README_CN.md)
+
 ## Feature
 - Built with Hyper and Warp.
 - SSL with Rustls.
