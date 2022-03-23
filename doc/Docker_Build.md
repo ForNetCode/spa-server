@@ -1,5 +1,5 @@
 ## Docker Build
-Use [docker/buildkit](https://github.com/moby/buildkit) to speed up building process.
+Use [moby/buildkit](https://github.com/moby/buildkit) to speed up building process.
 
 ### Shell
 ```bash
