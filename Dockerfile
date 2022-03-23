@@ -14,7 +14,8 @@ FROM ${BASE_IMAGE} AS builder
 ADD . .
 
 # Build our application.
-RUN cargo build --release
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+     cargo build --release
 
 FROM debian:buster-slim
 
