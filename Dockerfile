@@ -1,11 +1,10 @@
 # -*- mode: dockerfile -*-
-#
-# An example Dockerfile showing how to build a Rust executable using this
-# image, and deploy it with a tiny Alpine Linux container.
 
 # You can override this `--build-arg BASE_IMAGE=...` to use different
-# version of Rust or OpenSSL.
+# version of Rust
 ARG BASE_IMAGE=rust:1.59
+
+ARG RUNTIME_IMAGE=debian:buster-slim
 
 # Our first FROM statement declares the build environment.
 FROM ${BASE_IMAGE} AS builder
@@ -17,12 +16,10 @@ ADD . .
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
      cargo build --release
 
-FROM debian:buster-slim
+FROM ${RUNTIME_IMAGE}
 
 RUN mkdir /data
 COPY --from=builder ./config.release.conf ./config.conf
 COPY --from=builder ./target/release/spa-server .
 
-
 CMD ["./spa-server"]
-
