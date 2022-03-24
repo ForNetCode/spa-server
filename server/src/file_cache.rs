@@ -89,7 +89,7 @@ impl FileCache {
                                 .map_or("".to_string(), |x| x.to_string());
 
                             let data_block = if self.conf.max_size.unwrap_or(DEFAULT_MAX_SIZE) > metadata.len() {
-                                tracing::debug!("file block:{:?}", entry_path.display());
+                                tracing::debug!("file block:{}", entry_path.display());
                                 DataBlock::FileBlock(ArcPath(Arc::new(entry_path)))
                             } else {
                                 let (bytes, compressed) = if self.conf.compression

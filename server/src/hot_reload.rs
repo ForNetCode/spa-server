@@ -32,13 +32,6 @@ pub struct HotReloadState {
 }
 
 impl HotReloadState {
-    fn empty() -> Self {
-        HotReloadState {
-            http_signal: None,
-            https_signal: None,
-        }
-    }
-
     pub fn init(config: &Config) -> (Self, Option<Receiver<()>>, Option<Receiver<()>>) {
         // enable http
         let (http_signal, http_rx) = if config.port > 0 {

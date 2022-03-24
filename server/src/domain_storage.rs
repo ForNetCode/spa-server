@@ -60,7 +60,6 @@ impl DomainStorage {
                         let path_buf = path_prefix_buf
                             .join(domain_dir_name)
                             .join(max_version.to_string());
-                        let key = format!("{}/{}", domain_dir_name, max_version);
                         let data = cache.cache_dir(&path_buf)?;
                         cache.update(domain_dir_name.to_string(), data);
                         domain_version.insert(domain_dir_name.to_owned(), (path_buf, max_version));

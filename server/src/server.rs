@@ -160,7 +160,6 @@ impl Server {
         http_rx: Option<Receiver<()>>,
         https_rx: Option<Receiver<()>>,
     ) -> anyhow::Result<()> {
-        let time = Local::now();
         let _re = join(
             self.start_http_server(http_rx),
             self.start_https_server(https_rx),
