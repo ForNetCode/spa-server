@@ -28,3 +28,7 @@
 - [x] hot reload web static server(use SO_REUSEPORT *nix api, so it may be wrong with Windows).
 - [ ] ~~different config(cors/cache strategy/https and so on) for different domain.~~ (if this is needed?)
 
+### version 1.3.x
+- [ ] If-None-Match/ETag Header support
+- [ ] drop self maintained `Warp`(copy out needed code from Warp)
+- [ ] `HEAD` request support or drop
