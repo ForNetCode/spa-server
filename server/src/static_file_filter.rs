@@ -1,4 +1,3 @@
-use std::path::Path;
 use crate::domain_storage::DomainStorage;
 use crate::file_cache::{CacheItem, DataBlock};
 use crate::with;
@@ -8,12 +7,11 @@ use headers::{
 };
 use hyper::Body;
 use percent_encoding::percent_decode_str;
+use std::path::Path;
 use std::sync::Arc;
 use tokio::fs::File;
 use tokio::io;
-use warp::fs::{
-    bytes_range, conditionals, file_stream, optimal_buf_size, Cond, Conditionals,
-};
+use warp::fs::{bytes_range, conditionals, file_stream, optimal_buf_size, Cond, Conditionals};
 use warp::host::Authority;
 use warp::http::{Response, StatusCode};
 use warp::{reject, Filter, Rejection};
@@ -83,11 +81,7 @@ async fn file_reply(
                     //reject::known(FilePermissionError { _p: () })
                 }
                 _ => {
-                    tracing::error!(
-                        "file open error (path={:?}): {} ",
-                        path.display(),
-                        err
-                    );
+                    tracing::error!("file open error (path={:?}): {} ", path.display(), err);
                 }
             };
             Err(reject::not_found())
@@ -110,8 +104,17 @@ async fn cache_or_file_reply(
                 compressed,
                 path,
             } => {
-                if (accept_encoding.as_ref().filter(|x| x.contains("gzip")).is_none()) && *compressed {
-                    tracing::debug!("{} don't use cache for accept_encoding:{:?}", path.as_ref().display(), &accept_encoding);
+                if (accept_encoding
+                    .as_ref()
+                    .filter(|x| x.contains("gzip"))
+                    .is_none())
+                    && *compressed
+                {
+                    tracing::debug!(
+                        "{} don't use cache for accept_encoding:{:?}",
+                        path.as_ref().display(),
+                        &accept_encoding
+                    );
                     file_reply(&item, path.as_ref(), range, modified).await
                 } else {
                     let mut resp = Response::new(Body::from(bytes.clone()));
@@ -156,6 +159,7 @@ fn cache_item_to_response_header(
         resp.headers_mut().typed_insert(last_modified);
     }
 }
+
 pub fn static_file_filter(
     domain_storage: Arc<DomainStorage>,
 ) -> impl Filter<Extract = (Response<Body>,), Error = Rejection> + Clone {

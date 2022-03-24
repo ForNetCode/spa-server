@@ -29,6 +29,6 @@
 - [ ] ~~different config(cors/cache strategy/https and so on) for different domain.~~ (if this is needed?)
 
 ### version 1.3.x
-- [ ] If-None-Match/ETag Header support
+- [ ] cache File `Range` Header support
 - [ ] drop self maintained `Warp`(copy out needed code from Warp)
 - [ ] `HEAD` request support or drop

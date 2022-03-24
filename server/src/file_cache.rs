@@ -3,20 +3,23 @@ use anyhow::anyhow;
 use dashmap::DashMap;
 use flate2::read::GzEncoder;
 use flate2::Compression;
+use futures_util::sink::Buffer;
+use headers::{ETag, HeaderValue};
 use hyper::body::Bytes;
 use lazy_static::lazy_static;
 use mime::Mime;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs::{File, Metadata};
-use std::io::{BufReader, Read};
+use std::io::{BufReader, Error, Read};
 use std::path::PathBuf;
+use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 use walkdir::WalkDir;
 use warp::fs::ArcPath;
 
-static DEFAULT_MAX_SIZE:u64 = 10*1024*1024;
+static DEFAULT_MAX_SIZE: u64 = 10 * 1024 * 1024;
 
 pub struct FileCache {
     conf: CacheConfig,
@@ -88,7 +91,9 @@ impl FileCache {
                                 .last()
                                 .map_or("".to_string(), |x| x.to_string());
 
-                            let data_block = if self.conf.max_size.unwrap_or(DEFAULT_MAX_SIZE) > metadata.len() {
+                            let data_block = if self.conf.max_size.unwrap_or(DEFAULT_MAX_SIZE)
+                                > metadata.len()
+                            {
                                 tracing::debug!("file block:{}", entry_path.display());
                                 DataBlock::FileBlock(ArcPath(Arc::new(entry_path)))
                             } else {
@@ -104,13 +109,19 @@ impl FileCache {
                                 } else {
                                     (Bytes::from(bytes), false)
                                 };
-                                tracing::debug!("cache block:{:?}, compressed:{}", entry_path.display(), compressed);
+                                tracing::debug!(
+                                    "cache block:{:?}, compressed:{}",
+                                    entry_path.display(),
+                                    compressed
+                                );
+
                                 DataBlock::CacheBlock {
                                     bytes,
                                     compressed,
                                     path: ArcPath(Arc::new(entry_path)),
                                 }
                             };
+                            //let e_tag = etag_calculate(&metadata, real_len).ok()?;
                             (
                                 key,
                                 Arc::new(CacheItem {
@@ -153,4 +164,17 @@ pub struct CacheItem {
     pub data: DataBlock,
     pub mime: Mime,
     pub expire: Option<Duration>,
+    //    pub etag: ETag,
 }
+/*
+pub fn etag_calculate(meta: &Metadata, real_len: u64) -> anyhow::Result<ETag> {
+    let etag = match meta.modified().map(|modified| {
+        modified
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("Modified is earlier than time::UNIX_EPOCH!")
+    }) {
+        Ok(modified) => ETag::from_str(&format!("{:x}-{:x}", modified.as_secs(), real_len))?,
+        _ => ETag::from_str(&format!("{:?}", real_len))?,
+    };
+    Ok(etag)
+}*/

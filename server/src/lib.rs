@@ -9,8 +9,8 @@ pub mod file_cache;
 pub mod hot_reload;
 pub mod tls;
 
-mod redirect_https;
-mod static_file_filter;
+pub mod redirect_https;
+pub mod static_file_filter;
 
 // utils
 use crate::admin_server::AdminServer;
