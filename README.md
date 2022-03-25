@@ -46,6 +46,17 @@ curl "http://$ADMIN_SERVER/update_version?domain=$DOMAIN&version=$VERSION" -H "A
 
 至此，部署完毕！
 
+## 使用场景
+
+### 单独使用
+根据自己的需求配置好 `cache`, 可获得极大的性能提升。 若需要热加载功能（ssl证书更替）/文件版本管理，请开启 `admin server`。
+### 搭配 Nginx 使用
+请在默认配置的基础上，请对 `cache.compression, cache.client_cache, cors` 保持默认，相关配置所带来的功能可设定在Nginx端，预防本服务和Nginx出现冲突。
+### 高可用
+目前项目没有做高可用的适配，需要注意以下几点：
+1. 文件最好放在 S3/NFS 等可以共享到所有spa-server实例的文件系统中，否则 `Last-Modified` 不一致会对客户端缓存有一定影响。
+2. 所有控制请求，需要对每个实例都发起一遍。
+
 ## 项目规划
 请参阅 [项目规划](./doc/Roadmap.md).
 
