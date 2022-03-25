@@ -15,7 +15,7 @@ use tokio::fs::File;
 use tokio::io;
 use warp::fs::{conditionals, file_stream, optimal_buf_size, Cond, Conditionals};
 use warp::host::Authority;
-use warp::http::{Method, Response, StatusCode};
+use warp::http::{Response, StatusCode};
 use warp::{reject, Filter, Rejection};
 
 //from warp::fs
