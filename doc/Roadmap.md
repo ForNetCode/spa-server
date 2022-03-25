@@ -24,11 +24,10 @@
 ### version 1.2.x
 - [x] more log for debug and trace
 - [x] basic CORS
-- [x] compress regression support(if client don't send accept-encoding header(including gzip), will send back data from file instead of cache)
+- [x] compress regression support(~~if client don't send accept-encoding header(including gzip), will send back data from file instead of cache~~ improved by v1.2.3)
 - [x] hot reload web static server(use SO_REUSEPORT *nix api, so it may be wrong with Windows).
 - [ ] ~~different config(cors/cache strategy/https and so on) for different domain.~~ (if this is needed?)
-
-### version 1.3.x
-- [ ] cache File `Range` Header support
-- [ ] drop self maintained `Warp`(copy out needed code from Warp)
-- [ ] `HEAD` request support or drop
+--- version 1.2.2
+- [x] cache File `Range` Header support
+- [ ] ~~drop self maintained `Warp`(copy out needed code from Warp)~~ (so much code from warp/fs.)
+- [x] `HEAD` request support or drop(support, don't need to do anything)

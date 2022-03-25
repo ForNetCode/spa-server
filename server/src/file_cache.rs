@@ -3,17 +3,14 @@ use anyhow::anyhow;
 use dashmap::DashMap;
 use flate2::read::GzEncoder;
 use flate2::Compression;
-use futures_util::sink::Buffer;
-use headers::{ETag, HeaderValue};
 use hyper::body::Bytes;
 use lazy_static::lazy_static;
 use mime::Mime;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs::{File, Metadata};
-use std::io::{BufReader, Error, Read};
+use std::io::{BufReader, Read};
 use std::path::PathBuf;
-use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 use walkdir::WalkDir;
@@ -92,7 +89,7 @@ impl FileCache {
                                 .map_or("".to_string(), |x| x.to_string());
 
                             let data_block = if self.conf.max_size.unwrap_or(DEFAULT_MAX_SIZE)
-                                > metadata.len()
+                                < metadata.len()
                             {
                                 tracing::debug!("file block:{}", entry_path.display());
                                 DataBlock::FileBlock(ArcPath(Arc::new(entry_path)))
