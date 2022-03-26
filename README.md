@@ -60,8 +60,6 @@ curl "http://$ADMIN_SERVER/update_version?domain=$DOMAIN&version=$VERSION" -H "A
 ## 项目规划
 请参阅 [项目规划](./doc/Roadmap.md).
 
-目前没有任何关于 v1.3 版本的功能规划，如果您有何项目，可随时开 issue 或 WX 联系我： evenst 
-
 ## 为何自行维护 warp 版本
 [#171 Add reply::file(path) helper](https://github.com/seanmonstar/warp/issues/171)
 

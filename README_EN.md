@@ -48,7 +48,7 @@ That's all!
 ## Roadmap
 please ref [Roadmap.md](./doc/Roadmap.md).
 
-There's no feature plan about v1.3.x, if you have any idea, feel free to open issue.
+If you have any idea, feel free to open issue.
 
 ## Why use self maintained warp
 [#171 Add reply::file(path) helper](https://github.com/seanmonstar/warp/issues/171)

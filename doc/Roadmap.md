@@ -27,7 +27,17 @@
 - [x] compress regression support(~~if client don't send accept-encoding header(including gzip), will send back data from file instead of cache~~ improved by v1.2.3)
 - [x] hot reload web static server(use SO_REUSEPORT *nix api, so it may be wrong with Windows).
 - [ ] ~~different config(cors/cache strategy/https and so on) for different domain.~~ (if this is needed?)
---- version 1.2.2
+
+**version 1.2.2**
 - [x] cache File `Range` Header support
 - [ ] ~~drop self maintained `Warp`(copy out needed code from Warp)~~ (so much code from warp/fs.)
 - [x] `HEAD` request support or drop(support, don't need to do anything)
+
+**version 1.2.3**
+- [ ] admin server export http api to accept files to local file system
+- [ ] add client to sync local files to admin server
+
+### Version 1.3.x (make it more friendly with users)
+- [ ] add client wrapper as vite plugin
+- [ ] add client wrapper as webpack plugin
+- [ ] client interact with nginx server(add an option for users who use nginx as static web server)  
