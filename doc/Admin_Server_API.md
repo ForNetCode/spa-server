@@ -1,9 +1,10 @@
-### Admin Server API
+## Admin Server API
 
 Admin server provide http api to control static web files version upgrade, be careful to it access config, and it's disabled by default.
 
 The http api is described by `curl` command. You can run it with variable changed.
-
+### Simple API before V1.2.3
+these api give you simple info about the serving domain, and give you the control of domain version.
 ```shell
 ADMIN_SERVER='127.0.0.1:9000' 
 TOKEN='token'
@@ -31,4 +32,25 @@ curl  -X POST "http://$ADMIN_SERVER/update_version?domain=$DOMAIN&version=$VERSI
 
 # reload static web server
 curl -X POST "http://$ADMIN_SERVER/reload" -H "Authorization: Bearer $TOKEN"
+```
+
+### Uploading File API
+These api are used with `spa-client` to upload files to the server. the api design is described in the doc 
+[Uploading_File_Process.md](./Uploading_File_Process.md)
+
+```shell
+# get files metadata to prepare to upload file.
+curl "http://$ADMIN_SERVER/files/metadata?domain=$DOMAIN&version=$VERSION" -H "Authorization: Bearer $TOKEN"
+# return TODO
+
+
+# set uploading status
+UPLOADING_STATUS="BEGIN_UPLOAD" # UPLOADING_STATUS="FINISH_UPLOAD" 
+curl -X POST "http://$ADMIN_SERVER/files/upload_status?domain=$DOMAIN&version=$VERSION&status=$UPLOADING_STATUS" -H "Authorization: Bearer $TOKEN"
+# return status code:200 if success 
+
+# upload file
+PATH="/upload/file/path"
+curl -X POST "http://$ADMIN_SERVER/file/upload?domain=$DOMAIN&version=$VERSION&status=$UPLOADING_STATUS" \
+-F "file=@$PATH" -H "Authorization: Bearer $TOKEN"
 ```

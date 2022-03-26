@@ -35,7 +35,7 @@
 
 **version 1.2.3**
 - [ ] admin server export http api to accept files to local file system
-- [ ] add client to sync local files to admin server
+- [ ] add client to sync local files to admin server（retry support）
 
 ### Version 1.3.x (make it more friendly with users)
 - [ ] add client wrapper as vite plugin

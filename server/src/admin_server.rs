@@ -1,13 +1,13 @@
 use crate::admin_server::request::{GetDomainOption, GetDomainPathOption, UpdateDomainOption};
 use crate::config::AdminConfig;
-use crate::domain_storage::{DomainStorage};
-use crate::{with};
+use crate::domain_storage::DomainStorage;
+use crate::hot_reload::HotReloadManager;
+use crate::with;
 use std::net::SocketAddr;
 use std::str::FromStr;
 use std::sync::Arc;
-use warp::{Filter, Rejection};
 use warp::reply::Response;
-use crate::hot_reload::HotReloadManager;
+use warp::{Filter, Rejection};
 
 pub struct AdminServer {
     conf: AdminConfig,
@@ -16,7 +16,11 @@ pub struct AdminServer {
 }
 
 impl AdminServer {
-    pub fn new(conf: &AdminConfig, domain_storage: Arc<DomainStorage>, reload_manager: HotReloadManager) -> Self {
+    pub fn new(
+        conf: &AdminConfig,
+        domain_storage: Arc<DomainStorage>,
+        reload_manager: HotReloadManager,
+    ) -> Self {
         AdminServer {
             conf: conf.clone(),
             domain_storage,
@@ -24,11 +28,14 @@ impl AdminServer {
         }
     }
 
-    fn routes(&self) -> impl Filter<Extract=impl warp::Reply, Error=warp::Rejection> + Clone {
-        self.auth()
-            .and(
-                (warp::get().and(self.get_domain_info().or(self.get_domain_upload_path())))
-            .or(warp::post().and(self.update_domain_version()).or(self.reload_server())))
+    fn routes(&self) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+        self.auth().and(
+            (warp::get().and(self.get_domain_info().or(self.get_domain_upload_path()))).or(
+                warp::post()
+                    .and(self.update_domain_version())
+                    .or(self.reload_server()),
+            ),
+        )
     }
 
     pub async fn run(&self) -> anyhow::Result<()> {
@@ -38,7 +45,7 @@ impl AdminServer {
         Ok(())
     }
 
-    fn auth(&self) -> impl Filter<Extract=(), Error=Rejection> + Clone {
+    fn auth(&self) -> impl Filter<Extract = (), Error = Rejection> + Clone {
         // this will not trigger memory leak, be careful to use it
         warp::header::exact(
             "authorization",
@@ -46,7 +53,9 @@ impl AdminServer {
         )
     }
 
-    fn get_domain_info(&self) -> impl Filter<Extract=(impl warp::Reply, ), Error=Rejection> + Clone {
+    fn get_domain_info(
+        &self,
+    ) -> impl Filter<Extract = (impl warp::Reply,), Error = Rejection> + Clone {
         warp::path("status")
             .and(warp::query::<GetDomainOption>())
             .and(with(self.domain_storage.clone()))
@@ -55,7 +64,7 @@ impl AdminServer {
 
     fn get_domain_upload_path(
         &self,
-    ) -> impl Filter<Extract=(Response, ), Error=Rejection> + Clone {
+    ) -> impl Filter<Extract = (Response,), Error = Rejection> + Clone {
         warp::path!("upload" / "path")
             .and(warp::query::<GetDomainPathOption>())
             .and(with(self.domain_storage.clone()))
@@ -64,7 +73,7 @@ impl AdminServer {
 
     fn update_domain_version(
         &self,
-    ) -> impl Filter<Extract=(impl warp::Reply, ), Error=Rejection> + Clone {
+    ) -> impl Filter<Extract = (impl warp::Reply,), Error = Rejection> + Clone {
         warp::path("update_version")
             .and(warp::path::end())
             .and(
@@ -75,11 +84,14 @@ impl AdminServer {
             .and_then(service::update_domain_version)
     }
 
-    fn reload_server(&self) -> impl Filter<Extract=(impl warp::Reply, ), Error=Rejection> + Clone {
+    fn reload_server(
+        &self,
+    ) -> impl Filter<Extract = (impl warp::Reply,), Error = Rejection> + Clone {
         let admin_config = Arc::new(self.conf.clone());
         let reload_manager = Arc::new(self.reload_manager.clone());
 
-        warp::path("reload").and(warp::path::end())
+        warp::path("reload")
+            .and(warp::path::end())
             .and(with(reload_manager))
             .and(with(admin_config))
             .and_then(service::reload_server)
@@ -89,13 +101,14 @@ impl AdminServer {
 pub mod service {
     use crate::admin_server::request::{GetDomainOption, GetDomainPathOption, UpdateDomainOption};
     use crate::domain_storage::{DomainStorage, URI_REGEX};
+    use crate::{AdminConfig, HotReloadManager};
+    use hyper::Body;
     use std::convert::Infallible;
     use std::sync::Arc;
-    use hyper::Body;
     use warp::http::StatusCode;
+    use warp::multipart::FormData;
     use warp::reply::Response;
-    use warp::{Reply};
-    use crate::{AdminConfig, HotReloadManager};
+    use warp::Reply;
 
     pub(super) async fn get_domain_info(
         option: GetDomainOption,
@@ -123,8 +136,7 @@ pub mod service {
             .await
         {
             Ok(_) => {
-                let text =
-                    format!("domain:{} has changed to {}", option.domain, option.version);
+                let text = format!("domain:{} has changed to {}", option.domain, option.version);
                 tracing::info!("{}", &text);
                 Ok(text.into_response())
             }
@@ -152,9 +164,7 @@ pub mod service {
         admin_config: Arc<AdminConfig>,
     ) -> Result<Response, Infallible> {
         let resp = match crate::reload_server(&admin_config, reload_manager.as_ref()).await {
-            Ok(_) => {
-                Response::default()
-            }
+            Ok(_) => Response::default(),
             Err(e) => {
                 let mut resp = Response::new(Body::from(format!("error:{}", e)));
                 *resp.status_mut() = StatusCode::BAD_REQUEST;
@@ -162,6 +172,10 @@ pub mod service {
             }
         };
         Ok(resp)
+    }
+
+    pub(super) async fn update_file(form: FormData, storage: Arc<DomainStorage>) {
+        //storage.get_file()
     }
 }
 
