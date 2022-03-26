@@ -1,5 +1,5 @@
 # SPA-SERVER
-This project is to create a static web server which make deploy and manage multiple single page applications easy, cost less and fast.
+It's just for static web deployment with server side  cache, client side cache and hot reload.   
 
 [中文 README](./README.md)
 
