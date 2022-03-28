@@ -34,7 +34,7 @@
 - [x] `HEAD` request support or drop(support, don't need to do anything)
 
 **version 1.2.3**
-- [ ] admin server export http api to accept files to local file system
+- [x] admin server export http api to accept files to local file system
 - [ ] add client to sync local files to admin server（retry support）
 
 ### Version 1.3.x (make it more friendly with users)

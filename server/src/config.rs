@@ -40,8 +40,13 @@ pub struct AdminConfig {
     pub port: u32,
     pub addr: String,
     pub token: String,
+    #[serde(default = "default_max_upload_size")]
+    pub max_upload_size: u64,
 }
 
+fn default_max_upload_size() -> u64 {
+    30 * 1024 * 1024
+}
 // TLS
 #[derive(Deserialize, Debug, Clone)]
 pub struct HttpsConfig {
@@ -55,12 +60,16 @@ pub struct HttpsConfig {
 // should write Deserialize by hand.
 #[derive(Deserialize, Debug, Clone)]
 pub struct CacheConfig {
-    #[serde(default)]
-    pub max_size: Option<u64>,
+    #[serde(default = "default_max_size")]
+    pub max_size: u64,
     #[serde(default)]
     pub compression: bool,
     #[serde(default)]
     pub client_cache: Vec<ClientCacheItem>,
+}
+
+fn default_max_size() -> u64 {
+    10 * 1024 * 1024
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -73,7 +82,7 @@ pub struct ClientCacheItem {
 impl Default for CacheConfig {
     fn default() -> Self {
         CacheConfig {
-            max_size: None,
+            max_size: default_max_size(),
             client_cache: Vec::new(),
             compression: false,
         }

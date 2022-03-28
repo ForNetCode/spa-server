@@ -44,13 +44,21 @@ curl "http://$ADMIN_SERVER/files/metadata?domain=$DOMAIN&version=$VERSION" -H "A
 # return TODO
 
 
-# set uploading status
-UPLOADING_STATUS="BEGIN_UPLOAD" # UPLOADING_STATUS="FINISH_UPLOAD" 
-curl -X POST "http://$ADMIN_SERVER/files/upload_status?domain=$DOMAIN&version=$VERSION&status=$UPLOADING_STATUS" -H "Authorization: Bearer $TOKEN"
+# set the domain version uploading status
+UPLOADING_STATUS=0 # Uploading:0, Finish:1
+
+curl --location --request POST "http://$ADMIN_SERVER/files/upload_status" \
+--header "Authorization: Bearer $TOKEN" \
+--header 'Content-Type: application/json' \
+--data-raw `{
+    "domain":$DOMAIN,
+    "version": 2,
+    "status": $UPLOADING_STATUS
+}`
 # return status code:200 if success 
 
 # upload file
 PATH="/upload/file/path"
-curl -X POST "http://$ADMIN_SERVER/file/upload?domain=$DOMAIN&version=$VERSION&status=$UPLOADING_STATUS" \
--F "file=@$PATH" -H "Authorization: Bearer $TOKEN"
+curl -X POST "http://$ADMIN_SERVER/file/upload" \
+-F "file=@$PATH" -F "domain=$DOMAIN" -F "version=$VERSION" -F "path=$PATH"  -H "Authorization: Bearer $TOKEN"
 ```

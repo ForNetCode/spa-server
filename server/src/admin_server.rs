@@ -1,11 +1,16 @@
-use crate::admin_server::request::{GetDomainOption, GetDomainPathOption, UpdateDomainOption};
+use crate::admin_server::request::{
+    GetDomainOption, GetDomainPathOption, UpdateDomainOption, UpdateUploadingStatusOption,
+};
 use crate::config::AdminConfig;
 use crate::domain_storage::DomainStorage;
 use crate::hot_reload::HotReloadManager;
 use crate::with;
+use hyper::{Body, StatusCode};
+use std::convert::Infallible;
 use std::net::SocketAddr;
 use std::str::FromStr;
 use std::sync::Arc;
+use warp::multipart::FormData;
 use warp::reply::Response;
 use warp::{Filter, Rejection};
 
@@ -31,9 +36,12 @@ impl AdminServer {
     fn routes(&self) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         self.auth().and(
             (warp::get().and(self.get_domain_info().or(self.get_domain_upload_path()))).or(
-                warp::post()
-                    .and(self.update_domain_version())
-                    .or(self.reload_server()),
+                warp::post().and(
+                    self.update_domain_version()
+                        .or(self.reload_server())
+                        .or(self.change_upload_status())
+                        .or(self.upload_file()),
+                ),
             ),
         )
     }
@@ -96,17 +104,56 @@ impl AdminServer {
             .and(with(admin_config))
             .and_then(service::reload_server)
     }
+
+    fn change_upload_status(
+        &self,
+    ) -> impl Filter<Extract = (Response,), Error = Rejection> + Clone {
+        warp::path!("files" / "upload_status")
+            .and(with(self.domain_storage.clone()))
+            .and(
+                warp::body::content_length_limit(1024 * 16)
+                    .and(warp::body::json::<UpdateUploadingStatusOption>()),
+            )
+            .map(service::change_upload_status)
+    }
+
+    fn upload_file(&self) -> impl Filter<Extract = (impl warp::Reply,), Error = Rejection> + Clone {
+        async fn handler(
+            form: FormData,
+            storage: Arc<DomainStorage>,
+        ) -> Result<Response, Infallible> {
+            let resp = service::update_file(form, storage)
+                .await
+                .unwrap_or_else(|e| {
+                    let mut resp = Response::new(Body::from(e.to_string()));
+                    *resp.status_mut() = StatusCode::BAD_REQUEST;
+                    resp
+                });
+            Ok(resp)
+        }
+        warp::path!("file" / "upload")
+            .and(warp::path::end())
+            .and(warp::multipart::form().max_length(self.conf.max_upload_size))
+            .and(with(self.domain_storage.clone()))
+            .and_then(handler)
+    }
 }
 
 pub mod service {
-    use crate::admin_server::request::{GetDomainOption, GetDomainPathOption, UpdateDomainOption};
+    use crate::admin_server::request::{
+        GetDomainOption, GetDomainPathOption, UpdateDomainOption, UpdateUploadingStatusOption,
+    };
     use crate::domain_storage::{DomainStorage, URI_REGEX};
     use crate::{AdminConfig, HotReloadManager};
+    use anyhow::anyhow;
+    use bytes::{Buf, Bytes};
+    use futures_util::TryStreamExt;
     use hyper::Body;
+    use if_chain::if_chain;
     use std::convert::Infallible;
     use std::sync::Arc;
     use warp::http::StatusCode;
-    use warp::multipart::FormData;
+    use warp::multipart::{FormData, Part};
     use warp::reply::Response;
     use warp::Reply;
 
@@ -174,12 +221,107 @@ pub mod service {
         Ok(resp)
     }
 
-    pub(super) async fn update_file(form: FormData, storage: Arc<DomainStorage>) {
-        //storage.get_file()
+    pub(super) fn change_upload_status(
+        storage: Arc<DomainStorage>,
+        param: UpdateUploadingStatusOption,
+    ) -> Response {
+        match storage.update_uploading_status(param.domain, param.version, param.status) {
+            Ok(_) => Response::default(),
+            Err(e) => {
+                let mut resp = Response::new(Body::from(e.to_string()));
+                *resp.status_mut() = StatusCode::BAD_REQUEST;
+                resp
+            }
+        }
+    }
+
+    pub(super) async fn update_file(
+        form: FormData,
+        storage: Arc<DomainStorage>,
+    ) -> anyhow::Result<Response> {
+        let mut parts: Vec<Part> = form.try_collect().await?;
+
+        let mut file_buf: Option<Bytes> = None;
+        let mut path: Option<String> = None;
+        let mut version: Option<u32> = None;
+        let mut domain: Option<String> = None;
+        // this convert cost so much code, it should has more nice way to do data convert.
+        for p in parts.iter_mut() {
+            let name = p.name();
+            if name == "file" {
+                file_buf = p
+                    .data()
+                    .await
+                    .map(|x| {
+                        x.map(|mut x| {
+                            let i = x.remaining();
+                            (&mut x).copy_to_bytes(i)
+                        })
+                        .ok()
+                    })
+                    .flatten();
+            } else if name == "path" {
+                path = p
+                    .data()
+                    .await
+                    .map(|x| {
+                        x.map(|mut buf| {
+                            let i = buf.remaining();
+                            String::from_utf8((&mut buf).copy_to_bytes(i).to_vec()).ok()
+                        })
+                        .ok()
+                        .flatten()
+                    })
+                    .flatten();
+            } else if name == "version" {
+                version = p
+                    .data()
+                    .await
+                    .map(|x| {
+                        x.map(|mut buf| {
+                            let i = buf.remaining();
+                            String::from_utf8((&mut buf).copy_to_bytes(i).to_vec())
+                                .ok()
+                                .map(|x| x.parse::<u32>().ok())
+                                .flatten()
+                        })
+                        .ok()
+                        .flatten()
+                    })
+                    .flatten();
+            } else if name == "domain" {
+                domain = p
+                    .data()
+                    .await
+                    .map(|x| {
+                        x.map(|mut buf| {
+                            let i = buf.remaining();
+                            String::from_utf8((&mut buf).copy_to_bytes(i).to_vec()).ok()
+                        })
+                        .ok()
+                        .flatten()
+                    })
+                    .flatten();
+            }
+        }
+        tracing::debug!("uploading file: {:?}, {:?}, {:?}", domain, version, path);
+        if_chain! {
+            if let Some(_path) = path;
+            if let Some(_version) = version;
+            if let Some(_domain) = domain;
+            if let Some(_file_buf) = file_buf;
+            then {
+                storage.save_file(_domain, _version, _path, _file_buf)?;
+                Ok(Response::default())
+            } else {
+                Err(anyhow!("bad param"))
+            }
+        }
     }
 }
 
 mod request {
+    use crate::domain_storage::UploadingStatus;
     use serde::{Deserialize, Serialize};
 
     #[derive(Deserialize, Serialize)]
@@ -195,7 +337,13 @@ mod request {
     #[derive(Deserialize, Serialize)]
     pub struct UpdateDomainOption {
         pub domain: String,
-        pub version: i32,
+        pub version: u32,
+    }
+    #[derive(Deserialize)]
+    pub struct UpdateUploadingStatusOption {
+        pub domain: String,
+        pub version: u32,
+        pub status: UploadingStatus,
     }
 }
 

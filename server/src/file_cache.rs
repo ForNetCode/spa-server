@@ -16,8 +16,6 @@ use std::time::Duration;
 use walkdir::WalkDir;
 use warp::fs::ArcPath;
 
-static DEFAULT_MAX_SIZE: u64 = 10 * 1024 * 1024;
-
 pub struct FileCache {
     conf: CacheConfig,
     data: DashMap<String, HashMap<String, Arc<CacheItem>>>,
@@ -88,9 +86,7 @@ impl FileCache {
                                 .last()
                                 .map_or("".to_string(), |x| x.to_string());
 
-                            let data_block = if self.conf.max_size.unwrap_or(DEFAULT_MAX_SIZE)
-                                < metadata.len()
-                            {
+                            let data_block = if self.conf.max_size < metadata.len() {
                                 tracing::debug!("file block:{}", entry_path.display());
                                 DataBlock::FileBlock(ArcPath(Arc::new(entry_path)))
                             } else {

@@ -1,12 +1,17 @@
 use crate::file_cache::{CacheItem, FileCache};
 use anyhow::anyhow;
+use bytes::Bytes;
 use dashmap::DashMap;
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use serde_repr::{Deserialize_repr, Serialize_repr};
 use std::fs;
+use std::fs::File;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use warp::fs::sanitize_path;
 
 pub(crate) const URI_REGEX_STR: &str =
     "[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+\\.?";
@@ -16,10 +21,13 @@ lazy_static! {
     pub static ref URI_REGEX: Regex = Regex::new(URI_REGEX_STR).unwrap();
 }
 
+pub(crate) const UPLOADING_FILE_NAME: &str = ".SPA-Processing";
+
 pub struct DomainStorage {
-    meta: DashMap<String, (PathBuf, i32)>,
+    meta: DashMap<String, (PathBuf, u32)>,
     prefix: PathBuf,
     cache: FileCache,
+    uploading_status: DashMap<String, u32>,
 }
 
 impl DomainStorage {
@@ -27,7 +35,9 @@ impl DomainStorage {
         let path_prefix = path_prefix.as_ref();
         let path_prefix_buf = path_prefix.to_path_buf();
         if path_prefix.exists() {
-            let domain_version: DashMap<String, (PathBuf, i32)> = DashMap::new();
+            let domain_version: DashMap<String, (PathBuf, u32)> = DashMap::new();
+            let uploading_status: DashMap<String, u32> = DashMap::new();
+
             let domain_dirs = fs::read_dir(path_prefix)?;
             for domain_dir in domain_dirs {
                 let domain_dir = domain_dir?;
@@ -39,14 +49,18 @@ impl DomainStorage {
                     let mut max_version = 0;
                     for version_dir_entry in fs::read_dir(domain_dir.path())? {
                         let version_dir_entry = version_dir_entry?;
-
                         if let Some(version_dir) = version_dir_entry
                             .file_name()
                             .to_str()
-                            .map(|file_name| file_name.parse::<i32>().ok())
+                            .map(|file_name| file_name.parse::<u32>().ok())
                             .flatten()
                         {
-                            if max_version < version_dir {
+                            let mut path = version_dir_entry.path();
+                            path.push(UPLOADING_FILE_NAME);
+                            // this directory is in uploading
+                            if path.exists() {
+                                uploading_status.insert(domain_dir_name.to_string(), version_dir);
+                            } else if max_version < version_dir {
                                 max_version = version_dir
                             }
                         }
@@ -70,6 +84,7 @@ impl DomainStorage {
                 meta: domain_version,
                 prefix: path_prefix.to_path_buf(),
                 cache,
+                uploading_status,
             })
         } else {
             Err(anyhow!("{:?} does not exist", path_prefix))
@@ -83,10 +98,21 @@ impl DomainStorage {
     pub async fn upload_domain_with_version(
         &self,
         domain: String,
-        version: i32,
+        version: u32,
     ) -> anyhow::Result<()> {
         let new_path = self.prefix.join(&domain).join(version.to_string());
-        if new_path.is_dir() {
+        if self
+            .uploading_status
+            .get(&domain)
+            .filter(|x| *x.value() == version)
+            .is_some()
+        {
+            Err(anyhow!(
+                "domain:{},version:{} is uploading now,please to change upload status",
+                domain,
+                version
+            ))
+        } else if new_path.is_dir() {
             self.meta
                 .insert(domain.clone(), (new_path.clone(), version));
             let data = self.cache.cache_dir(&new_path)?;
@@ -98,17 +124,24 @@ impl DomainStorage {
         }
     }
 
-    pub fn get_version_path(&self, host: &str) -> Option<PathBuf> {
-        self.meta.get(host).map(|d| d.value().0.clone())
+    fn get_version_path(&self, host: &str, version: u32) -> PathBuf {
+        let mut prefix = self.prefix.clone();
+        prefix.push(host);
+        prefix.push(version.to_string());
+        prefix
     }
 
     pub fn get_new_upload_path(&self, domain: &str) -> PathBuf {
-        match self.get_domain_info_by_domain(domain) {
-            Some(domain_info) => {
-                let max_version = domain_info.versions.iter().max().unwrap_or(&0);
-                self.prefix.join(domain).join((max_version + 1).to_string())
+        if let Some(version) = self.uploading_status.get(domain).map(|x| *x.value()) {
+            self.get_version_path(domain, version)
+        } else {
+            match self.get_domain_info_by_domain(domain) {
+                Some(domain_info) => {
+                    let max_version = domain_info.versions.iter().max().unwrap_or(&0);
+                    self.prefix.join(domain).join((max_version + 1).to_string())
+                }
+                None => self.prefix.join(domain).join(1.to_string()),
             }
-            None => self.prefix.join(domain).join(1.to_string()),
         }
     }
 
@@ -142,14 +175,105 @@ impl DomainStorage {
         }
         result
     }
+    fn check_is_in_upload_process(&self, domain: &str, version: &u32) -> bool {
+        self.uploading_status
+            .get(domain)
+            .filter(|x| x.value() == version)
+            .is_some()
+    }
+    pub fn save_file(
+        &self,
+        domain: String,
+        version: u32,
+        path: String,
+        data: Bytes,
+    ) -> anyhow::Result<()> {
+        if self.check_is_in_upload_process(&domain, &version) {
+            let file_path = sanitize_path(self.get_version_path(&domain, version), &path)
+                .map_err(|_| anyhow!("path error"))?;
+            let mut file = if !file_path.exists() {
+                File::create(file_path)?
+            } else {
+                File::open(file_path)?
+            };
+            file.write_all(&data)?;
+            Ok(())
+        } else {
+            Err(anyhow!(
+                "domain:{}, version:{} can't be uploaded file, it's not in the status allowing to upload file",
+                domain,
+                version,
+            ))
+        }
+    }
+
+    pub fn update_uploading_status(
+        &self,
+        domain: String,
+        version: u32,
+        uploading_status: UploadingStatus,
+    ) -> anyhow::Result<()> {
+        if self
+            .get_domain_info_by_domain(&domain)
+            .filter(|x| x.current_version != version)
+            .is_none()
+        {
+            if let Some(uploading_version) = self.uploading_status.get(&domain).map(|v| *v.value())
+            {
+                if uploading_version != version {
+                    return Err(anyhow!(
+                        "domain:{}, version:{} is in uploading, please finish it firstly",
+                        domain,
+                        uploading_version,
+                    ));
+                } else if uploading_status == UploadingStatus::Finish {
+                    let mut p = self.get_version_path(&domain, version);
+                    p.push(UPLOADING_FILE_NAME);
+                    fs::remove_file(p)?;
+                    self.uploading_status
+                        .remove_if(&domain, |_, v| *v == version);
+                    tracing::info!(
+                        "domain:{}, version:{} change to upload status:finish",
+                        domain,
+                        version
+                    );
+                }
+            } else if uploading_status == UploadingStatus::Uploading {
+                let mut p = self.get_version_path(&domain, version);
+                p.push(UPLOADING_FILE_NAME);
+                tracing::info!(
+                    "domain:{}, version:{} change to upload status:uploading",
+                    domain,
+                    version
+                );
+                self.uploading_status.insert(domain, version);
+                File::create(p)?;
+            }
+            Ok(())
+        } else {
+            Err(anyhow!(
+                "domain:{}, version:{} is in serving, can not change upload status",
+                domain,
+                version,
+            ))
+        }
+    }
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct DomainInfo {
     pub domain: String,
-    pub current_version: i32,
+    pub current_version: u32,
     pub versions: Vec<i32>,
 }
+
+#[derive(Serialize_repr, Deserialize_repr, PartialEq, Debug)]
+#[repr(u8)]
+pub enum UploadingStatus {
+    Uploading = 0,
+    Finish = 1,
+}
+
 #[cfg(test)]
 mod test {
     use crate::domain_storage::URI_REGEX_STR;
