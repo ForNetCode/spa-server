@@ -7,7 +7,7 @@ authors = ["timzaak"]
 include = ["src/**/*", "Cargo.toml"]
 
 [[bin]]
-name = "spa-server"
+name = "spa-client"
 path = "src/bin/main.rs"
 
 [dependencies]
@@ -16,7 +16,7 @@ reqwest = { version = "0.11", features = ["json"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "io-std", "sync", "time", "tokio-macros"] }
 
 # command arg parse
-clap = "3.1"
+clap = { version = "3.1", features = ["env", "derive"] }
 
 # tokio trace and log
 tracing = "0.1"

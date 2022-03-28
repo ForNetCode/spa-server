@@ -40,6 +40,7 @@ These api are used with `spa-client` to upload files to the server. the api desi
 
 ```shell
 # get files metadata to prepare to upload file.
+# this api will calculate all files md5, so it's slow when there are large number of files.
 curl "http://$ADMIN_SERVER/files/metadata?domain=$DOMAIN&version=$VERSION" -H "Authorization: Bearer $TOKEN"
 # return [{path:$path_string,md5:$md5_string, length: $file_length_integer}]
 
