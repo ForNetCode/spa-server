@@ -36,7 +36,7 @@ curl -X POST "http://$ADMIN_SERVER/reload" -H "Authorization: Bearer $TOKEN"
 
 ### Uploading File API
 These api are used with `spa-client` to upload files to the server. the api design is described in the doc 
-[Uploading_File_Process.md](./Uploading_File_Process.md)
+[Uploading_File_Process.md](design/Uploading_File_Process.md)
 
 ```shell
 # get files metadata to prepare to upload file.

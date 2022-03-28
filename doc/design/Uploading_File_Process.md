@@ -16,5 +16,5 @@ version is not set `.SPA-Prpccessing`. When `spa-client` tell admin-server uploa
 remove the file `.SPA-Processing`. The version which has `.SPA-Processing` should not be allowed to be online.
 
 
-The above article do not consider how to deal with `S3` storage, I may later bring `S3` http client to admin-server 
-and do some work to improve the performance of `S3` files which are not cached in server.
+The above article do not consider how to deal with `S3` storage, I may later bring `S3` http client to admin-server
+or `spa-client`, and do some work to improve the performance of `S3` files which are not cached in server.

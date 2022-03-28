@@ -25,13 +25,13 @@ percent-encoding = "2.1"
 headers = "0.3"
 mime = "0.3"
 mime_guess = "2.0"
-#async-compression = "0.3"
-flate2 = "1.0"
 rustls = "0.20"
 rustls-pemfile = "0.2"
 tokio-rustls = "0.23"
 futures-util = "0.3"
 bytes = "1"
+# gzip
+flate2 = "1.0"
 
 # tokio trace and log
 tracing = "0.1"

@@ -1,0 +1,26 @@
+[package]
+name = "spa-client"
+version = "0.1.0"
+edition = "2021"
+authors = ["timzaak"]
+
+include = ["src/**/*", "Cargo.toml"]
+
+[[bin]]
+name = "spa-server"
+path = "src/bin/main.rs"
+
+[dependencies]
+# web request
+reqwest = { version = "0.11", features = ["json"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "io-std", "sync", "time", "tokio-macros"] }
+
+# command arg parse
+clap = "3.1"
+
+# tokio trace and log
+tracing = "0.1"
+tracing-subscriber = "0.2"
+
+# util
+anyhow = "1.0"
