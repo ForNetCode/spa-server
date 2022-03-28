@@ -41,7 +41,7 @@ These api are used with `spa-client` to upload files to the server. the api desi
 ```shell
 # get files metadata to prepare to upload file.
 curl "http://$ADMIN_SERVER/files/metadata?domain=$DOMAIN&version=$VERSION" -H "Authorization: Bearer $TOKEN"
-# return TODO
+# return [{path:$path_string,md5:$md5_string, length: $file_length_integer}]
 
 
 # set the domain version uploading status

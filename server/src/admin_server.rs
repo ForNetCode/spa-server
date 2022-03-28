@@ -1,5 +1,5 @@
 use crate::admin_server::request::{
-    GetDomainOption, GetDomainPathOption, UpdateDomainOption, UpdateUploadingStatusOption,
+    DomainWithVersionOption, GetDomainOption, GetDomainPathOption, UpdateUploadingStatusOption,
 };
 use crate::config::AdminConfig;
 use crate::domain_storage::DomainStorage;
@@ -35,14 +35,17 @@ impl AdminServer {
 
     fn routes(&self) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         self.auth().and(
-            (warp::get().and(self.get_domain_info().or(self.get_domain_upload_path()))).or(
-                warp::post().and(
-                    self.update_domain_version()
-                        .or(self.reload_server())
-                        .or(self.change_upload_status())
-                        .or(self.upload_file()),
-                ),
-            ),
+            (warp::get().and(
+                self.get_domain_info()
+                    .or(self.get_domain_upload_path())
+                    .or(self.get_files_metadata()),
+            ))
+            .or(warp::post().and(
+                self.update_domain_version()
+                    .or(self.reload_server())
+                    .or(self.change_upload_status())
+                    .or(self.upload_file()),
+            )),
         )
     }
 
@@ -86,7 +89,7 @@ impl AdminServer {
             .and(warp::path::end())
             .and(
                 warp::body::content_length_limit(1024 * 16)
-                    .and(warp::body::json::<UpdateDomainOption>()),
+                    .and(warp::body::json::<DomainWithVersionOption>()),
             )
             .and(with(self.domain_storage.clone()))
             .and_then(service::update_domain_version)
@@ -137,11 +140,20 @@ impl AdminServer {
             .and(with(self.domain_storage.clone()))
             .and_then(handler)
     }
+
+    fn get_files_metadata(
+        &self,
+    ) -> impl Filter<Extract = (impl warp::Reply,), Error = Rejection> + Clone {
+        warp::path!("files" / "metadata")
+            .and(with(self.domain_storage.clone()))
+            .and(warp::query::<DomainWithVersionOption>())
+            .map(service::get_files_metadata)
+    }
 }
 
 pub mod service {
     use crate::admin_server::request::{
-        GetDomainOption, GetDomainPathOption, UpdateDomainOption, UpdateUploadingStatusOption,
+        DomainWithVersionOption, GetDomainOption, GetDomainPathOption, UpdateUploadingStatusOption,
     };
     use crate::domain_storage::{DomainStorage, URI_REGEX};
     use crate::{AdminConfig, HotReloadManager};
@@ -175,7 +187,7 @@ pub mod service {
     }
 
     pub(super) async fn update_domain_version(
-        option: UpdateDomainOption,
+        option: DomainWithVersionOption,
         storage: Arc<DomainStorage>,
     ) -> Result<Response, Infallible> {
         match storage
@@ -318,6 +330,20 @@ pub mod service {
             }
         }
     }
+
+    pub(super) fn get_files_metadata(
+        storage: Arc<DomainStorage>,
+        query: DomainWithVersionOption,
+    ) -> Response {
+        match storage.get_files_metadata(query.domain, query.version) {
+            Ok(data) => warp::reply::json(&data).into_response(),
+            Err(err) => {
+                let mut resp = Response::new(Body::from(err.to_string()));
+                *resp.status_mut() = StatusCode::BAD_REQUEST;
+                resp
+            }
+        }
+    }
 }
 
 mod request {
@@ -335,7 +361,7 @@ mod request {
     }
 
     #[derive(Deserialize, Serialize)]
-    pub struct UpdateDomainOption {
+    pub struct DomainWithVersionOption {
         pub domain: String,
         pub version: u32,
     }
@@ -350,12 +376,12 @@ mod request {
 // TODO: the code structure is not friendly with Unit Test, need refactor it.
 #[cfg(test)]
 mod test {
-    use crate::admin_server::request::UpdateDomainOption;
+    use crate::admin_server::request::DomainWithVersionOption;
     use warp::test::request;
 
     #[tokio::test]
     async fn update_domain_version_test() {
-        let body = UpdateDomainOption {
+        let body = DomainWithVersionOption {
             domain: "self.noti.link".to_string(),
             version: 1,
         };

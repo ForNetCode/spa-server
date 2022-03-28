@@ -3,14 +3,16 @@ use anyhow::anyhow;
 use bytes::Bytes;
 use dashmap::DashMap;
 use lazy_static::lazy_static;
+use md5::{Digest, Md5};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use std::fs;
 use std::fs::File;
-use std::io::Write;
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use walkdir::{DirEntry, WalkDir};
 use warp::fs::sanitize_path;
 
 pub(crate) const URI_REGEX_STR: &str =
@@ -181,6 +183,68 @@ impl DomainStorage {
             .filter(|x| x.value() == version)
             .is_some()
     }
+
+    pub fn get_files_metadata(
+        &self,
+        domain: String,
+        version: u32,
+    ) -> anyhow::Result<Vec<ShortMetaData>> {
+        let path_buf = self.get_version_path(&domain, version);
+        if path_buf.exists() {
+            let prefix = path_buf
+                .to_str()
+                .map(|x| Ok(format!("{}/", x.to_string())))
+                .unwrap_or(Err(anyhow!("can not parse path")))?;
+            let mut byte_buffer = vec![0u8; 1024 * 1024];
+
+            fn get_short_metadata(
+                entry: DirEntry,
+                prefix: &str,
+                byte_buffer: &mut Vec<u8>,
+            ) -> Option<ShortMetaData> {
+                let x = entry.path().to_str()?;
+                let key = x.replace(prefix, "");
+                if let Ok(meta) = entry.metadata() {
+                    let md5 = File::open(entry.path())
+                        .ok()
+                        .map(|mut f| {
+                            let mut hasher = Md5::new();
+                            //if file_size > 1024 * 1024 {
+                            //1Mb
+                            loop {
+                                let n = f.read(byte_buffer).ok()?;
+                                let valid_buf_slice = &byte_buffer[..n];
+                                if n == 0 {
+                                    break;
+                                }
+                                hasher.update(valid_buf_slice);
+                            }
+                            Some(format!("{:x}", hasher.finalize()))
+                        })
+                        .flatten()?;
+                    let ret = ShortMetaData {
+                        path: key,
+                        md5: md5,
+                        length: meta.len(),
+                    };
+                    tracing::trace!("ShortMetaData {:?}", ret);
+                    Some(ret)
+                } else {
+                    None
+                }
+            }
+            let ret = WalkDir::new(&path_buf)
+                .into_iter()
+                .filter_map(|x| x.ok())
+                .filter(|x| x.file_name() != UPLOADING_FILE_NAME && x.file_type().is_file())
+                .filter_map(|entry| get_short_metadata(entry, &prefix, &mut byte_buffer))
+                .collect::<Vec<ShortMetaData>>();
+            Ok(ret)
+        } else {
+            Err(anyhow!("the path does not exists"))
+        }
+    }
+
     pub fn save_file(
         &self,
         domain: String,
@@ -265,6 +329,13 @@ pub struct DomainInfo {
     pub domain: String,
     pub current_version: u32,
     pub versions: Vec<i32>,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct ShortMetaData {
+    pub path: String,
+    pub md5: String,
+    pub length: u64,
 }
 
 #[derive(Serialize_repr, Deserialize_repr, PartialEq, Debug)]

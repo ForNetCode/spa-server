@@ -46,6 +46,7 @@ serde_repr = "0.1"
 dashmap = "5.2"
 
 # util
+md-5 = "0.10"
 regex = "1.5"
 lazy_static = "1.4"
 # solve return  result
