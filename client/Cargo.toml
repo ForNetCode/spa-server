@@ -11,9 +11,13 @@ name = "spa-client"
 path = "src/bin/main.rs"
 
 [dependencies]
+
+spa-server = {path = "../server"}
+
 # web request
-reqwest = { version = "0.11", features = ["json"] }
+reqwest = { version = "0.11", features = ["json", "blocking", "multipart", "stream"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "io-std", "sync", "time", "tokio-macros"] }
+futures = "0.3"
 
 # command arg parse
 clap = { version = "3.1", features = ["env", "derive"] }
@@ -22,5 +26,17 @@ clap = { version = "3.1", features = ["env", "derive"] }
 tracing = "0.1"
 tracing-subscriber = "0.2"
 
+#config
+hocon = "0.7"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+#console output
+console = "0.15"
+indicatif = "0.16"
+
+md-5 = "0.10"
 # util
 anyhow = "1.0"
+walkdir = "2.3"
+if_chain = "1.0"

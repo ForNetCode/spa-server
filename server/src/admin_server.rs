@@ -346,7 +346,7 @@ pub mod service {
     }
 }
 
-mod request {
+pub mod request {
     use crate::domain_storage::UploadingStatus;
     use serde::{Deserialize, Serialize};
 
@@ -365,7 +365,7 @@ mod request {
         pub domain: String,
         pub version: u32,
     }
-    #[derive(Deserialize)]
+    #[derive(Deserialize, Serialize)]
     pub struct UpdateUploadingStatusOption {
         pub domain: String,
         pub version: u32,

@@ -15,14 +15,17 @@ pub enum Commands {
     Info { domain: Option<String> },
     Upload(UploadArg),
     Release { domain: String, version: u32 },
+    Reload,
 }
 
 #[derive(Args, Debug)]
 pub struct UploadArg {
     #[clap(parse(from_os_str))]
     pub path: PathBuf,
-    #[clap(short, short, default_value_t = 3)]
-    parallel: u32,
+    pub domain: String,
+    pub version: u32,
+    #[clap(short)]
+    pub parallel: Option<u32>,
 }
 
 #[cfg(test)]
@@ -53,10 +56,26 @@ mod test {
 
     #[test]
     fn upload_command() {
-        let c = CliCommand::parse_from(&["test", "upload", "/abc/d/", "-p", "2"]);
-        if let Commands::Upload(UploadArg { path, parallel }) = c.commands {
+        let c = CliCommand::parse_from(&[
+            "test",
+            "upload",
+            "/abc/d/",
+            "www.example.com",
+            "2",
+            "-p",
+            "2",
+        ]);
+        if let Commands::Upload(UploadArg {
+            path,
+            domain,
+            version,
+            parallel,
+        }) = c.commands
+        {
             assert_eq!(path, PathBuf::from("/abc/d"));
-            assert_eq!(parallel, 2);
+            assert_eq!(parallel, Some(2));
+            assert_eq!(domain, "www.example.com".to_string());
+            assert_eq!(version, 2);
         } else {
             unreachable!()
         }

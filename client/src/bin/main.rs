@@ -1,11 +1,10 @@
 use anyhow::Result;
-use clap::Parser;
-use spa_client::commands::CliCommand;
+use spa_client::run;
 use tracing_subscriber::EnvFilter;
-#[tokio::main]
-async fn main() -> Result<()> {
+
+fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env())
         .init();
-    Ok(())
+    run();
 }

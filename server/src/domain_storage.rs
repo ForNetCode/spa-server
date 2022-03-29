@@ -110,7 +110,7 @@ impl DomainStorage {
             .is_some()
         {
             Err(anyhow!(
-                "domain:{},version:{} is uploading now,please to change upload status",
+                "domain:{},version:{} is uploading now, please finish it firstly.",
                 domain,
                 version
             ))
@@ -205,26 +205,10 @@ impl DomainStorage {
                 let x = entry.path().to_str()?;
                 let key = x.replace(prefix, "");
                 if let Ok(meta) = entry.metadata() {
-                    let md5 = File::open(entry.path())
-                        .ok()
-                        .map(|mut f| {
-                            let mut hasher = Md5::new();
-                            //if file_size > 1024 * 1024 {
-                            //1Mb
-                            loop {
-                                let n = f.read(byte_buffer).ok()?;
-                                let valid_buf_slice = &byte_buffer[..n];
-                                if n == 0 {
-                                    break;
-                                }
-                                hasher.update(valid_buf_slice);
-                            }
-                            Some(format!("{:x}", hasher.finalize()))
-                        })
-                        .flatten()?;
+                    let md5 = md5_file(entry.path(), byte_buffer)?;
                     let ret = ShortMetaData {
                         path: key,
-                        md5: md5,
+                        md5,
                         length: meta.len(),
                     };
                     tracing::trace!("ShortMetaData {:?}", ret);
@@ -282,6 +266,7 @@ impl DomainStorage {
             .filter(|x| x.current_version != version)
             .is_none()
         {
+            // is not in server || does not exists
             if let Some(uploading_version) = self.uploading_status.get(&domain).map(|v| *v.value())
             {
                 if uploading_version != version {
@@ -312,6 +297,12 @@ impl DomainStorage {
                 );
                 self.uploading_status.insert(domain, version);
                 File::create(p)?;
+            } else {
+                return Err(anyhow!(
+                    "domain: {}, version:{} is not in uploading status!",
+                    domain,
+                    version
+                ));
             }
             Ok(())
         } else {
@@ -324,6 +315,25 @@ impl DomainStorage {
     }
 }
 
+pub fn md5_file(path: impl AsRef<Path>, byte_buffer: &mut Vec<u8>) -> Option<String> {
+    File::open(path)
+        .ok()
+        .map(|mut f| {
+            let mut hasher = Md5::new();
+            //if file_size > 1024 * 1024 {
+            //1Mb
+            loop {
+                let n = f.read(byte_buffer).ok()?;
+                let valid_buf_slice = &byte_buffer[..n];
+                if n == 0 {
+                    break;
+                }
+                hasher.update(valid_buf_slice);
+            }
+            Some(format!("{:x}", hasher.finalize()))
+        })
+        .flatten()
+}
 #[derive(Deserialize, Serialize, Debug)]
 pub struct DomainInfo {
     pub domain: String,
