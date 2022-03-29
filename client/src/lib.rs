@@ -20,6 +20,7 @@ pub fn run() {
     let result = run_with_commands(commands);
     if let Some(err) = result.err() {
         eprintln!("{}", err);
+        std::process::exit(-1);
     }
 }
 

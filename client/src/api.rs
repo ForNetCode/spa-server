@@ -1,7 +1,5 @@
 use crate::Config;
 use anyhow::anyhow;
-use reqwest::blocking::Response;
-use reqwest::Response as A_RESPONSE;
 use reqwest::{header, multipart, StatusCode};
 use serde_json::Value;
 use spa_server::admin_server::request::UpdateUploadingStatusOption;

@@ -1,16 +1,18 @@
 use crate::API;
 use anyhow::anyhow;
 use console::style;
+use futures::future::Either;
 use futures::StreamExt;
 use if_chain::if_chain;
+use indicatif::ProgressBar;
 use spa_server::admin_server::request::UpdateUploadingStatusOption;
-use spa_server::domain_storage::{md5_file, DomainInfo, ShortMetaData, UploadingStatus};
+use spa_server::domain_storage::{md5_file, ShortMetaData, UploadingStatus};
 use std::borrow::Cow;
 use std::collections::HashMap;
-use std::fs::File;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
-use tracing_subscriber::fmt::layer;
+use tokio::sync::Mutex;
 use walkdir::WalkDir;
 
 pub fn upload_files(
@@ -65,6 +67,19 @@ pub fn upload_files(
             }
         })
         .collect::<Vec<(String, PathBuf)>>();
+    if uploading_files.is_empty() {
+        return Err(anyhow!("There is no file to uploading"));
+    }
+    let uploading_file_count = uploading_files.len();
+    println!(
+        "{}",
+        style(format!(
+            "there are {} files to upload",
+            uploading_file_count
+        ))
+        .green()
+    );
+
     api.change_uploading_status(UpdateUploadingStatusOption {
         domain: domain.clone(),
         version,
@@ -92,38 +107,65 @@ pub fn upload_files(
     let domain: std::borrow::Cow<'static, str> = domain.into();
     let version: std::borrow::Cow<'static, str> = version.to_string().into();
 
+    let count: AtomicU64 = AtomicU64::new(1);
+
     async fn retry_upload<T: Into<Cow<'static, str>> + Clone>(
         api: &API,
         domain: T,
         version: T,
         key: T,
         path: PathBuf,
-    ) -> anyhow::Result<()> {
+        count: AtomicU64,
+    ) -> Either<(String, u64), (String, u64)> {
         for retry in (0..3).into_iter() {
             let r = api
                 .upload_file(domain.clone(), version.clone(), key.clone(), path.clone())
                 .await;
             if r.is_ok() {
-                break;
+                let count = count.fetch_add(1, Ordering::SeqCst);
+                return Either::Right((key.into().to_string(), count));
             }
         }
-        Ok(())
+        let count = count.fetch_add(1, Ordering::SeqCst);
+        Either::Left((key.into().to_string(), count))
     }
 
-    rt.block_on(async move {
-        let upload_result =
-            futures::stream::iter(uploading_files.into_iter().map(|(key, path)| {
-                let key: std::borrow::Cow<'static, str> = key.into();
-                let r = retry_upload(api.as_ref(), domain.clone(), version.clone(), key, path);
-                r
-                //retry(api.clone().as_ref(), &key, &path)
-            }))
-            .buffer_unordered(parallel as usize)
-            .collect::<Vec<anyhow::Result<()>>>()
-            .await;
-
-        //for (key, path) in uploading_files.into_iter() {}
+    let result = rt.block_on(async move {
+        futures::stream::iter(uploading_files.into_iter().map(|(key, path)| {
+            let key: std::borrow::Cow<'static, str> = key.into();
+            let r = retry_upload(
+                api.as_ref(),
+                domain.clone(),
+                version.clone(),
+                key,
+                path,
+                count,
+            );
+            r
+        }))
+        .buffer_unordered(parallel as usize)
+        .map(|result| match result {
+            Either::Left((key, count)) => {
+                eprintln!("({}/{}) {} upload fail", count, uploading_file_count, key);
+                Some(key)
+            }
+            Either::Right((key, count)) => {
+                println!(
+                    "({}/{}) {} upload success",
+                    count, uploading_file_count, key
+                );
+                None
+            }
+        })
+        .collect::<Vec<Option<String>>>()
+        .await
     });
-
+    let fail_keys: Vec<String> = upload_result.into_iter().filter_map(|x| x).collect();
+    if !fail_keys.is_empty() {
+        return Err(anyhow!(
+            "There are {} file(s) uploaded fail.",
+            fail_keys.len()
+        ));
+    }
     Ok(())
 }
