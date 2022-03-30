@@ -1,0 +1,25 @@
+{
+  "name": "spa-client",
+  "version": "0.1.0",
+  "description": "node.js wrapper for sap-client",
+  "main": "index.js",
+  "license": "MIT",
+  "repository": "https://github.com/timzaak/spa-server",
+  "keywords": [
+    "spa-client",
+    "Rust"
+  ],
+  "files": [
+    "index.d.ts",
+    "index.js"
+  ],
+  "scripts": {
+    "build": "napi build --platform --release",
+    "build:debug": "napi build --platform",
+    "version": "napi version"
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "^2.5.0",
+    "@napi-rs/package-template-linux-x64-gnu": "^0.1.0"
+  }
+}

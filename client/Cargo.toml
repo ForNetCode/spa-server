@@ -11,18 +11,26 @@ categories = ["command-line-utilities", "accessibility", "web-programming::http-
 
 include = ["src/**/*", "Cargo.toml"]
 
+rust-version = "1.59"
+
 [[bin]]
 name = "spa-client"
 path = "src/bin/main.rs"
 
-[dependencies]
+[lib]
+crate-type = ["cdylib"]
 
-spa-server = {path = "../server"}
+[dependencies]
+spa-server = { path = "../server" }
 
 # web request
 reqwest = { version = "0.11", features = ["json", "blocking", "multipart", "stream"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "io-std", "sync", "time", "tokio-macros"] }
 futures = "0.3"
+
+#interact with js
+napi = { version = "2" }
+napi-derive = { version = "2" }
 
 # command arg parse
 clap = { version = "3.1", features = ["env", "derive"] }
@@ -45,3 +53,10 @@ md-5 = "0.10"
 anyhow = "1.0"
 walkdir = "2.3"
 if_chain = "1.0"
+
+
+[build-dependencies]
+napi-build = "1"
+
+[profile.release]
+lto = true

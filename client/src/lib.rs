@@ -10,9 +10,12 @@ use crate::api::API;
 use crate::commands::{CliCommand, Commands};
 use crate::config::Config;
 use crate::upload_files::upload_files;
+
 use clap::Parser;
 use console::style;
+use napi_derive::napi;
 
+// this is for bin
 pub fn run() {
     let commands = CliCommand::parse();
     let result = run_with_commands(commands);
@@ -20,6 +23,14 @@ pub fn run() {
         eprintln!("{}", err);
         std::process::exit(-1);
     }
+}
+
+//this is for js
+#[napi]
+pub fn run_with_command_options(args:String) {
+    //let commands = CliCommand::parse_from(args);
+    println!("hello world");
+    //run_with_commands(commands);
 }
 
 fn success(message: &str) {
