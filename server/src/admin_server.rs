@@ -1,6 +1,4 @@
-use crate::admin_server::request::{
-    DomainWithVersionOption, GetDomainOption, GetDomainPathOption, UpdateUploadingStatusOption,
-};
+use crate::admin_server::request::{DomainWithOptVersionOption, DomainWithVersionOption, GetDomainOption, GetDomainPositionOption, UpdateUploadingStatusOption};
 use crate::config::AdminConfig;
 use crate::domain_storage::DomainStorage;
 use crate::hot_reload::HotReloadManager;
@@ -76,10 +74,10 @@ impl AdminServer {
     fn get_domain_upload_path(
         &self,
     ) -> impl Filter<Extract = (Response,), Error = Rejection> + Clone {
-        warp::path!("upload" / "path")
-            .and(warp::query::<GetDomainPathOption>())
+        warp::path!("upload" / "position")
+            .and(warp::query::<GetDomainPositionOption>())
             .and(with(self.domain_storage.clone()))
-            .map(service::get_domain_upload_path)
+            .map(service::get_upload_position)
     }
 
     fn update_domain_version(
@@ -87,10 +85,7 @@ impl AdminServer {
     ) -> impl Filter<Extract = (impl warp::Reply,), Error = Rejection> + Clone {
         warp::path("update_version")
             .and(warp::path::end())
-            .and(
-                warp::body::content_length_limit(1024 * 16)
-                    .and(warp::body::json::<DomainWithVersionOption>()),
-            )
+            .and(warp::body::content_length_limit(1024 * 16).and(warp::body::json::<DomainWithOptVersionOption>()))
             .and(with(self.domain_storage.clone()))
             .and_then(service::update_domain_version)
     }
@@ -152,9 +147,7 @@ impl AdminServer {
 }
 
 pub mod service {
-    use crate::admin_server::request::{
-        DomainWithVersionOption, GetDomainOption, GetDomainPathOption, UpdateUploadingStatusOption,
-    };
+    use crate::admin_server::request::{DomainWithOptVersionOption, DomainWithVersionOption, GetDomainOption, GetDomainPositionFormat, GetDomainPositionOption, UpdateUploadingStatusOption};
     use crate::domain_storage::{DomainStorage, URI_REGEX};
     use crate::{AdminConfig, HotReloadManager};
     use anyhow::anyhow;
@@ -187,15 +180,15 @@ pub mod service {
     }
 
     pub(super) async fn update_domain_version(
-        option: DomainWithVersionOption,
+        option: DomainWithOptVersionOption,
         storage: Arc<DomainStorage>,
     ) -> Result<Response, Infallible> {
         match storage
             .upload_domain_with_version(option.domain.clone(), option.version)
             .await
         {
-            Ok(_) => {
-                let text = format!("domain:{} has changed to {}", option.domain, option.version);
+            Ok(version) => {
+                let text = format!("domain:{} has changed to {}", option.domain, version);
                 tracing::info!("{}", &text);
                 Ok(text.into_response())
             }
@@ -203,16 +196,20 @@ pub mod service {
         }
     }
 
-    pub(super) fn get_domain_upload_path(
-        option: GetDomainPathOption,
+    pub(super) fn get_upload_position(
+        option: GetDomainPositionOption,
         storage: Arc<DomainStorage>,
     ) -> Response {
         if URI_REGEX.is_match(&option.domain) {
-            storage
-                .get_new_upload_path(&option.domain)
-                .to_string_lossy()
-                .to_string()
-                .into_response()
+            let ret = storage
+                .get_upload_position(&option.domain);
+            if option.format == GetDomainPositionFormat::Json {
+                warp::reply::json(&ret).into_response()
+            } else {
+                ret.path.to_string_lossy()
+                    .to_string()
+                    .into_response()
+            }
         } else {
             StatusCode::BAD_REQUEST.into_response()
         }
@@ -355,15 +352,35 @@ pub mod request {
         pub domain: Option<String>,
     }
 
-    #[derive(Deserialize, Serialize)]
-    pub struct GetDomainPathOption {
+    #[derive(Deserialize, Serialize, Debug, Eq, PartialEq)]
+    pub enum GetDomainPositionFormat {
+        Path,
+        Json,
+    }
+    impl Default for GetDomainPositionFormat {
+        fn default() -> Self {
+            GetDomainPositionFormat::Path
+        }
+    }
+
+    #[derive(Deserialize, Serialize, Debug)]
+    pub struct GetDomainPositionOption {
         pub domain: String,
+        //#[serde(default="crate::admin_server::request::GetDomainPositionFormat::Path")]
+        #[serde(default)]
+        pub format: GetDomainPositionFormat
     }
 
     #[derive(Deserialize, Serialize)]
     pub struct DomainWithVersionOption {
         pub domain: String,
         pub version: u32,
+    }
+
+    #[derive(Deserialize, Serialize)]
+    pub struct DomainWithOptVersionOption {
+        pub domain: String,
+        pub version: Option<u32>,
     }
     #[derive(Deserialize, Serialize)]
     pub struct UpdateUploadingStatusOption {

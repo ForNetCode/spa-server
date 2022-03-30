@@ -2,8 +2,8 @@ use crate::Config;
 use anyhow::anyhow;
 use reqwest::{header, multipart, StatusCode};
 use serde_json::Value;
-use spa_server::admin_server::request::UpdateUploadingStatusOption;
-use spa_server::domain_storage::ShortMetaData;
+use spa_server::admin_server::request::{DomainWithOptVersionOption, UpdateUploadingStatusOption};
+use spa_server::domain_storage::{ShortMetaData, UploadDomainPosition};
 use std::borrow::Cow;
 use std::path::PathBuf;
 
@@ -22,6 +22,15 @@ macro_rules! handle {
         }
     };
 }
+macro_rules! string_resp {
+    ($resp:ident) => {
+        if $resp.status() == StatusCode::OK {
+            Ok($resp.text()?)
+        } else {
+            Err(anyhow!($resp.text()?))
+        }
+    };
+}
 macro_rules! json_resp {
     ($resp:ident) => {
         if $resp.status() == StatusCode::OK {
@@ -30,6 +39,13 @@ macro_rules! json_resp {
             Err(anyhow!($resp.text()?))
         }
     };
+    ($t:tt,$resp:ident) => {
+        if $resp.status() == StatusCode::OK {
+            Ok($resp.json::<$t>()?)
+        } else {
+            Err(anyhow!($resp.text()?))
+        }
+    }
 }
 
 impl API {
@@ -81,14 +97,14 @@ impl API {
         handle!(resp)
     }
 
-    pub fn release_domain_version(&self, domain: String, version: u32) -> anyhow::Result<()> {
-        //self.blocking_client
+    pub fn release_domain_version(&self, domain: String, version: Option<u32>) -> anyhow::Result<String> {
         let resp = self
             .blocking_client
             .post("update_version")
-            .query(&[("domain", domain), ("version", version.to_string())])
-            .send()?;
-        handle!(resp)
+            .json(&DomainWithOptVersionOption{
+                domain,version,
+            }).send();
+        string_resp!(resp)
     }
 
     pub fn reload_sap_server(&self) -> anyhow::Result<()> {
@@ -137,19 +153,25 @@ impl API {
             .get(self.url("files/metadata"))
             .query(&[("domain", domain), ("version", &version.to_string())])
             .send()?;
-        if resp.status() == StatusCode::OK {
-            let r = resp.json()?;
-            Ok(r)
-        } else {
-            Err(anyhow!(resp.text()?))
-        }
+        json_resp!(resp, Vec<ShortMetaData>)
+    }
+
+    pub fn get_upload_position(
+        &self,
+        domain:&str,
+    ) -> anyhow::Result<UploadDomainPosition> {
+        let resp = self.blocking_client
+            .get(self.url("upload/position"))
+            .query(&[("domain",domain)]).send()?;
+        json_resp!(resp, UploadDomainPosition)
+
     }
 }
 #[cfg(test)]
 mod test {
     use crate::api::API;
     use spa_server::admin_server::request::UpdateUploadingStatusOption;
-    use spa_server::domain_storage::{DomainInfo, UploadingStatus};
+    use spa_server::domain_storage::{UploadingStatus};
     fn get_api() -> API {
         let config = crate::config::test::default_local_config().unwrap();
         API::new(&config).unwrap()

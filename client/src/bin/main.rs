@@ -1,4 +1,3 @@
-use anyhow::Result;
 use spa_client::run;
 use tracing_subscriber::EnvFilter;
 

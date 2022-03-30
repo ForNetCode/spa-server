@@ -4,29 +4,28 @@ use console::style;
 use futures::future::Either;
 use futures::StreamExt;
 use if_chain::if_chain;
-use indicatif::ProgressBar;
 use spa_server::admin_server::request::UpdateUploadingStatusOption;
-use spa_server::domain_storage::{md5_file, ShortMetaData, UploadingStatus};
+use spa_server::domain_storage::{GetDomainPositionStatus, md5_file, ShortMetaData, UploadingStatus};
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
-use tokio::sync::Mutex;
 use walkdir::WalkDir;
 
 pub fn upload_files(
     api: API,
     domain: String,
-    version: u32,
+    version: Option<u32>,
     path: PathBuf,
     parallel: u32,
 ) -> anyhow::Result<()> {
+
     if path.is_dir() {
         return Err(anyhow!("{:?} is not a directory", path));
     }
     let prefix_path = path.to_str().unwrap().to_string();
-
+    let version = get_upload_version(&api,&domain, version)?;
     println!("Begin to fetch server file metadata with md5,\nyou may need to wait if there are large number of files.");
     let server_metadata = api.get_file_metadata(&domain, version)?;
     if !server_metadata.is_empty() {
@@ -105,41 +104,20 @@ pub fn upload_files(
     );
     let api = Arc::new(api);
     let domain: std::borrow::Cow<'static, str> = domain.into();
-    let version: std::borrow::Cow<'static, str> = version.to_string().into();
+    let str_version: std::borrow::Cow<'static, str> = version.to_string().into();
 
-    let count: AtomicU64 = AtomicU64::new(1);
-
-    async fn retry_upload<T: Into<Cow<'static, str>> + Clone>(
-        api: &API,
-        domain: T,
-        version: T,
-        key: T,
-        path: PathBuf,
-        count: AtomicU64,
-    ) -> Either<(String, u64), (String, u64)> {
-        for retry in (0..3).into_iter() {
-            let r = api
-                .upload_file(domain.clone(), version.clone(), key.clone(), path.clone())
-                .await;
-            if r.is_ok() {
-                let count = count.fetch_add(1, Ordering::SeqCst);
-                return Either::Right((key.into().to_string(), count));
-            }
-        }
-        let count = count.fetch_add(1, Ordering::SeqCst);
-        Either::Left((key.into().to_string(), count))
-    }
-
-    let result = rt.block_on(async move {
+    let process_count = Arc::new(AtomicU64::new(1));
+    let upload_result = rt.block_on(async {
+        let api= api.clone();
         futures::stream::iter(uploading_files.into_iter().map(|(key, path)| {
             let key: std::borrow::Cow<'static, str> = key.into();
             let r = retry_upload(
                 api.as_ref(),
                 domain.clone(),
-                version.clone(),
+                str_version.clone(),
                 key,
                 path,
-                count,
+                process_count.clone(),
             );
             r
         }))
@@ -166,6 +144,50 @@ pub fn upload_files(
             "There are {} file(s) uploaded fail.",
             fail_keys.len()
         ));
+    } else {
+        api.change_uploading_status(UpdateUploadingStatusOption {
+            domain: domain.clone().to_string(),
+            version,
+            status: UploadingStatus::Finish,
+        })?;
     }
     Ok(())
+}
+
+async fn retry_upload<T: Into<Cow<'static, str>> + Clone>(
+    api: &API,
+    domain: T,
+    version: T,
+    key: T,
+    path: PathBuf,
+    count: Arc<AtomicU64>,
+) -> Either<(String, u64), (String, u64)> {
+    for retry in (0..3).into_iter() {
+        let r = api
+            .upload_file(domain.clone(), version.clone(), key.clone(), path.clone())
+            .await;
+        if r.is_ok() {
+            let count = count.fetch_add(1, Ordering::SeqCst);
+            return Either::Right((key.into().to_string(), count));
+        }
+    }
+    let count = count.fetch_add(1, Ordering::SeqCst);
+    Either::Left((key.into().to_string(), count))
+}
+
+
+fn get_upload_version(api:&API,domain:&str, version:Option<u32>) -> anyhow::Result<u32> {
+    if let Some(version) = version {
+        Ok(version)
+    } else {
+        let resp = api.get_upload_position(domain)?;
+        match resp.status  {
+            GetDomainPositionStatus::NewDomain =>{
+                println!("domain:{} is new in server!", domain);
+            },
+            _ => {}
+        };
+        Ok(resp.version)
+    }
+
 }

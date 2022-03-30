@@ -14,7 +14,9 @@ pub struct CliCommand {
 pub enum Commands {
     Info { domain: Option<String> },
     Upload(UploadArg),
-    Release { domain: String, version: u32 },
+    Release {
+        domain: String,
+        version: Option<u32> },
     Reload,
 }
 
@@ -23,7 +25,7 @@ pub struct UploadArg {
     #[clap(parse(from_os_str))]
     pub path: PathBuf,
     pub domain: String,
-    pub version: u32,
+    pub version: Option<u32>,
     #[clap(short)]
     pub parallel: Option<u32>,
 }
@@ -75,7 +77,7 @@ mod test {
             assert_eq!(path, PathBuf::from("/abc/d"));
             assert_eq!(parallel, Some(2));
             assert_eq!(domain, "www.example.com".to_string());
-            assert_eq!(version, 2);
+            assert_eq!(version, Some(2));
         } else {
             unreachable!()
         }
@@ -86,7 +88,17 @@ mod test {
         // println!("{:?}", &c);
         if let Commands::Release { domain, version } = c.commands {
             assert_eq!(domain, "www.example.com".to_string());
-            assert_eq!(version, 2);
+            assert_eq!(version, Some(2));
+        } else {
+            unreachable!()
+        }
+    }
+    #[test]
+    fn release_command2() {
+        let c = CliCommand::parse_from(&["test", "release", "www.example.com"]);
+        if let Commands::Release { domain, version } = c.commands {
+            assert_eq!(domain, "www.example.com".to_string());
+            assert_eq!(version, None);
         } else {
             unreachable!()
         }

@@ -100,8 +100,18 @@ impl DomainStorage {
     pub async fn upload_domain_with_version(
         &self,
         domain: String,
-        version: u32,
-    ) -> anyhow::Result<()> {
+        version: Option<u32>,
+    ) -> anyhow::Result<u32> {
+        let version = if let Some(version) = version {
+            version
+        } else {
+            let max_version_opt = self.get_domain_info_by_domain(&domain).map(|x| x.versions).unwrap_or(Vec::new()).into_iter().max();
+            if let Some(max_version) = max_version_opt {
+                max_version
+            } else {
+                return Err(anyhow!("domain:{} does not exist version, please check if domain err", &domain));
+            }
+        };
         let new_path = self.prefix.join(&domain).join(version.to_string());
         if self
             .uploading_status
@@ -110,17 +120,18 @@ impl DomainStorage {
             .is_some()
         {
             Err(anyhow!(
-                "domain:{},version:{} is uploading now, please finish it firstly.",
+                "domain:{},version:{} is uploading now, please finish it firstly",
                 domain,
                 version
             ))
         } else if new_path.is_dir() {
+            tracing::info!("begin to update domain:{}, version:{}, putting files to cache", &domain, version);
             self.meta
                 .insert(domain.clone(), (new_path.clone(), version));
             let data = self.cache.cache_dir(&new_path)?;
-            tracing::info!("update domain:{}, version:{} ", &domain, version);
+            tracing::info!("update domain:{}, version:{} finish!", &domain, version);
             self.cache.update(domain, data);
-            Ok(())
+            Ok(version)
         } else {
             Err(anyhow!("{:?} does not exits", new_path))
         }
@@ -133,16 +144,32 @@ impl DomainStorage {
         prefix
     }
 
-    pub fn get_new_upload_path(&self, domain: &str) -> PathBuf {
+    pub fn get_upload_position(&self, domain: &str) -> UploadDomainPosition {
         if let Some(version) = self.uploading_status.get(domain).map(|x| *x.value()) {
-            self.get_version_path(domain, version)
+            UploadDomainPosition {
+                path:self.get_version_path(domain, version),
+                version,
+                status: GetDomainPositionStatus::InUploading,
+            }
         } else {
             match self.get_domain_info_by_domain(domain) {
                 Some(domain_info) => {
                     let max_version = domain_info.versions.iter().max().unwrap_or(&0);
-                    self.prefix.join(domain).join((max_version + 1).to_string())
+                    let version = max_version + 1u32;
+                    UploadDomainPosition {
+                        path:self.prefix.join(domain).join(version.to_string()),
+                        version,
+                        status: GetDomainPositionStatus::NewVersion,
+                    }
                 }
-                None => self.prefix.join(domain).join(1.to_string()),
+                None => {
+                    let version = 1;
+                    UploadDomainPosition {
+                        version,
+                        path:self.prefix.join(domain).join(version.to_string()),
+                        status: GetDomainPositionStatus::NewDomain,
+                    }
+                },
             }
         }
     }
@@ -157,12 +184,12 @@ impl DomainStorage {
         let mut result: Vec<DomainInfo> = Vec::new();
         for item in self.meta.iter() {
             let (path, version) = item.value();
-            let mut versions: Vec<i32> = Vec::new();
+            let mut versions: Vec<u32> = Vec::new();
             if let Ok(version_dir) = fs::read_dir(path.parent().unwrap()) {
                 for version in version_dir {
                     if let Ok(version) = version {
                         if let Some(Ok(version)) =
-                            version.file_name().to_str().map(|x| x.parse::<i32>())
+                            version.file_name().to_str().map(|x| x.parse::<u32>())
                         {
                             versions.push(version)
                         }
@@ -338,7 +365,7 @@ pub fn md5_file(path: impl AsRef<Path>, byte_buffer: &mut Vec<u8>) -> Option<Str
 pub struct DomainInfo {
     pub domain: String,
     pub current_version: u32,
-    pub versions: Vec<i32>,
+    pub versions: Vec<u32>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -353,6 +380,21 @@ pub struct ShortMetaData {
 pub enum UploadingStatus {
     Uploading = 0,
     Finish = 1,
+}
+
+#[derive(Serialize_repr, Deserialize_repr, PartialEq, Debug)]
+#[repr(u8)]
+pub enum GetDomainPositionStatus {
+    NewDomain = 0,
+    NewVersion = 1,
+    InUploading = 2
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct UploadDomainPosition {
+    pub path: PathBuf,
+    pub version: u32,
+    pub status: GetDomainPositionStatus,
 }
 
 #[cfg(test)]

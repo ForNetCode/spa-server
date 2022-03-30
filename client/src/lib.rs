@@ -27,6 +27,7 @@ pub fn run() {
 fn success(message: &str) {
     println!("{}", style(message).green());
 }
+
 fn run_with_commands(commands: CliCommand) -> anyhow::Result<()> {
     let config = Config::load(commands.config_dir)?;
     println!(
@@ -35,7 +36,7 @@ fn run_with_commands(commands: CliCommand) -> anyhow::Result<()> {
             "spa-client connect to admin server( {} )",
             &config.server.address
         ))
-        .green()
+            .green()
     );
     let api = API::new(&config)?;
 
@@ -48,12 +49,8 @@ fn run_with_commands(commands: CliCommand) -> anyhow::Result<()> {
             upload_files(api, arg.domain, arg.version, arg.path, parallel)?;
         }
         Commands::Release { domain, version } => {
-            api.change_uploading_status(UpdateUploadingStatusOption {
-                domain,
-                version,
-                status: UploadingStatus::Finish,
-            })?;
-            success("release success!");
+            let resp = api.release_domain_version(domain, version)?;
+            success(&resp);
         }
         Commands::Reload => {
             api.reload_sap_server()?;
@@ -74,11 +71,13 @@ mod test {
         env::set_var("SPA_SERVER_AUTH_TOKEN", "token");
         env::set_var("SPA_UPLOAD_PARALLEL", "4");
     }
+
     #[test]
     fn test_info() {
         init_config();
         run_with_commands(CliCommand::parse_from(&["test", "info"])).unwrap();
     }
+
     #[test]
     fn test_release() {
         init_config();
@@ -88,6 +87,6 @@ mod test {
             "www.example.com",
             "2",
         ]))
-        .unwrap();
+            .unwrap();
     }
 }
