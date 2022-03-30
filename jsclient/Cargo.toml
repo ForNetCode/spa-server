@@ -1,0 +1,30 @@
+[package]
+name = "spa-client-js"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/timzaak/spa-server"
+readme = "README.md"
+keywords = ["spa-server-cli", "release-web-tool"]
+categories = ["command-line-utilities", "javascript"]
+description = "This is a js wrapper for spa-client"
+
+rust-version = "1.59"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+crate-type = ["cdylib"]
+
+
+[dependencies]
+spa-client = { path="../client" }
+
+#interact with js
+napi = { version = "2" }
+napi-derive = { version = "2" }
+
+[build-dependencies]
+napi-build = "1"
+
+[profile.release]
+lto = true

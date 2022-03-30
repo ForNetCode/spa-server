@@ -13,7 +13,6 @@ use crate::upload_files::upload_files;
 
 use clap::Parser;
 use console::style;
-use napi_derive::napi;
 
 // this is for bin
 pub fn run() {
@@ -24,13 +23,16 @@ pub fn run() {
         std::process::exit(-1);
     }
 }
-
 //this is for js
-#[napi]
-pub fn run_with_command_options(args:String) {
-    //let commands = CliCommand::parse_from(args);
-    println!("hello world");
-    //run_with_commands(commands);
+pub fn run_js() {
+    let args = std::env::args_os().skip(1);
+    // println!("{:?}", &args);
+    let commands = CliCommand::parse_from(args);
+    let result = run_with_commands(commands);
+    if let Some(err) = result.err() {
+        eprintln!("{}", err);
+        std::process::exit(-1);
+    }
 }
 
 fn success(message: &str) {
@@ -40,12 +42,8 @@ fn success(message: &str) {
 fn run_with_commands(commands: CliCommand) -> anyhow::Result<()> {
     let config = Config::load(commands.config_dir)?;
     println!(
-        "{}",
-        style(format!(
-            "spa-client connect to admin server( {} )",
-            &config.server.address
-        ))
-            .green()
+        "spa-client connect to admin server({})",
+        &config.server.address
     );
     let api = API::new(&config)?;
 
@@ -96,6 +94,6 @@ mod test {
             "www.example.com",
             "2",
         ]))
-            .unwrap();
+        .unwrap();
     }
 }

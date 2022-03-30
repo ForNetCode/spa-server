@@ -17,8 +17,6 @@ rust-version = "1.59"
 name = "spa-client"
 path = "src/bin/main.rs"
 
-[lib]
-crate-type = ["cdylib"]
 
 [dependencies]
 spa-server = { path = "../server" }
@@ -28,9 +26,7 @@ reqwest = { version = "0.11", features = ["json", "blocking", "multipart", "stre
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "io-std", "sync", "time", "tokio-macros"] }
 futures = "0.3"
 
-#interact with js
-napi = { version = "2" }
-napi-derive = { version = "2" }
+
 
 # command arg parse
 clap = { version = "3.1", features = ["env", "derive"] }
@@ -55,8 +51,3 @@ walkdir = "2.3"
 if_chain = "1.0"
 
 
-[build-dependencies]
-napi-build = "1"
-
-[profile.release]
-lto = true

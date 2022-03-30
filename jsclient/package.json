@@ -14,12 +14,11 @@
     "index.js"
   ],
   "scripts": {
-    "build": "napi build --platform --release",
-    "build:debug": "napi build --platform",
+    "build:release": "napi build --platform --release",
+    "build": "napi build --platform",
     "version": "napi version"
   },
   "devDependencies": {
-    "@napi-rs/cli": "^2.5.0",
-    "@napi-rs/package-template-linux-x64-gnu": "^0.1.0"
+    "@napi-rs/cli": "^2.5.0"
   }
 }
