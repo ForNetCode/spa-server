@@ -189,5 +189,4 @@ fn get_upload_version(api:&API,domain:&str, version:Option<u32>) -> anyhow::Resu
         };
         Ok(resp.version)
     }
-
 }

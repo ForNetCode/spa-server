@@ -3,6 +3,11 @@ name = "spa-server"
 version = "1.2.2"
 edition = "2021"
 authors = ["timzaak"]
+license = "MIT"
+repository = "https://github.com/timzaak/spa-server"
+readme = "README.md"
+keywords = ["static-web-server", "spa-server"]
+categories = ["web-programming::http-server"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

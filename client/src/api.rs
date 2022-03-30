@@ -39,7 +39,7 @@ macro_rules! json_resp {
             Err(anyhow!($resp.text()?))
         }
     };
-    ($t:tt,$resp:ident) => {
+    ($resp:ident, $t:ty) => {
         if $resp.status() == StatusCode::OK {
             Ok($resp.json::<$t>()?)
         } else {
@@ -103,7 +103,7 @@ impl API {
             .post("update_version")
             .json(&DomainWithOptVersionOption{
                 domain,version,
-            }).send();
+            }).send()?;
         string_resp!(resp)
     }
 

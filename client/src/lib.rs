@@ -12,8 +12,6 @@ use crate::config::Config;
 use crate::upload_files::upload_files;
 use clap::Parser;
 use console::style;
-use spa_server::admin_server::request::UpdateUploadingStatusOption;
-use spa_server::domain_storage::UploadingStatus;
 
 pub fn run() {
     let commands = CliCommand::parse();

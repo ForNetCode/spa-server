@@ -3,6 +3,11 @@ name = "spa-client"
 version = "0.1.0"
 edition = "2021"
 authors = ["timzaak"]
+license = "MIT"
+repository = "https://github.com/timzaak/spa-server"
+readme = "README.md"
+keywords = ["spa-server-cli", "release-web-tool"]
+categories = ["command-line-utilities", "accessibility", "web-programming::http-client"]
 
 include = ["src/**/*", "Cargo.toml"]
 
