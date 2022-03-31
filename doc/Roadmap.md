@@ -3,14 +3,13 @@
 ### version 1.2.3
 - [x] admin server export http api to accept files to local file system
 - [x] add client to sync local files to admin server（retry support）
-- [ ] release client mac/ios/linux (add github cd)
+- [ ] release client mac/ios/linux (with github cd)
 - [ ] drop self maintained `Warp`(copy out needed code from Warp, it must be dropped, because spa-server release to crate need standard Warp version)
 - [ ] ~~release server/client to crate~~ [crate needs dep version, need replace warp firstly](https://github.com/rust-lang/cargo/issues/1565)
 - [ ] doc about how to use with client and example/test frontend repo.
 #### add js plugin
-- [ ] add client wrapper as vite plugin
-- [ ] add client wrapper as webpack plugin
-
+- [x] add js wrapper for spa-client
+- [ ] release js wrapper to npm.org
 
 ### version 1.2.2
 - [x] cache File `Range` Header support
