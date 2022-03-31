@@ -4,7 +4,6 @@
 - [x] admin server export http api to accept files to local file system
 - [x] add client to sync local files to admin server（retry support）
 - [ ] release client mac/ios/linux (with github cd)
-- [ ] drop self maintained `Warp`(copy out needed code from Warp, it must be dropped, because spa-server release to crate need standard Warp version)
 - [ ] ~~release server/client to crate~~ [crate needs dep version, need replace warp firstly](https://github.com/rust-lang/cargo/issues/1565)
 - [x] doc about how to use with shell client
 #### add js plugin
