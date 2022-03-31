@@ -1,5 +1,5 @@
 # this is from https://github.com/extrawurst/gitui/blob/master/.github/workflows/cd.yml
-name: CD
+name: spa-client-js-cd
 
 on:
   workflow_dispatch:

@@ -1,6 +1,6 @@
 # this is from https://github.com/extrawurst/gitui/blob/master/.github/workflows/cd.yml
 # this does not work now!
-name: spa-Client-cd
+name: spa-client-cd
 
 on:
 #  push:

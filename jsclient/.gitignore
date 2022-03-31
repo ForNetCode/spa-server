@@ -2,8 +2,6 @@ node_modules
 package-lock.json
 .idea
 
-spa-client.darwin-x64.node
-spa-client.linux-x64-gnu.node
-spa-client.win32-x64-msvc.node
+spa-client.*.node
 
 /debug
