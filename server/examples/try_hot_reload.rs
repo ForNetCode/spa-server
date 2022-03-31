@@ -61,6 +61,7 @@ fn get_socket() -> anyhow::Result<TcpListener> {
     let socket = Socket::new(Domain::for_address(addr), Type::STREAM, None)?;
     socket.set_nodelay(true)?;
     // socket.set_reuse_address(true)?;
+    #[cfg(any(target_os = "linux", target_vendor = "apple"))]
     socket.set_reuse_port(true)?;
     socket.set_nonblocking(true)?;
     socket.bind(&addr.into())?;

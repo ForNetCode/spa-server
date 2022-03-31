@@ -22,7 +22,7 @@ path = "src/bin/main.rs"
 spa-server = { path = "../server" }
 
 # web request
-reqwest = { version = "0.11", features = ["json", "blocking", "multipart", "stream"] }
+reqwest = { version = "0.11", features = ["json", "blocking", "multipart", "stream"], default-features = false }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "io-std", "sync", "time", "tokio-macros"] }
 futures = "0.3"
 

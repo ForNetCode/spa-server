@@ -175,9 +175,9 @@ pub fn get_socket(address: SocketAddr) -> anyhow::Result<TcpListener> {
     let socket = Socket::new(Domain::for_address(address), Type::STREAM, None)?;
     socket.set_nodelay(true)?;
     // socket.set_reuse_address(true)?;
+    #[cfg(any(target_os = "linux", target_vendor = "apple"))]
     socket.set_reuse_port(true)?;
     socket.set_nonblocking(true)?;
-    #[cfg(any(target_os = "linux", target_vendor = "apple"))]
     socket.bind(&address.into())?;
     socket.listen(128)?;
     let listener: TcpListener = socket.into();

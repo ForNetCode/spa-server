@@ -36,9 +36,9 @@ build-spa-client-js:
 
 # this is for local machine, not for GitHub Action
 docker-release:
-	ifndef VERSION
-	$(error VERSION is not set)
-	endif
+ifeq ($(VERSION), )
+	$(error VEDRSION is not set)
+else
 	DOCKER_BUILDKIT=1 docker build . -t="timzaak/spa-server:$(VERSION)"
-	docker push timzaak/spa-server:$(VERSION)
-
+    docker push timzaak/spa-server:$(VERSION)
+endif
