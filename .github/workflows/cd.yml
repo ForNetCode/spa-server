@@ -4,7 +4,12 @@ name: CD
 on:
   push:
     tags:
-      - '*'
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tags:
+        required: true
+        description: "git tag"
 
 jobs:
   release:
@@ -25,12 +30,13 @@ jobs:
         with:
           toolchain: stable
           profile: minimal
-          components: clippy
 
-      - name: New Resolver
-        run: |
-          cargo install cargo-modify --force
-          cargo modify new-resolver
+      - name: Install Node
+        uses: actions/setup-node@v2
+        with:
+          node-version: "16"
+          cache: "npm"
+
       - name: Build
         run: cargo build
 

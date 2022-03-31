@@ -1,6 +1,5 @@
 # All is from https://github.com/extrawurst/gitui
 
-VERSION = ""
 build-release:
 	cargo build --release
 
@@ -33,9 +32,3 @@ docker-release:
 	DOCKER_BUILDKIT=1 docker build . -t="timzaak/spa-server:$(VERSION)"
 	docker push timzaak/spa-server:$(VERSION)
 
-
-hello:
-	ifndef VERSION
-	$(error VERSION is not set)
-	endif
-	echo "hello world" $(VERSION)
