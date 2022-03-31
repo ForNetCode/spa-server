@@ -1,7 +1,10 @@
 # All is from https://github.com/extrawurst/gitui
+SPC_CLIENT_JS_DIR = jsclient
+
+.PHONY: build-spa-client-js, build-release, release-mac, release-win, release-linux-musl, docker-release
 
 build-release:
-	cargo build --release
+	cargo build --package spa-client --release
 
 release-mac: build-release
 	strip target/release/spa-client
@@ -25,6 +28,13 @@ release-linux-musl: build-linux-musl-release
 build-linux-musl-release:
 	cargo build --release --target=x86_64-unknown-linux-musl
 
+build-spa-client:
+	cargo build --package spa-client --release
+
+build-spa-client-js:
+	cd $(SPC_CLIENT_JS_DIR) && npm run build:release
+
+# this is for local machine, not for GitHub Action
 docker-release:
 	ifndef VERSION
 	$(error VERSION is not set)

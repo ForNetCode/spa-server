@@ -14,7 +14,7 @@ ADD . .
 
 # Build our application.
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
-     cargo build --release
+     cargo build --package spa-server --release
 
 FROM ${RUNTIME_IMAGE}
 

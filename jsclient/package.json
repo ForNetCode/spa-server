@@ -18,16 +18,20 @@
       "defaults": true,
       "additional": [
         "x86_64-unknown-linux-musl",
-        "i686-pc-windows-msvc",
         "aarch64-unknown-linux-gnu",
+        "i686-pc-windows-msvc",
         "armv7-unknown-linux-gnueabihf",
         "aarch64-apple-darwin",
+        "aarch64-linux-android",
+        "x86_64-unknown-freebsd",
         "aarch64-unknown-linux-musl",
-        "aarch64-pc-windows-msvc"
+        "aarch64-pc-windows-msvc",
+        "armv7-linux-androideabi"
       ]
     }
   },
   "scripts": {
+    "artifacts": "napi artifacts",
     "build:release": "napi build --platform --release",
     "build": "napi build --platform",
     "version": "napi version"

@@ -1,15 +1,16 @@
 # this is from https://github.com/extrawurst/gitui/blob/master/.github/workflows/cd.yml
-name: CD
+# this does not work now!
+name: spa-Client-cd
 
 on:
-  push:
-    tags:
-      - 'v*'
+#  push:
+#    tags:
+#      - 'v*'
   workflow_dispatch:
     inputs:
-      tags:
+      tag:
         required: true
-        description: "git tag"
+        description: "git tag to release"
 
 jobs:
   release:
@@ -20,16 +21,16 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v2
       - name: Get version
-        id: get_version
-        run: echo ::set-output name=version::${GITHUB_REF/refs\/tags\//}
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+          ref: ${{github.event.inputs.tag}}
 
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
+        uses: actions-rs/toolchain@v2
         with:
           toolchain: stable
-          profile: minimal
 
       - name: Install Node
         uses: actions/setup-node@v2
@@ -76,16 +77,5 @@ jobs:
             ./release/*.tar.gz
             ./release/*.zip
             ./release/*.msi
-
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # - name: Bump personal tap formula
-      #   uses: mislav/bump-homebrew-formula-action@v1
-      #   if: "matrix.os == 'macos-latest' && !contains(github.ref, '-')" # skip prereleases
-      #   env:
-      #     COMMITTER_TOKEN: ${{ secrets.BREW_TOKEN }}
-      #   with:
-      #     formula-name: gitui
-      #     homebrew-tap: extrawurst/tap
-      #     download-url: https://github.com/extrawurst/gitui/releases/download/${{ steps.get_version.outputs.version }}/gitui-mac.tar.gz
