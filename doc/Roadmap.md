@@ -6,9 +6,11 @@
 - [ ] release client mac/ios/linux (with github cd)
 - [ ] drop self maintained `Warp`(copy out needed code from Warp, it must be dropped, because spa-server release to crate need standard Warp version)
 - [ ] ~~release server/client to crate~~ [crate needs dep version, need replace warp firstly](https://github.com/rust-lang/cargo/issues/1565)
-- [ ] doc about how to use with client and example/test frontend repo.
+- [ ] doc about how to use with shell client
 #### add js plugin
 - [x] add js wrapper for spa-client
+- [x] and example/test frontend repo
+- [ ] doc about how to use with js client
 - [ ] release js wrapper to npm.org
 
 ### version 1.2.2

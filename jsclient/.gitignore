@@ -1,5 +1,9 @@
 node_modules
 package-lock.json
 .idea
+
 index.darwin-x64.node
+index.linux-x64-gnu.node
+index.win32-x64-msvc.node
+
 /debug

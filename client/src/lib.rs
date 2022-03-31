@@ -30,8 +30,8 @@ pub fn run_js() {
     let commands = CliCommand::parse_from(args);
     let result = run_with_commands(commands);
     if let Some(err) = result.err() {
-        eprintln!("{}", err);
-        std::process::exit(-1);
+        eprintln!("{}\n", err);
+        std::process::exit(1);
     }
 }
 
