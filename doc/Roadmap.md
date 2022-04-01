@@ -10,7 +10,7 @@
 - [x] add js wrapper for spa-client
 - [x] and example/test frontend repo
 - [x] doc about how to use with js client
-- [ ] release js wrapper to npm.org
+- [x] release js wrapper to npm.org
 
 ### version 1.2.2
 - [x] cache File `Range` Header support

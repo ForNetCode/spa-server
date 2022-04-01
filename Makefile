@@ -26,7 +26,7 @@ release-linux-musl: build-linux-musl-release
 	tar -C ./target/x86_64-unknown-linux-musl/release/ -czvf ./release/spa-client-linux-musl.tar.gz ./spa-client
 
 build-linux-musl-release:
-	cargo build --release --target=x86_64-unknown-linux-musl
+	cargo build --package spa-client --release --target=x86_64-unknown-linux-musl
 
 build-spa-client:
 	cargo build --package spa-client --release
@@ -35,6 +35,7 @@ build-spa-client-js:
 	cd $(SPC_CLIENT_JS_DIR) && npm run build:release
 
 # this is for local machine, not for GitHub Action
+# make docker-release VERSION=1.2.3
 docker-release:
 ifeq ($(VERSION), )
 	$(error VEDRSION is not set)
