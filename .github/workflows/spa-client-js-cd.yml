@@ -85,7 +85,6 @@ jobs:
         uses: actions/checkout@v3
         with:
           submodules: true
-          ref: ${{github.event.inputs.tag}}
 
       - name: Install Node
         uses: actions/setup-node@v2
@@ -154,7 +153,6 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: true
-          ref: ${github.event.inputs.tag}
 
       - name: Setup node
         uses: actions/setup-node@v2
@@ -162,6 +160,7 @@ jobs:
           node-version: 16
           check-latest: true
           cache: yarn
+          cache-dependency-path: jsclient/yarn.lock
       - name: Cache NPM dependencies
         uses: actions/cache@v2
         with:
@@ -174,7 +173,7 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v2
         with:
-          path: artifacts
+          path: jsclient/artifacts
       - name: Move artifacts
         run: yarn artifacts
       - name: List packages
@@ -183,7 +182,7 @@ jobs:
       - name: Publish
         run: |        
           echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
-          npm publish --tag ${{github.event.inputs.tag}} --access public
+          npm publish --access public
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

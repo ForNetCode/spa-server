@@ -1,0 +1,32 @@
+{
+  "name": "spa-client-linux-x64-musl",
+  "version": "1.0.0",
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "main": "spa-client.linux-x64-musl.node",
+  "files": [
+    "spa-client.linux-x64-musl.node"
+  ],
+  "description": "node.js wrapper for spa-client",
+  "keywords": [
+    "napi-rs",
+    "NAPI",
+    "N-API",
+    "Rust",
+    "node-addon",
+    "node-addon-api"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">= 10"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
+  "repository": "https://github.com/timzaak/spa-server"
+}

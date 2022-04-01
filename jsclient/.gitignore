@@ -3,5 +3,5 @@ package-lock.json
 .idea
 
 spa-client.*.node
-
+artifacts
 /debug

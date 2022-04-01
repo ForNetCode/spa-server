@@ -1,7 +1,7 @@
 {
   "name": "spa-client",
   "version": "0.1.0",
-  "description": "node.js wrapper for sap-client",
+  "description": "node.js wrapper for spa-client",
   "license": "MIT",
   "repository": "https://github.com/timzaak/spa-server",
   "main": "index.js",
@@ -29,6 +29,10 @@
         "armv7-linux-androideabi"
       ]
     }
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
   },
   "scripts": {
     "artifacts": "napi artifacts",
