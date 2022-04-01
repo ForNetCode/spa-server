@@ -105,11 +105,19 @@ impl DomainStorage {
         let version = if let Some(version) = version {
             version
         } else {
-            let max_version_opt = self.get_domain_info_by_domain(&domain).map(|x| x.versions).unwrap_or(Vec::new()).into_iter().max();
+            let max_version_opt = self
+                .get_domain_info_by_domain(&domain)
+                .map(|x| x.versions)
+                .unwrap_or(Vec::new())
+                .into_iter()
+                .max();
             if let Some(max_version) = max_version_opt {
                 max_version
             } else {
-                return Err(anyhow!("domain:{} does not exist version, please check if domain err", &domain));
+                return Err(anyhow!(
+                    "domain:{} does not exist version, please check if domain err",
+                    &domain
+                ));
             }
         };
         let new_path = self.prefix.join(&domain).join(version.to_string());
@@ -125,7 +133,11 @@ impl DomainStorage {
                 version
             ))
         } else if new_path.is_dir() {
-            tracing::info!("begin to update domain:{}, version:{}, putting files to cache", &domain, version);
+            tracing::info!(
+                "begin to update domain:{}, version:{}, putting files to cache",
+                &domain,
+                version
+            );
             self.meta
                 .insert(domain.clone(), (new_path.clone(), version));
             let data = self.cache.cache_dir(&new_path)?;
@@ -147,7 +159,7 @@ impl DomainStorage {
     pub fn get_upload_position(&self, domain: &str) -> UploadDomainPosition {
         if let Some(version) = self.uploading_status.get(domain).map(|x| *x.value()) {
             UploadDomainPosition {
-                path:self.get_version_path(domain, version),
+                path: self.get_version_path(domain, version),
                 version,
                 status: GetDomainPositionStatus::InUploading,
             }
@@ -157,7 +169,7 @@ impl DomainStorage {
                     let max_version = domain_info.versions.iter().max().unwrap_or(&0);
                     let version = max_version + 1u32;
                     UploadDomainPosition {
-                        path:self.prefix.join(domain).join(version.to_string()),
+                        path: self.prefix.join(domain).join(version.to_string()),
                         version,
                         status: GetDomainPositionStatus::NewVersion,
                     }
@@ -166,10 +178,10 @@ impl DomainStorage {
                     let version = 1;
                     UploadDomainPosition {
                         version,
-                        path:self.prefix.join(domain).join(version.to_string()),
+                        path: self.prefix.join(domain).join(version.to_string()),
                         status: GetDomainPositionStatus::NewDomain,
                     }
-                },
+                }
             }
         }
     }
@@ -252,7 +264,8 @@ impl DomainStorage {
                 .collect::<Vec<ShortMetaData>>();
             Ok(ret)
         } else {
-            Err(anyhow!("the path does not exists"))
+            //Err(anyhow!("the path does not exists"))
+            Ok(Vec::new())
         }
     }
 
@@ -266,6 +279,12 @@ impl DomainStorage {
         if self.check_is_in_upload_process(&domain, &version) {
             let file_path = sanitize_path(self.get_version_path(&domain, version), &path)
                 .map_err(|_| anyhow!("path error"))?;
+            let parent_path = file_path
+                .parent()
+                .ok_or_else(|| anyhow!("parent path of:{:?} does not exists", &file_path))?;
+            if !parent_path.exists() {
+                fs::create_dir_all(parent_path)?;
+            }
             let mut file = if !file_path.exists() {
                 File::create(file_path)?
             } else {
@@ -288,57 +307,60 @@ impl DomainStorage {
         version: u32,
         uploading_status: UploadingStatus,
     ) -> anyhow::Result<()> {
-        if self
-            .get_domain_info_by_domain(&domain)
-            .filter(|x| x.current_version != version)
-            .is_none()
-        {
-            // is not in server || does not exists
-            if let Some(uploading_version) = self.uploading_status.get(&domain).map(|v| *v.value())
-            {
-                if uploading_version != version {
-                    return Err(anyhow!(
-                        "domain:{}, version:{} is in uploading, please finish it firstly",
-                        domain,
-                        uploading_version,
-                    ));
-                } else if uploading_status == UploadingStatus::Finish {
-                    let mut p = self.get_version_path(&domain, version);
-                    p.push(UPLOADING_FILE_NAME);
-                    fs::remove_file(p)?;
-                    self.uploading_status
-                        .remove_if(&domain, |_, v| *v == version);
-                    tracing::info!(
-                        "domain:{}, version:{} change to upload status:finish",
-                        domain,
-                        version
-                    );
-                }
-            } else if uploading_status == UploadingStatus::Uploading {
+        if let Some(uploading_version) = self.uploading_status.get(&domain).map(|v| *v.value()) {
+            if uploading_version != version {
+                return Err(anyhow!(
+                    "domain:{}, version:{} is in uploading, please finish it firstly",
+                    domain,
+                    uploading_version,
+                ));
+            } else if uploading_status == UploadingStatus::Finish {
                 let mut p = self.get_version_path(&domain, version);
                 p.push(UPLOADING_FILE_NAME);
+                fs::remove_file(p)?;
+                self.uploading_status
+                    .remove_if(&domain, |_, v| *v == version);
                 tracing::info!(
-                    "domain:{}, version:{} change to upload status:uploading",
+                    "domain:{}, version:{} change to upload status:finish",
                     domain,
                     version
                 );
-                self.uploading_status.insert(domain, version);
-                File::create(p)?;
-            } else {
+            }
+        } else if uploading_status == UploadingStatus::Uploading {
+            if self
+                .get_domain_info_by_domain(&domain)
+                .filter(|x| x.current_version == version)
+                .is_some()
+            {
                 return Err(anyhow!(
-                    "domain: {}, version:{} is not in uploading status!",
+                    "domain:{}, version:{} is in serving, can not change upload status",
                     domain,
-                    version
+                    version,
                 ));
             }
-            Ok(())
-        } else {
-            Err(anyhow!(
-                "domain:{}, version:{} is in serving, can not change upload status",
+            let mut p = self.get_version_path(&domain, version);
+            fs::create_dir_all(&p)?;
+            p.push(UPLOADING_FILE_NAME);
+            File::create(p)?;
+            tracing::info!(
+                "domain:{}, version:{} change to upload status:uploading",
                 domain,
-                version,
-            ))
+                version
+            );
+            self.uploading_status.insert(domain, version);
+        } else {
+            let mut p = self.get_version_path(&domain, version);
+            p.push(UPLOADING_FILE_NAME);
+            fs::remove_file(p)?;
+            self.uploading_status
+                .remove_if(&domain, |_, v| *v == version);
+            tracing::info!(
+                "domain:{}, version:{} change to upload status:finish",
+                domain,
+                version
+            );
         }
+        Ok(())
     }
 }
 
@@ -387,7 +409,7 @@ pub enum UploadingStatus {
 pub enum GetDomainPositionStatus {
     NewDomain = 0,
     NewVersion = 1,
-    InUploading = 2
+    InUploading = 2,
 }
 
 #[derive(Deserialize, Serialize, Debug)]

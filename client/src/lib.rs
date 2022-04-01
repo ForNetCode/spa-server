@@ -86,13 +86,26 @@ mod test {
     }
 
     #[test]
+    fn test_upload() {
+        init_config();
+        let ret = run_with_commands(CliCommand::parse_from(&[
+            "test",
+            "upload",
+            "../example/js-app-example/build",
+            "self.noti.link",
+        ]));
+
+        if let Err(ret) = ret {
+            println!("{:?}", ret);
+        }
+    }
+    #[test]
     fn test_release() {
         init_config();
         run_with_commands(CliCommand::parse_from(&[
             "test",
             "release",
-            "www.example.com",
-            "2",
+            "self.noti.link",
         ]))
         .unwrap();
     }

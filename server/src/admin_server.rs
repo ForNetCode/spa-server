@@ -1,4 +1,7 @@
-use crate::admin_server::request::{DomainWithOptVersionOption, DomainWithVersionOption, GetDomainOption, GetDomainPositionOption, UpdateUploadingStatusOption};
+use crate::admin_server::request::{
+    DomainWithOptVersionOption, DomainWithVersionOption, GetDomainOption, GetDomainPositionOption,
+    UpdateUploadingStatusOption,
+};
 use crate::config::AdminConfig;
 use crate::domain_storage::DomainStorage;
 use crate::hot_reload::HotReloadManager;
@@ -85,7 +88,10 @@ impl AdminServer {
     ) -> impl Filter<Extract = (impl warp::Reply,), Error = Rejection> + Clone {
         warp::path("update_version")
             .and(warp::path::end())
-            .and(warp::body::content_length_limit(1024 * 16).and(warp::body::json::<DomainWithOptVersionOption>()))
+            .and(
+                warp::body::content_length_limit(1024 * 16)
+                    .and(warp::body::json::<DomainWithOptVersionOption>()),
+            )
             .and(with(self.domain_storage.clone()))
             .and_then(service::update_domain_version)
     }
@@ -147,7 +153,10 @@ impl AdminServer {
 }
 
 pub mod service {
-    use crate::admin_server::request::{DomainWithOptVersionOption, DomainWithVersionOption, GetDomainOption, GetDomainPositionFormat, GetDomainPositionOption, UpdateUploadingStatusOption};
+    use crate::admin_server::request::{
+        DomainWithOptVersionOption, DomainWithVersionOption, GetDomainOption,
+        GetDomainPositionFormat, GetDomainPositionOption, UpdateUploadingStatusOption,
+    };
     use crate::domain_storage::{DomainStorage, URI_REGEX};
     use crate::{AdminConfig, HotReloadManager};
     use anyhow::anyhow;
@@ -201,14 +210,11 @@ pub mod service {
         storage: Arc<DomainStorage>,
     ) -> Response {
         if URI_REGEX.is_match(&option.domain) {
-            let ret = storage
-                .get_upload_position(&option.domain);
+            let ret = storage.get_upload_position(&option.domain);
             if option.format == GetDomainPositionFormat::Json {
                 warp::reply::json(&ret).into_response()
             } else {
-                ret.path.to_string_lossy()
-                    .to_string()
-                    .into_response()
+                ret.path.to_string_lossy().to_string().into_response()
             }
         } else {
             StatusCode::BAD_REQUEST.into_response()
@@ -258,17 +264,14 @@ pub mod service {
         for p in parts.iter_mut() {
             let name = p.name();
             if name == "file" {
-                file_buf = p
+                let mut file_data = p
                     .data()
                     .await
-                    .map(|x| {
-                        x.map(|mut x| {
-                            let i = x.remaining();
-                            (&mut x).copy_to_bytes(i)
-                        })
-                        .ok()
-                    })
-                    .flatten();
+                    .ok_or_else(|| anyhow!("could not get file data"))??;
+
+                let i = file_data.remaining();
+                let data = (&mut file_data).copy_to_bytes(i);
+                file_buf = Some(data);
             } else if name == "path" {
                 path = p
                     .data()
@@ -315,12 +318,12 @@ pub mod service {
         }
         tracing::debug!("uploading file: {:?}, {:?}, {:?}", domain, version, path);
         if_chain! {
-            if let Some(_path) = path;
-            if let Some(_version) = version;
-            if let Some(_domain) = domain;
-            if let Some(_file_buf) = file_buf;
+            if let Some(path) = path;
+            if let Some(version) = version;
+            if let Some(domain) = domain;
+            if let Some(file_buf) = file_buf;
             then {
-                storage.save_file(_domain, _version, _path, _file_buf)?;
+                storage.save_file(domain, version, path, file_buf)?;
                 Ok(Response::default())
             } else {
                 Err(anyhow!("bad param"))
@@ -368,7 +371,7 @@ pub mod request {
         pub domain: String,
         //#[serde(default="crate::admin_server::request::GetDomainPositionFormat::Path")]
         #[serde(default)]
-        pub format: GetDomainPositionFormat
+        pub format: GetDomainPositionFormat,
     }
 
     #[derive(Deserialize, Serialize)]

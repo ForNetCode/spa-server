@@ -41,11 +41,13 @@ macro_rules! json_resp {
     };
     ($resp:ident, $t:ty) => {
         if $resp.status() == StatusCode::OK {
-            Ok($resp.json::<$t>()?)
+            let resp = $resp.json::<$t>()?;
+            tracing::debug!("{:?}", &resp);
+            Ok(resp)
         } else {
             Err(anyhow!($resp.text()?))
         }
-    }
+    };
 }
 
 impl API {
@@ -97,13 +99,16 @@ impl API {
         handle!(resp)
     }
 
-    pub fn release_domain_version(&self, domain: String, version: Option<u32>) -> anyhow::Result<String> {
+    pub fn release_domain_version(
+        &self,
+        domain: String,
+        version: Option<u32>,
+    ) -> anyhow::Result<String> {
         let resp = self
             .blocking_client
-            .post("update_version")
-            .json(&DomainWithOptVersionOption{
-                domain,version,
-            }).send()?;
+            .post(self.url("update_version"))
+            .json(&DomainWithOptVersionOption { domain, version })
+            .send()?;
         string_resp!(resp)
     }
 
@@ -156,22 +161,20 @@ impl API {
         json_resp!(resp, Vec<ShortMetaData>)
     }
 
-    pub fn get_upload_position(
-        &self,
-        domain:&str,
-    ) -> anyhow::Result<UploadDomainPosition> {
-        let resp = self.blocking_client
+    pub fn get_upload_position(&self, domain: &str) -> anyhow::Result<UploadDomainPosition> {
+        let resp = self
+            .blocking_client
             .get(self.url("upload/position"))
-            .query(&[("domain",domain)]).send()?;
+            .query(&[("domain", domain), ("format", "Json")])
+            .send()?;
         json_resp!(resp, UploadDomainPosition)
-
     }
 }
 #[cfg(test)]
 mod test {
     use crate::api::API;
     use spa_server::admin_server::request::UpdateUploadingStatusOption;
-    use spa_server::domain_storage::{UploadingStatus};
+    use spa_server::domain_storage::UploadingStatus;
     fn get_api() -> API {
         let config = crate::config::test::default_local_config().unwrap();
         API::new(&config).unwrap()

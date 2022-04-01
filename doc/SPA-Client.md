@@ -7,7 +7,7 @@ by [napi-rs](https://github.com/napi-rs/napi-rs) like [SWC](https://github.com/s
 So both have same user experience and same api. There also has a example project for js package users: [js-app-example](../example/js-app-example).
 
 ## How to use commandline of `spa-client`
-you need to set config by `config-dir` option or environment variables like [.env](../example/js-app-example/.env). Config load order is
+you need to set config file path by `config-dir` option or by environment variables 'SPA_CLIENT_CONFIG', you can also set all config by environment variables like [.env](../example/js-app-example/.env). Config load order is
 command line option > `config-dir` file > environment.
 
 There are some usage examples of `spa-client`, you also can get help by typing `spa-client -h`.
