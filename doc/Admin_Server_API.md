@@ -33,7 +33,7 @@ curl "$ADMIN_SERVER/upload/position?domain=$DOMAIN&format=$FORMAT" -H "Authoriza
 # *it will use the newest version after server restart/reload*
 # *it will use the newest version after server restart/reload*
 OPT_VERSION=2 # version is optional, if not set, will try to use the max version of this domain to put it online.
-curl  -X POST "$ADMIN_SERVER/update_version-H "Authorization: Bearer $TOKEN" \
+curl  -X POST "$ADMIN_SERVER/update_version" -H "Authorization: Bearer $TOKEN" \
 --data-raw `{
     "domain":$DOMAIN,
     "version": OPT_VERSION,    
@@ -63,13 +63,15 @@ curl --location --request POST "http://$ADMIN_SERVER/files/upload_status" \
 --header 'Content-Type: application/json' \
 --data-raw `{
     "domain":$DOMAIN,
-    "version": 2,
+    "version": $VERSION,
     "status": $UPLOADING_STATUS
 }`
 # return status code:200 if success 
 
 # upload file
 PATH="/upload/file/path"
+
 curl -X POST "http://$ADMIN_SERVER/file/upload" \
 -F "file=@$PATH" -F "domain=$DOMAIN" -F "version=$VERSION" -F "path=$PATH"  -H "Authorization: Bearer $TOKEN"
+# return status code:200 if success 
 ```

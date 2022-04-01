@@ -31,7 +31,7 @@ docker run -d -p 80 -p 443 -v $HOST_VOLUME:/data -v $CONFIG:/config.conf timzaak
 ```
 
 ## How To Upload SPA Files
-If you want to integrate with js project, please ref:[example/js-aapp-example](example/js-app-example), if you want to use commandline tool, please ref [SPA-Client](doc/SPA-Client.md) doc.
+If you want to integrate with js project, please ref:[example/js-aapp-example](example/js-app-example/README.md), if you want to use commandline tool, please ref [SPA-Client](doc/SPA-Client.md) doc.
 
 ## Roadmap
 please ref [Roadmap.md](./doc/Roadmap.md).

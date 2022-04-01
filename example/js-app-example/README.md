@@ -1,11 +1,17 @@
 # JS-APP-EXAMPLE
-This is a React frontend project. The usage of `spa-client` is simple.
+This is an example of React frontend project. The usage of `spa-client` is simple.
 
-## Usage
+after bring `spa-server` up, just run `npm run build && npm run release`
+
+
+## How to use with new project.
+1. Install spa-client npm package.
 ```shell
-npm install spa-client
+npm install spa-client --save-dev
 ```
-add script to package.json, and all configs for spa-client are in the [.env](.env) file
+2. add configs for spa-client in the [.env](.env) file
+
+3. Add script to package.json
 
 ```json
 {
