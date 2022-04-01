@@ -26,3 +26,14 @@ npm install spa-client --save-dev
   }
 }
 ```
+
+if you don't want to use `dotenv`, just like this, the config file is like [client_config_env.conf](../../client/client_config_env.conf)
+
+```json
+{
+  "script":{
+      "upload": "spa-client upload ./build www.example.com --config-dir $CONFIG_PATH",
+      "release": "spa-client release www.baidu.com --config-dir $CONFIG_PATH"
+  }
+}
+```
