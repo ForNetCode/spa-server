@@ -1,9 +1,15 @@
 # Roadmap
+### Version 1.3.x
+Now there is no real roadmap for V1.3.x, need users.
+
+### Version 1.2.4
+- [ ] release commandline of spa-client for mac/ios/linux (by GitHub Actions), put them with GitHub release page
+- [ ] fix possible bugs about uploading and spa-client(-js)
+- [ ] improve doc, ready to get the world known it.
 
 ### version 1.2.3
 - [x] admin server export http api to accept files to local file system
 - [x] add client to sync local files to admin server（retry support）
-- [ ] release client mac/ios/linux (with github cd)
 - [ ] ~~release server/client to crate~~ [crate needs dep version, need replace warp firstly](https://github.com/rust-lang/cargo/issues/1565)
 - [x] doc about how to use with shell client
 #### add js plugin
@@ -14,7 +20,7 @@
 
 ### version 1.2.2
 - [x] cache File `Range` Header support
-- [ ] ~~drop self maintained `Warp`(copy out needed code from Warp)~~ (so much code from warp/fs.)
+- [ ] ~~drop self maintained `Warp`(copy out needed code from Warp)~~ (so much code from warp/fs, I give up after try, will wait Warp release proper version)
 - [x] `HEAD` request support or drop(support, don't need to do anything)
 
 ### version 1.2.1
