@@ -1,13 +1,21 @@
 # Roadmap
 ### Version 1.3.x
-Now there is no real roadmap for V1.3.x, need users.
+Now there is no real roadmap for v1.3.x, need users.
 
-### Version 1.2.4
+### Version 1.2.5
+- [ ] make release trigger by tag
+
+
+### Version 1.2.4(client:v0.2.0)
 - [ ] release commandline of spa-client for mac/ios/linux (by GitHub Actions), put them with GitHub release page
-- [ ] fix possible bugs about uploading and spa-client(-js)
-- [ ] improve doc, ready to get the world known it.
+- [x] fix possible bugs about uploading and spa-client(-js)
+- [ ] doc: improve doc, ready to get the world known it.
+- [x] build: release docker image by GitHubActions
+- [x] build: add docker image for spa-client
+- [x] doc: how to use spa-client image
+- [x] improve: add debug log for spa-server request
 
-### version 1.2.3
+### version 1.2.3(client:v0.1.0)
 - [x] admin server export http api to accept files to local file system
 - [x] add client to sync local files to admin server（retry support）
 - [ ] ~~release server/client to crate~~ [crate needs dep version, need replace warp firstly](https://github.com/rust-lang/cargo/issues/1565)

@@ -1,7 +1,7 @@
 # All is from https://github.com/extrawurst/gitui
 SPC_CLIENT_JS_DIR = jsclient
 
-.PHONY: build-spa-client-js, build-release, release-mac, release-win, release-linux-musl, docker-release
+.PHONY: build-spa-client-js, build-release, release-mac, release-win, release-linux-musl, docker-release, spa-client-docker-release
 
 build-release:
 	cargo build --package spa-client --release
@@ -42,4 +42,12 @@ ifeq ($(VERSION), )
 else
 	DOCKER_BUILDKIT=1 docker build . -t="timzaak/spa-server:$(VERSION)"
     docker push timzaak/spa-server:$(VERSION)
+endif
+
+spa-client-docker-release:
+ifeq ($(VERSION), )
+	$(error VEDRSION is not set)
+else
+	DOCKER_BUILDKIT=1 docker build . -f SPA-Client.Dockerfile -t="timzaak/client:$(VERSION)"
+    docker push timzaak/spa-client:$(VERSION)
 endif

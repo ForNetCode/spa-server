@@ -176,13 +176,17 @@ fn cache_reply(
 }
 
 async fn cache_or_file_reply(
-    item: Arc<CacheItem>,
+    item: (String, Arc<CacheItem>),
     conditionals: Conditionals,
     accept_encoding: Option<String>,
 ) -> Result<Response<Body>, Rejection> {
+    let (key, item) = item;
     let modified = item.meta.modified().map(LastModified::from).ok();
     match conditionals.check(modified) {
-        Cond::NoBody(resp) => Ok(resp),
+        Cond::NoBody(resp) => {
+            tracing::debug!("{} hit client cache", key);
+            Ok(resp)
+        },
         Cond::WithBody(range) => match &item.data {
             DataBlock::CacheBlock {
                 bytes,
@@ -200,16 +204,23 @@ async fn cache_or_file_reply(
                 //false,false => cache without content-encoding
                 //false, true => file
                 if !client_accept_gzip && compressed {
+                    tracing::debug!("{} hit disk", key);
                     file_reply(&item, path.as_ref(), range, modified).await
                 } else {
                     let mut resp = cache_reply(item.as_ref(), bytes, range, modified);
                     if client_accept_gzip && compressed {
+                        tracing::debug!("{} hit cache, compressed", key);
                         resp.headers_mut().typed_insert(ContentEncoding::gzip());
+                    }else {
+                        tracing::debug!("{} hit cache", key);
                     }
                     Ok(resp)
                 }
             }
-            DataBlock::FileBlock(path) => file_reply(&item, path.as_ref(), range, modified).await,
+            DataBlock::FileBlock(path) => {
+                tracing::debug!("{} hit disk", key);
+                file_reply(&item, path.as_ref(), range, modified).await
+            },
         },
     }
 }
@@ -239,33 +250,37 @@ fn cache_item_to_response_header(
     }
 }
 
+async fn get_cache_file(
+    tail: warp::path::Tail,
+    authority_opt: Option<Authority>,
+    domain_storage: Arc<DomainStorage>,
+) -> Result<(String,Arc<CacheItem>), Rejection> {
+    match authority_opt {
+        Some(authority) => {
+            let key = sanitize_path(tail.as_str()).map(|s| {
+                if s.is_empty() {
+                    "index.html".to_owned()
+                } else {
+                    s
+                }
+            })?;
+            let host = authority.host();
+            if let Some(cache_item) = domain_storage.get_file(host, &key) {
+                Ok((key, cache_item))
+            } else {
+                tracing::debug!("no file for: {}/{}", &host, &key);
+                Err(reject::not_found())
+            }
+        }
+        None => {
+            tracing::warn!("No Authority Request");
+            Err(reject::not_found())
+        },
+    }
+}
 pub fn static_file_filter(
     domain_storage: Arc<DomainStorage>,
 ) -> impl Filter<Extract = (Response<Body>,), Error = Rejection> + Clone {
-    async fn get_cache_file(
-        tail: warp::path::Tail,
-        authority_opt: Option<Authority>,
-        domain_storage: Arc<DomainStorage>,
-    ) -> Result<Arc<CacheItem>, Rejection> {
-        match authority_opt {
-            Some(authority) => {
-                let key = sanitize_path(tail.as_str()).map(|s| {
-                    if s.is_empty() {
-                        "index.html".to_owned()
-                    } else {
-                        s
-                    }
-                })?;
-                let host = authority.host();
-                if let Some(cache_item) = domain_storage.get_file(host, &key) {
-                    Ok(cache_item)
-                } else {
-                    Err(reject::not_found())
-                }
-            }
-            None => Err(reject::not_found()),
-        }
-    }
     warp::get()
         .or(warp::head())
         .unify()

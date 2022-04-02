@@ -6,6 +6,7 @@ pub mod commands;
 mod config;
 mod upload_files;
 
+use anyhow::Context;
 use crate::api::API;
 use crate::commands::{CliCommand, Commands};
 use crate::config::Config;
@@ -40,7 +41,8 @@ fn success(message: &str) {
 }
 
 fn run_with_commands(commands: CliCommand) -> anyhow::Result<()> {
-    let config = Config::load(commands.config_dir)?;
+    let config = Config::load(commands.config_dir)
+        .with_context(||"Please set config, you can get help at https://github.com/timzaak/spa-server/blob/master/doc/SPA-Client.md#how-to-use-commandline-of-spa-client")?;
     println!(
         "spa-client connect to admin server({})",
         &config.server.address

@@ -16,12 +16,10 @@ ADD . .
 
 # Build our application.
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
-     cargo build --package spa-server --release
+     cargo build --package spa-client --release
 
 FROM ${RUNTIME_IMAGE}
 
-RUN mkdir /data
-COPY --from=builder ./config.release.conf ./config.conf
-COPY --from=builder ./target/release/spa-server .
+COPY --from=builder ./target/release/spa-client /usr/bin
 
-CMD ["./spa-server"]
+CMD ["spa-client"]

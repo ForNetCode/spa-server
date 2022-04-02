@@ -151,6 +151,16 @@ pub enum DataBlock {
     // for use warp
     FileBlock(ArcPath),
 }
+/*
+impl DataBlock {
+    pub fn get_path(&self) -> &ArcPath {
+        match self {
+            DataBlock::CacheBlock {path,..} => path,
+            DataBlock::FileBlock(path) => path,
+        }
+    }
+}
+*/
 
 pub struct CacheItem {
     pub meta: Metadata,

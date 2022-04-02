@@ -16,13 +16,13 @@ npm install spa-client --save-dev
 ```
 2. add configs for spa-client in the [.env](.env) file
 
-3. Add script to package.json (need `dotenv` to inject config, you can also use config file as [SPA-Client](../../doc/SPA-Client.md)) said.
+3. Add script to package.json (need `dotenv` to inject config, you can also use config file as [SPA-Client](../../doc/SPA-Client.md) said).
 
 ```json
 {
   "script":{
       "upload": "dotenv .env.prod spa-client upload ./build www.example.com",
-      "release":"dotenv .env.prod spa-client release www.baidu.com"
+      "release":"dotenv .env.prod spa-client release www.example.com"
   }
 }
 ```
@@ -33,7 +33,7 @@ if you don't want to use `dotenv`, just like this, the config file is like [clie
 {
   "script":{
       "upload": "spa-client upload ./build www.example.com --config-dir $CONFIG_PATH",
-      "release": "spa-client release www.baidu.com --config-dir $CONFIG_PATH"
+      "release": "spa-client release www.example.com --config-dir $CONFIG_PATH"
   }
 }
 ```

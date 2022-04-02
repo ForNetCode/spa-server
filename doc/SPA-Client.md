@@ -32,3 +32,10 @@ curl "http://$ADMIN_SERVER/update_version?domain=$DOMAIN" -H "Authorization: Bea
 ```
 
 All the admin server http api is in the [Admin_Server_API.md](./doc/Admin_Server_API.md).
+
+
+## spa-client docker image
+there is an example of using spa-client docker image
+```shell
+docker run --rm -it -v $CONFIG_FILE_PATH:/client.conf timzaak/client spa-client -c /client.conf info
+```
