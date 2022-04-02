@@ -3,9 +3,9 @@ name: spa-server-docker-release
 on:
   workflow_dispatch:
     inputs:
-      tag:
+      version:
         required: true
-        description: "git tag to release"
+        description: "version to release"
 
 jobs:
   docker:
@@ -33,4 +33,4 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: timzaak/spa-server:${{github.event.inputs.tag}}
+          tags: timzaak/spa-server:${{github.event.inputs.version}}

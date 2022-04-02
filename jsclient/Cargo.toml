@@ -1,6 +1,6 @@
 [package]
 name = "spa-client-js"
-version = "1.2.3"
+version = "0.1.0"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/timzaak/spa-server"
