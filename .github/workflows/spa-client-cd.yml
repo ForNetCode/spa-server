@@ -1,6 +1,6 @@
 # this is from https://github.com/extrawurst/gitui/blob/master/.github/workflows/cd.yml
 
-name: spa-client-cd
+name: spa-client release
 
 on:
 #  push:

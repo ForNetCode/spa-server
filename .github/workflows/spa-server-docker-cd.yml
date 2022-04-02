@@ -1,4 +1,4 @@
-name: spa-server-docker-release
+name: spa-server-docker release
 
 on:
   workflow_dispatch:
@@ -33,4 +33,6 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           tags: timzaak/spa-server:${{github.event.inputs.version}}

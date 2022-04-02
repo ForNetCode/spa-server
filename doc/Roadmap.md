@@ -5,10 +5,14 @@ Now there is no real roadmap for v1.3.x, need users.
 ### near future before v1.3.0
 - [ ] release trigger by tag
 - [ ] add wix configs, and release window msi for spa-client(need window pc to do this)
-- [ ] use vuepress to rebuild docs, ready to get the world known it.
 - [ ] test integrate, and add ci to run it
 
-### Version 1.2.4(client:v0.2.0)
+### Version 1.2.5
+- [x] add docker image cache for (spa-client|spa-server)-docker-cd.yml to speed cd process
+- [ ] use vuepress to rebuild docs, ready to get the world known it
+
+
+### Version 1.2.4(client:v0.1.1)
 - [x] release commandline of spa-client for mac/ios/linux (by GitHub Actions), put them with GitHub release page
 - [x] fix possible bugs about uploading and spa-client(-js)
 - [x] build: release docker image by GitHubActions

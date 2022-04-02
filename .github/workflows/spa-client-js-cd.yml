@@ -1,5 +1,5 @@
 # this is from https://github.com/extrawurst/gitui/blob/master/.github/workflows/cd.yml
-name: spa-client-js-cd
+name: spa-client-js npm release
 
 env:
   APP_NAME: spa-client

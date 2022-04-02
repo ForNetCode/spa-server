@@ -1,4 +1,4 @@
-name: sap-client docker release
+name: spa-client docker release
 
 on:
   workflow_dispatch:
@@ -34,4 +34,6 @@ jobs:
           file: SPA-Client.Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           tags: timzaak/spa-client:${{github.event.inputs.version}}
