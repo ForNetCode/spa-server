@@ -1,6 +1,6 @@
 {
   "name": "spa-client",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "node.js wrapper for spa-client",
   "license": "MIT",
   "repository": "https://github.com/timzaak/spa-server",

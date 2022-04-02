@@ -9,7 +9,7 @@ Now there is no real roadmap for v1.3.x, need users.
 - [ ] test integrate, and add ci to run it
 
 ### Version 1.2.4(client:v0.2.0)
-- [ ] release commandline of spa-client for mac/ios/linux (by GitHub Actions), put them with GitHub release page
+- [x] release commandline of spa-client for mac/ios/linux (by GitHub Actions), put them with GitHub release page
 - [x] fix possible bugs about uploading and spa-client(-js)
 - [x] build: release docker image by GitHubActions
 - [x] build: add docker image for spa-client
