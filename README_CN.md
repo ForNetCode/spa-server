@@ -12,6 +12,11 @@
 - http/https 同时服务（http 也可返回 redirect https）。
 - 支持 Docker 镜像(压缩后大小:32M)
 - 提供 命令行/npm包 客户端，一行命令部署
+
+## 文档
+目前将文档托管在 GitHub Pages，地址：https://timzaak.github.io/spa-server， 
+Gitee 上的托管还在走流程中。
+
 ## 服务跑起来
 
 配置文件说明: [`config.release.conf`](./config.release.conf). 
@@ -33,7 +38,7 @@ docker run -d -p 80 -p 443 -v $HOST_VOLUME:/data -v $CONFIG:/config.conf timzaak
 ```
 
 ## 如何部署静态文件
-如果你想集成到JS项目中，请参阅：[example/js-aapp-example](example/js-app-example/README.md), 如果你只想用命令行, 请参阅：[SPA-Client](doc/SPA-Client.md)。
+如果你想集成到JS项目中，请参阅：[example/js-aapp-example](example/js-app-example/README.md)。
 
 ## spa-server 使用场景
 ### 单独使用
@@ -46,7 +51,7 @@ docker run -d -p 80 -p 443 -v $HOST_VOLUME:/data -v $CONFIG:/config.conf timzaak
 2. 所有控制请求，需要对每个实例都发起一遍。
 
 ## 项目规划
-请参阅 [项目规划](./doc/Roadmap.md).
+请参阅 [项目规划](docs/Roadmap.md).
 
 ## 为何自行维护 warp 版本
 [#171 Add reply::file(path) helper](https://github.com/seanmonstar/warp/issues/171)

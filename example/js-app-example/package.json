@@ -13,7 +13,7 @@
   },
   "devDependencies": {
     "dotenv-cli": "^5.1.0",
-    "spa-client": "file:../../jsclient"
+    "spa-client": "^0.1"
   },
   "scripts": {
     "start": "react-scripts start",

@@ -47,5 +47,17 @@ ifeq ($(VERSION), )
 	$(error VEDRSION is not set)
 else
 	DOCKER_BUILDKIT=1 docker build . -f SPA-Client.Dockerfile -t="timzaak/client:$(VERSION)"
-    docker push timzaak/spa-client:$(VERSION)
+	docker push timzaak/spa-client:$(VERSION)
 endif
+
+
+release-doc:
+	set -e
+	rm -fr docs/.vitepress/dist/*
+	yarn run docs:build
+	cd docs/.vitepress/dist
+	git init
+	git add -A
+	git commit -m 'deploy'
+	git push -f git@github.com:timzaak/spa-server.git master:gh-pages
+	cd -

@@ -6,11 +6,11 @@ pub mod commands;
 mod config;
 mod upload_files;
 
-use anyhow::Context;
 use crate::api::API;
 use crate::commands::{CliCommand, Commands};
 use crate::config::Config;
 use crate::upload_files::upload_files;
+use anyhow::{anyhow, Context};
 
 use clap::Parser;
 use console::style;
@@ -41,8 +41,12 @@ fn success(message: &str) {
 }
 
 fn run_with_commands(commands: CliCommand) -> anyhow::Result<()> {
-    let config = Config::load(commands.config_dir)
-        .with_context(||"Please set config, you can get help at https://github.com/timzaak/spa-server/blob/master/doc/SPA-Client.md#how-to-use-commandline-of-spa-client")?;
+    let config = Config::load(commands.config_dir).map_err(|e| {
+        Err(anyhow!(
+            "Please set config file path or environment variable correctly, {}",
+            e
+        ));
+    })?;
     println!(
         "spa-client connect to admin server({})",
         &config.server.address

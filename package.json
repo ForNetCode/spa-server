@@ -1,0 +1,28 @@
+{
+  "name": "spa-server-doc",
+  "version": "1.2.4",
+  "description": "This is for docs powered by VitePress",
+  "main": "index.js",
+  "private": true,
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:serve": "vitepress serve docs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/timzaak/spa-server.git"
+  },
+  "author": "timzaak",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/timzaak/spa-server/issues"
+  },
+  "homepage": "https://github.com/timzaak/spa-server#readme",
+  "devDependencies": {
+    "vitepress": "^0.22.3"
+  }
+}

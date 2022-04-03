@@ -2,38 +2,12 @@
 This is an example of React frontend project. The usage of `spa-client` is simple.
 
 ## How to run this example
+start a spa-server with admin-server enabled, change check `.env` config if is right, run the following shell to
+upload files to spa-server.
 ```shell
-# in project root directory
-cd jsclient && npm install && npm run build
-cd ../example/js-app-example && npm install && npm run build && npm run upload && npm run release
+npm install && npm run build && npm run upload && npm run release
 ```
+
 PS: `self.noti.link` is routed to 127.0.0.1
 
-## How to use with new project
-1. Install spa-client npm package.
-```shell
-npm install spa-client --save-dev
-```
-2. add configs for spa-client in the [.env](.env) file
-
-3. Add script to package.json (need `dotenv` to inject config, you can also use config file as [SPA-Client](../../doc/SPA-Client.md) said).
-
-```json
-{
-  "script":{
-      "upload": "dotenv .env.prod spa-client upload ./build www.example.com",
-      "release":"dotenv .env.prod spa-client release www.example.com"
-  }
-}
-```
-
-if you don't want to use `dotenv`, just like this, the config file is like [client_config_env.conf](../../client/client_config_env.conf)
-
-```json
-{
-  "script":{
-      "upload": "spa-client upload ./build www.example.com --config-dir $CONFIG_PATH",
-      "release": "spa-client release www.example.com --config-dir $CONFIG_PATH"
-  }
-}
-```
+There has a nice [document](https://timzaak.github.io/spa-server/) deployed by GitHub Pages, You can get more information here.

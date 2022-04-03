@@ -1,0 +1,32 @@
+name: spa-client release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        required: true
+        description: "git tag to release(this input is meaningless)"
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        name: Get Code
+
+      - name: Install Node
+        uses: actions/setup-node@v2
+        with:
+          node-version: "16"
+          cache: "yarn"
+          cache-dependency-path: yarn.lock
+
+      - name: Build Doc
+        run: yarn run docs:build
+
+      - name: Release Doc
+        run: |  
+          cd docs/.vitepress/dist
+          git init
+          git add -A
+          git commit -m 'deploy'
+          git push -f git@github.com:timzaak/spa-server.git master:gh-pages

@@ -1,5 +1,5 @@
 ## What to do with SPA-Client
-This doc describes why `spa-client` need to exist and the future of it.
+This doc describes why `spa-client` needs to exist and the future of it.
 ### What problems it solves?
 People would never try anything new if it looks same or worse to something they are family with and needs lots cost to try.
 Comparing Nginx, `spa-server` do something better for static web server, but no 10x better than `nginx`. So there are rare
