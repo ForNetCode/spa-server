@@ -1,4 +1,4 @@
-name: spa-client release
+name: doc release
 
 on:
   workflow_dispatch:

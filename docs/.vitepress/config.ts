@@ -12,7 +12,6 @@ export default defineConfig({
         editLinks: true,
         editLinkText: 'Edit this page on GitHub',
         lastUpdated: 'Last Updated',
-
         nav: [
             {text: 'Guide', link: '/', activeMatch: '^/$|^/guide/'},
             {
