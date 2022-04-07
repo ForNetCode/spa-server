@@ -1,5 +1,15 @@
 # Change Log
 
+### Version 1.2.5(client v0.1.3)
+- [x] build: add docker image cache for (spa-client|spa-server)-docker-cd.yml to speed cd process
+- [x] doc: use VitePress to rebuild docs, ready to get the world known it
+- [x] build: add CD for doc release
+- [x] feat: support multiple config for different domain (break change for config file)
+- [x] feat: support multiple ssl
+- [ ] ~~fix: disable put online domain which does not have correct ssl in server when https opened.~~(need to confirm if it's a bug?)
+- [x] fix: fix wrong check when release new domain
+- [x] fix(js-client): npm package error
+
 ### Version 1.2.4(client:v0.1.1)
 - [x] release commandline of spa-client for mac/ios/linux (by GitHub Actions), put them with GitHub release page
 - [x] fix possible bugs about uploading and spa-client(-js)
