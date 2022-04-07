@@ -1,7 +1,7 @@
 # Roadmap
 ### Version 1.3.x
 
-Now there is no real roadmap for v1.3.x, need users.
+There is no real roadmap for v1.3.x now, need users firstly.
 
 ### near future before v1.3.0
 - [ ] CD: release triggered by new tag

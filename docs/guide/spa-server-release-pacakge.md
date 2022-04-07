@@ -9,5 +9,7 @@ There no plan to release binary package. You can `git clone` the code and build 
 git clone --recursive https://github.com/timzaak/spa-server
 cargo build --package spa-server --release
 
-# you could get the binary from ./target/release directory
+# you could install it to your local server
+cd server
+cargo install --bin spa-server --path .
 ```

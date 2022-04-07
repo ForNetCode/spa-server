@@ -6,20 +6,19 @@ spa-client it a command line tool to help user upload files and release new SPA.
 There are some usage examples of `spa-client`, you also can get help by typing `spa-client -h`.
 ```shell
 # upload static files to admin server, if not set $OPT_VERSION, will try to 
-spa-client - $CONFIG_PATH upload $STATIC_FILE_PATH $DOMAIN $OPT_VERSION -p 3
+spa-client -c $CONFIG_PATH upload $STATIC_FILE_PATH $DOMAIN $OPT_VERSION -p 3
 
 # tell admin server to release the specific domain version to public. if don't set $OPT_VERSION, will fetch the max version to be online, if the max version it under uploading process, release will fail. 
-spa-client - $CONFIG_PATH release $DOMAIN $OPT_VERSION
+spa-client -c $CONFIG_PATH release $DOMAIN $OPT_VERSION
 
 # get info of the specific domain or all domain, just like the admin server http api.
-spa-client - $CONFIG_PATH info $OPT_DOMAIN
+spa-client -c $CONFIG_PATH info $OPT_DOMAIN
 
 # reload spa-server, this is used to reload https cert
-spa-client - $CONFIG_PATH reload
+spa-client -c $CONFIG_PATH reload
 ```
-You could use `upload` and `relase` commands to release new version.
 
-There also provide http api to interact with admin server,
+There also provides http api to interact with admin server,
 
 ```shell
 # Uploading Files By scp and release 

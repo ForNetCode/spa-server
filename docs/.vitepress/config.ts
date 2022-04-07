@@ -56,6 +56,11 @@ function getGuideSidebar() {
                 {text: 'Command Line', link: '/guide/spa-client-command-line'},
                 {text: 'NPM Package', link: '/guide/spa-client-npm-package'}
             ]
+        }, {
+            text: "Advanced",
+            children: [
+                {text: 'Uploading File Process', link: '/guide/uploading-file-process'}
+            ]
         }
     ]
 }

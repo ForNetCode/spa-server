@@ -8,35 +8,7 @@ There has an example project for npm package users:
 [js-app-example](https://github.com/timzaak/spa-server/tree/master/example/js-app-example).
 
 ## Install in new project
-1. Install spa-client npm package.
-```shell
-npm install spa-client --save-dev
-```
-2. add config for spa-client in the [.env](https://github.com/timzaak/spa-server/blob/master/example/js-app-example/.env) file
-
-
-3. Add script to package.json (need `dotenv`).
-
-```json
-{
-  "script":{
-      "upload": "dotenv .env.prod spa-client upload ./build www.example.com",
-      "release":"dotenv .env.prod spa-client release www.example.com"
-  }
-}
-```
-
-If you don't want to use `dotenv`, just like this, the config file is like [client_config_env.conf](./spa-client-command-line#config-reference)
-
-```json
-{
-  "script":{
-      "upload": "spa-client -c $CONFIG_PATH upload ./build www.example.com ",
-      "release": "spa-client -c $CONFIG_PATH release www.example.com"
-  }
-}
-```
-
+there is more info at [getting started](./getting-started.md#run-spa-client-in-npm-package) 
 
 ## Operating Systems
 
@@ -69,4 +41,4 @@ git clone --recursive https://github.com/timzaak/spa-server
 cd jsclient && yarn install && yarn build
 ```
 ### Command Line
-You can install `spa-client` commandline tool. the doc is [here](https://timzaak.github.io/spa-server/guide/spa-client-command-line.html#source-code) 
+You can install `spa-client` commandline tool if the npm package does not support your OS platform. read [doc](./spa-client-command-line#source-code). 
