@@ -42,8 +42,6 @@ config option about the size of parallel uploading.
 ### Interact with JS 
 Use `NAPI-RS` to do this.
 
-### Others
-Please ref [Uploading_File_Process.md](./Uploading_File_Process.md)
 
 
 
