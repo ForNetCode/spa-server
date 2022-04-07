@@ -22,7 +22,7 @@ path = "src/bin/main.rs"
 hyper = { version = "0.14", features = ["stream", "server", "http1", "http2", "tcp"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "io-std", "sync", "time", "tokio-macros"] }
 futures = "0.3"
-warp = { path = "../warp", features = ["tls"]}
+warp = { path = "../warp", features = ["tls"] }
 socket2 = "0.4"
 
 # warp inner
@@ -55,7 +55,7 @@ md-5 = "0.10"
 regex = "1.5"
 lazy_static = "1.4"
 # solve return  result
-anyhow = "1.0"
+anyhow = { version = "1.0", features = ["backtrace"] }
 # solve dir walk without recursion
 walkdir = "2.3"
 # time

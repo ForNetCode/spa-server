@@ -15,17 +15,20 @@ addr = "0.0.0.0"
 file_dir = "/data"
 
 # enable cors, default is false, its implementation is simple now.
-# Access-Control-Allow-Origin: *
+# Access-Control-Allow-Origin: $ORIGIN
 # Access-Control-Allow-Methods: OPTION,GET,HEAD
 # Access-Control-Max-Age: 3600
 // cors = true
 
 # https config, optional
 //https {
-//  # private ssl key
-//  private = "private.key path",
-//  # public ssl cert
-//  public = "public.cert path"
+//  # default value for https ssl
+//  ssl {
+//    # private ssl key
+//    private = "private.key path",
+//    # public ssl cert
+//    public = "public.cert path"
+//  }
 
 //  # https bind address
 //  port = 443
@@ -35,15 +38,11 @@ file_dir = "/data"
 //  # status code:301(Moved Permanently) to tell client redirect to https
 //  # optional, default is false
 //  http_redirect_to_https = false
-
-//  # gzip compression for js/json/icon/json, default is false,
-//  # only support gzip algo, and only compress cached files,
-//  # be careful to set it true
-//  compression = false
-
 //}
 
-# cache config
+
+
+# default cache config
 //cache {
 //  # if file size > max_size, it will not be cached. default is 10485760 (10MB).
 //  # do not use size unit format like 50MB!
@@ -60,6 +59,12 @@ file_dir = "/data"
 //    expire = 0
 //    extension_names = [html]
 //  }]
+
+//  # gzip compression for js/json/icon/json, default is false,
+//  # only support gzip algo, and only compress cached files,
+//  # be careful to set it true
+//  compression = false
+
 //}
 
 //# admin server config
@@ -79,4 +84,24 @@ file_dir = "/data"
 //  # default is 30MB(30*1024*1024)
 //  max_upload_size = 31457280
 //}
+
+
+# optional, domains specfic config, it will use the default config if not set
+//domains = [{
+//  # domain name
+//  domain: "www.example.com",
+//  // optional, same with cache config, if not set, will use default cache config.
+//  cache: {
+//    client_cache:${cache.client_cache}
+//    max_size: ${cache.max_size}
+//    client_cache = ${cache.client_cache}
+//  },
+//  # cors
+//  cors: ${cors},
+//  # domain https config, if not set, will use default https config.
+//  https: {
+//    ssl: ${https.ssl}
+//    http_redirect_to_https: ${https.http_redirect_to_https}
+//  }
+//}]
 ```

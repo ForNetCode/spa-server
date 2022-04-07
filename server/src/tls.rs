@@ -1,8 +1,13 @@
+use crate::config::SSL;
+use crate::Config;
 use anyhow::{anyhow, Context as _};
 use core::task::{Context, Poll};
 use futures_util::ready;
 use hyper::server::accept::Accept;
 use hyper::server::conn::{AddrIncoming, AddrStream};
+use rustls::server::{ClientHello, ResolvesServerCert, ResolvesServerCertUsingSni};
+use rustls::sign::CertifiedKey;
+use rustls::{sign, Error};
 use std::fs::File;
 use std::future::Future;
 use std::io;
@@ -15,9 +20,79 @@ use tokio_rustls::rustls::ServerConfig;
 //code from https://github.com/rustls/hyper-rustls/blob/main/examples/server.rs
 // it's like warp/tls.rs
 
-pub fn get_tls_config(cert_path: &str, key_path: &str) -> anyhow::Result<Arc<ServerConfig>> {
+struct AlwaysResolver(Arc<CertifiedKey>);
+impl ResolvesServerCert for AlwaysResolver {
+    fn resolve(&self, _: ClientHello) -> Option<Arc<CertifiedKey>> {
+        Some(self.0.clone())
+    }
+}
+struct CertResolver {
+    default: Option<Arc<CertifiedKey>>,
+    wrapper: ResolvesServerCertUsingSni,
+}
+
+pub fn load_ssl_server_config(config: &Config) -> anyhow::Result<Arc<ServerConfig>> {
+    let default = if let Some(ref ssl) = config.https.as_ref().map(|x| x.ssl.clone()).flatten() {
+        Some(load_ssl_file(ssl)?)
+    } else {
+        None
+    };
+
+    let ssls: Vec<(String, SSL)> = config
+        .domains
+        .iter()
+        .filter_map(|domain| {
+            domain
+                .https
+                .as_ref()
+                .map(|x| {
+                    x.ssl
+                        .as_ref()
+                        .map(|ssl| (domain.domain.clone(), ssl.clone()))
+                })
+                .flatten()
+        })
+        .collect();
+
+    let dynamic_resolver: Arc<dyn ResolvesServerCert> = if ssls.is_empty() && default.is_none() {
+        return Err(anyhow!(""));
+    } else if ssls.is_empty() {
+        default
+            .map(|cert_key| Arc::new(AlwaysResolver(Arc::new(cert_key))))
+            .ok_or_else(|| anyhow!("The default https ssl can't parse correctly"))?
+    } else {
+        let mut wrapper = ResolvesServerCertUsingSni::new();
+        for (domain, ssl) in ssls.iter() {
+            let certified_key = load_ssl_file(ssl)?;
+            wrapper.add(domain, certified_key)?;
+        }
+        Arc::new(CertResolver {
+            default: default.map(Arc::new),
+            wrapper,
+        })
+    };
+    let mut cfg = rustls::ServerConfig::builder()
+        .with_safe_defaults()
+        .with_no_client_auth()
+        .with_cert_resolver(dynamic_resolver);
+    cfg.alpn_protocols = vec!["h2".into(), "http/1.1".into()];
+    Ok(Arc::new(cfg))
+}
+
+impl ResolvesServerCert for CertResolver {
+    fn resolve(&self, client_hello: ClientHello) -> Option<Arc<CertifiedKey>> {
+        self.wrapper.resolve(client_hello).or(self.default.clone())
+    }
+}
+
+fn load_ssl_file(ssl: &SSL) -> anyhow::Result<sign::CertifiedKey> {
+    let cert_path = &ssl.public;
+    let key_path = &ssl.private;
+
+    tracing::debug!("load cert:{}", cert_path);
     let cert_file =
         File::open(cert_path).with_context(|| format!("fail to load cert:{}", cert_path))?;
+
     let mut reader = io::BufReader::new(cert_file);
     let cert = rustls_pemfile::certs(&mut reader)
         .with_context(|| format!("fail to parse cert:{}", cert_path))?;
@@ -26,6 +101,7 @@ pub fn get_tls_config(cert_path: &str, key_path: &str) -> anyhow::Result<Arc<Ser
         .map(rustls::Certificate)
         .collect::<Vec<rustls::Certificate>>();
 
+    tracing::debug!("load key:{}", key_path);
     let key_file =
         File::open(key_path).with_context(|| format!("fail to load private key:{}", cert_path))?;
     let mut reader = io::BufReader::new(key_file);
@@ -34,13 +110,10 @@ pub fn get_tls_config(cert_path: &str, key_path: &str) -> anyhow::Result<Arc<Ser
     if keys.len() != 1 {
         return Err(anyhow!("expected a single private key"));
     }
-    let mut cfg = rustls::ServerConfig::builder()
-        .with_safe_defaults()
-        .with_no_client_auth()
-        .with_single_cert(certs, rustls::PrivateKey(keys[0].to_owned()))
-        .with_context(|| "tls server_config build error")?;
-    cfg.alpn_protocols = vec!["h2".into(), "http/1.1".into()];
-    Ok(Arc::new(cfg))
+    let private_key = rustls::PrivateKey(keys[0].to_owned());
+    let key = sign::any_supported_type(&private_key)
+        .map_err(|_| Error::General("invalid private key".into()))?;
+    Ok(sign::CertifiedKey::new(certs, key))
 }
 
 enum State {

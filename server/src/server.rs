@@ -1,23 +1,21 @@
+use std::collections::{HashMap};
 use hyper::server::Server as HServer;
 use socket2::{Domain, Socket, Type};
 use std::convert::Infallible;
 use std::net::{SocketAddr, TcpListener};
-
 use chrono::{DateTime, Local};
 use hyper::server::conn::AddrIncoming;
 use std::str::FromStr;
 use std::sync::Arc;
+use hyper::service::service_fn;
 use tokio::net::TcpListener as TKTcpListener;
 use tokio::sync::oneshot::Receiver;
-use warp::cors::Cors;
-use warp::Filter;
 
 use crate::config::Config;
 use crate::domain_storage::DomainStorage;
 use crate::join;
-use crate::redirect_https::hyper_redirect_server;
-use crate::static_file_filter::static_file_filter;
-use crate::tls::{get_tls_config, TlsAcceptor};
+use crate::service::{create_service, DomainServiceConfig, ServiceConfig};
+use crate::tls::{load_ssl_server_config, TlsAcceptor};
 
 async fn handler(rx: Receiver<()>, time: DateTime<Local>, http_or_https: &'static str) {
     rx.await.ok();
@@ -52,63 +50,53 @@ macro_rules! run_server {
 pub struct Server {
     conf: Config,
     storage: Arc<DomainStorage>,
+    service_config: Arc<ServiceConfig>,
 }
 
 impl Server {
     pub fn new(conf: Config, storage: Arc<DomainStorage>) -> Self {
-        Server { conf, storage }
-    }
+        let default_http_redirect_to_https = conf.https.as_ref().map(|x| x.http_redirect_to_https).unwrap_or(false);
+        let default = DomainServiceConfig {
+            cors: conf.cors,
+            http_redirect_to_https: default_http_redirect_to_https,
+        };
+        let service_config: HashMap<String, DomainServiceConfig> = conf.domains.iter().map(|domain| {
+            let domain_service_config: DomainServiceConfig = DomainServiceConfig {
+                cors: domain.cors.unwrap_or(default.cors),
+                http_redirect_to_https: domain.https.as_ref().map(|x| x.http_redirect_to_https).flatten().unwrap_or(default_http_redirect_to_https),
+            };
 
-    fn get_cors_config(&self) -> Cors {
-        warp::cors()
-            .allow_any_origin()
-            .allow_methods(vec!["GET", "OPTION", "HEAD"])
-            .max_age(3600)
-            .build()
+            (domain.domain.clone(), domain_service_config)
+        }).collect();
+        let service_config = Arc::new(ServiceConfig {
+            default,
+            inner: service_config,
+        });
+        Server { conf, storage, service_config }
     }
 
     async fn start_https_server(&self, rx: Option<Receiver<()>>) -> anyhow::Result<()> {
         if let Some(config) = &self.conf.https {
-            let tls_server_config = get_tls_config(&config.public, &config.private)?;
+            let tls_server_config = load_ssl_server_config(&self.conf)?;
             let bind_address =
                 SocketAddr::from_str(&format!("{}:{}", &config.addr, &config.port)).unwrap();
-            let filter = static_file_filter(self.storage.clone());
-            tracing::info!("listenins on https://{}", &bind_address);
+
+            let make_svc = hyper::service::make_service_fn(|_| {
+                let service_config = self.service_config.clone();
+                let storage = self.storage.clone();
+                async move {
+                    Ok::<_, Infallible>(service_fn(move |req| {
+                        create_service(req, service_config.clone(), storage.clone())
+                    }))
+                }
+            });
+            tracing::info!("listening on https://{}", &bind_address);
             let incoming =
                 AddrIncoming::from_listener(TKTcpListener::from_std(get_socket(bind_address)?)?)?;
-            if self.conf.cors {
-                tracing::debug!("enable CORS for https server");
-                let service = warp::service(filter.with(self.get_cors_config()));
-                let make_svc = hyper::service::make_service_fn(|_| {
-                    let service = service.clone();
-                    async move { Ok::<_, Infallible>(service) }
-                });
 
-                let server =
-                    HServer::builder(TlsAcceptor::new(tls_server_config, incoming)).serve(make_svc);
-                run_server!(tls: server, rx);
-                // warp::serve(filter.with(self.get_cors_config()))
-                //     .tls()
-                //     .cert_path(&config.public)
-                //     .key_path(&config.private)
-                //     .run(bind_address)
-                //     .await;
-            } else {
-                let service = warp::service(filter);
-                let make_svc = hyper::service::make_service_fn(|_| {
-                    let service = service.clone();
-                    async move { Ok::<_, Infallible>(service) }
-                });
-                let server =
-                    HServer::builder(TlsAcceptor::new(tls_server_config, incoming)).serve(make_svc);
-                run_server!(tls: server, rx);
-                // warp::serve(filter)
-                //     .tls()
-                //     .cert_path(&config.public)
-                //     .key_path(&config.private)
-                //     .run(bind_address)
-                //     .await;
-            }
+            let server =
+                HServer::builder(TlsAcceptor::new(tls_server_config, incoming)).serve(make_svc);
+            run_server!(tls: server, rx);
         }
         Ok(())
     }
@@ -117,41 +105,19 @@ impl Server {
         if self.conf.port > 0 {
             let bind_address =
                 SocketAddr::from_str(&format!("{}:{}", &self.conf.addr, &self.conf.port)).unwrap();
-            if self
-                .conf
-                .https
-                .as_ref()
-                .map_or(false, |x| x.http_redirect_to_https)
-            {
-                hyper_redirect_server(bind_address, self.storage.clone()).await?;
-            } else {
-                let filter = static_file_filter(self.storage.clone());
-                if self.conf.cors {
-                    tracing::debug!("enable CORS for http server");
-                    let service = warp::service(filter.with(self.get_cors_config()));
-                    let make_svc = hyper::service::make_service_fn(|_| {
-                        let service = service.clone();
-                        async move { Ok::<_, Infallible>(service) }
-                    });
-                    tracing::info!("listening on http://{}", &bind_address);
-                    let server = HServer::from_tcp(get_socket(bind_address)?)?.serve(make_svc);
-                    run_server!(server, rx);
+            let make_svc = hyper::service::make_service_fn(|_| {
+                let service_config = self.service_config.clone();
+                let storage = self.storage.clone();
 
-                    // warp::serve(filter.with(self.get_cors_config()))
-                    //     .run(bind_address)
-                    //     .await;
-                } else {
-                    let service = warp::service(filter);
-                    let make_svc = hyper::service::make_service_fn(|_| {
-                        let service = service.clone();
-                        async move { Ok::<_, Infallible>(service) }
-                    });
-                    tracing::info!("listening on http://{}", &bind_address);
-                    let server = HServer::from_tcp(get_socket(bind_address)?)?.serve(make_svc);
-                    run_server!(server, rx);
-                    //warp::serve(filter).run(bind_address).await;
+                async move {
+                    Ok::<_, Infallible>(service_fn(move |req| {
+                        create_service(req, service_config.clone(), storage.clone())
+                    }))
                 }
-            }
+            });
+            tracing::info!("listening on http://{}", &bind_address);
+            let server = HServer::from_tcp(get_socket(bind_address)?)?.serve(make_svc);
+            run_server!(server, rx);
         }
         Ok(())
     }
@@ -164,7 +130,7 @@ impl Server {
             self.start_http_server(http_rx),
             self.start_https_server(https_rx),
         )
-        .await;
+            .await;
         _re.0?;
         _re.1?;
         Ok(())

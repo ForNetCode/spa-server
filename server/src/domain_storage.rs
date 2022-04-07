@@ -76,7 +76,7 @@ impl DomainStorage {
                         let path_buf = path_prefix_buf
                             .join(domain_dir_name)
                             .join(max_version.to_string());
-                        let data = cache.cache_dir(&path_buf)?;
+                        let data = cache.cache_dir(&domain_dir_name,&path_buf)?;
                         cache.update(domain_dir_name.to_string(), data);
                         domain_version.insert(domain_dir_name.to_owned(), (path_buf, max_version));
                     }
@@ -140,7 +140,7 @@ impl DomainStorage {
             );
             self.meta
                 .insert(domain.clone(), (new_path.clone(), version));
-            let data = self.cache.cache_dir(&new_path)?;
+            let data = self.cache.cache_dir(&domain, &new_path)?;
             tracing::info!("update domain:{}, version:{} finish!", &domain, version);
             self.cache.update(domain, data);
             Ok(version)
@@ -186,35 +186,51 @@ impl DomainStorage {
         }
     }
 
+    pub fn get_domain_serving_version(&self, domain:&str) -> Option<u32> {
+        self.meta.get(domain).map(|x|x.1)
+    }
+
     pub fn get_domain_info_by_domain(&self, domain: &str) -> Option<DomainInfo> {
-        self.get_domain_info()
-            .into_iter()
-            .find(|x| x.domain == domain)
+        let versions:Vec<u32> = walkdir::WalkDir::new(&self.prefix.join(domain)).max_depth(1).into_iter().filter_map(|version_entity|{
+            let version_entity =version_entity.ok()?;
+            let version = version_entity.file_name().to_str()?.parse::<u32>().ok()?;
+            Some(version)
+        }).collect();
+        if versions.is_empty() {
+            None
+        } else {
+            let domain = domain.to_string();
+            let current_version = self.meta.get(&domain).map(|x|x.1);
+            Some(DomainInfo {
+                domain,
+                current_version,
+                versions
+            })
+        }
     }
 
     pub fn get_domain_info(&self) -> Vec<DomainInfo> {
-        let mut result: Vec<DomainInfo> = Vec::new();
-        for item in self.meta.iter() {
-            let (path, version) = item.value();
-            let mut versions: Vec<u32> = Vec::new();
-            if let Ok(version_dir) = fs::read_dir(path.parent().unwrap()) {
-                for version in version_dir {
-                    if let Ok(version) = version {
-                        if let Some(Ok(version)) =
-                            version.file_name().to_str().map(|x| x.parse::<u32>())
-                        {
-                            versions.push(version)
-                        }
-                    }
-                }
+        let ret:Vec<DomainInfo> = walkdir::WalkDir::new(&self.prefix).max_depth(1).into_iter().filter_map(|dir_entity|{
+            let dir_entity = dir_entity.ok()?;
+            let domain_dir_name = dir_entity.file_name().to_str()?;
+            if dir_entity.metadata().ok()?.is_dir() && URI_REGEX.is_match(domain_dir_name) {
+                let domain = domain_dir_name.to_string();
+                let current_version = self.meta.get(&domain).map(|x|x.1);
+                let versions = walkdir::WalkDir::new(dir_entity.path()).max_depth(1).into_iter().filter_map(|version_entity|{
+                    let version_entity =version_entity.ok()?;
+                    let version = version_entity.file_name().to_str()?.parse::<u32>().ok()?;
+                    Some(version)
+                }).collect();
+                Some(DomainInfo {
+                    domain,
+                    current_version,
+                    versions
+                })
+            } else {
+                None
             }
-            result.push(DomainInfo {
-                domain: item.key().to_string(),
-                current_version: *version,
-                versions,
-            })
-        }
-        result
+        }).collect();
+        ret
     }
     fn check_is_in_upload_process(&self, domain: &str, version: &u32) -> bool {
         self.uploading_status
@@ -328,8 +344,8 @@ impl DomainStorage {
             }
         } else if uploading_status == UploadingStatus::Uploading {
             if self
-                .get_domain_info_by_domain(&domain)
-                .filter(|x| x.current_version == version)
+                .get_domain_serving_version(&domain)
+                .filter(|x| *x == version)
                 .is_some()
             {
                 return Err(anyhow!(
@@ -386,7 +402,7 @@ pub fn md5_file(path: impl AsRef<Path>, byte_buffer: &mut Vec<u8>) -> Option<Str
 #[derive(Deserialize, Serialize, Debug)]
 pub struct DomainInfo {
     pub domain: String,
-    pub current_version: u32,
+    pub current_version: Option<u32>,
     pub versions: Vec<u32>,
 }
 

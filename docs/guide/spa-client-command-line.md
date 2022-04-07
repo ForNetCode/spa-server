@@ -50,3 +50,8 @@ git clone --recursive https://github.com/timzaak/spa-server
 cargo build --package spa-client --release
 # you could get the binary from ./target/release directory
 ```
+You can install it by:
+```shell
+cd client
+cargo install --bin spa-client  --path .
+```

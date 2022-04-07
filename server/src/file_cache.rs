@@ -15,12 +15,58 @@ use std::sync::Arc;
 use std::time::Duration;
 use walkdir::WalkDir;
 use warp::fs::ArcPath;
+use crate::Config;
 
 pub struct FileCache {
-    conf: CacheConfig,
+    conf: DomainCacheConfig,
     data: DashMap<String, HashMap<String, Arc<CacheItem>>>,
-    expire_config: HashMap<String, Duration>,
+
 }
+
+pub struct DomainCacheConfig {
+    default: CacheConfig,
+    inner: HashMap<String, CacheConfig>,
+}
+
+impl DomainCacheConfig {
+    pub fn new(conf: &Config) -> Self{
+        let default = conf.cache.clone();
+        let inner: HashMap<String, CacheConfig> = conf.domains.iter().map(|domain| {
+            let cache = domain.cache.as_ref();
+            let max_size = cache.map(|x| x.max_size).flatten().unwrap_or(default.max_size);
+            let compression = cache.map(|x| x.compression).flatten().unwrap_or(default.compression);
+            let client_cache = cache.map(|x| x.client_cache.as_ref()).flatten().unwrap_or(&default.client_cache).clone();
+            (domain.domain.clone(), CacheConfig {
+                max_size,
+                compression,
+                client_cache,
+            })
+        }).collect();
+
+        DomainCacheConfig {
+            default,
+            inner
+        }
+    }
+    pub fn get_domain_cache_config(&self, domain: &str) -> &CacheConfig {
+        self.inner.get(domain).unwrap_or(&self.default)
+    }
+    pub fn get_domain_expire_config(&self, domain:&str) -> HashMap<String,Duration> {
+        let conf = self.get_domain_cache_config(domain);
+        let ret: HashMap<String, Duration> = conf
+            .client_cache.iter()
+            .map(|item| {
+                item.extension_names
+                    .iter()
+                    .map(|extension_name| (extension_name.clone(), item.expire.clone()))
+                    .collect::<Vec<(String, Duration)>>()
+            })
+            .flatten()
+            .collect();
+        ret
+    }
+}
+
 lazy_static! {
     pub static ref COMPRESSION_FILE_TYPE: HashSet<String> = HashSet::from([
         String::from("html"),
@@ -32,24 +78,11 @@ lazy_static! {
 }
 
 impl FileCache {
-    pub fn new(conf: CacheConfig) -> Self {
-        let expire_config: HashMap<String, Duration> = conf
-            .client_cache
-            .clone()
-            .into_iter()
-            .map(|item| {
-                item.extension_names
-                    .into_iter()
-                    .map(|extension_name| (extension_name, item.expire.clone()))
-                    .collect::<Vec<(String, Duration)>>()
-            })
-            .flatten()
-            .collect();
-
+    pub fn new(conf: &Config) -> Self {
+        let conf = DomainCacheConfig::new(conf);
         FileCache {
             conf,
             data: DashMap::new(),
-            expire_config,
         }
     }
     pub fn update(
@@ -60,12 +93,14 @@ impl FileCache {
         self.data.insert(domain, data)
     }
 
-    pub fn cache_dir(&self, path: &PathBuf) -> anyhow::Result<HashMap<String, Arc<CacheItem>>> {
+    pub fn cache_dir(&self, domain:&str, path: &PathBuf) -> anyhow::Result<HashMap<String, Arc<CacheItem>>> {
         let prefix = path
             .to_str()
             .map(|x| Ok(format!("{}/", x.to_string())))
             .unwrap_or(Err(anyhow!("can not parse path")))?;
         tracing::info!("prepare to cache_dir: {}", &prefix);
+        let conf = self.conf.get_domain_cache_config(domain);
+        let expire_config = self.conf.get_domain_expire_config(domain);
         let result: HashMap<String, Arc<CacheItem>> = WalkDir::new(path)
             .into_iter()
             .filter_map(|x| x.ok())
@@ -86,11 +121,11 @@ impl FileCache {
                                 .last()
                                 .map_or("".to_string(), |x| x.to_string());
 
-                            let data_block = if self.conf.max_size < metadata.len() {
+                            let data_block = if conf.max_size < metadata.len() {
                                 tracing::debug!("file block:{}", entry_path.display());
                                 DataBlock::FileBlock(ArcPath(Arc::new(entry_path)))
                             } else {
-                                let (bytes, compressed) = if self.conf.compression
+                                let (bytes, compressed) = if conf.compression
                                     && COMPRESSION_FILE_TYPE.contains(&extension_name)
                                 {
                                     let mut encoded_bytes = Vec::new();
@@ -121,7 +156,7 @@ impl FileCache {
                                     mime,
                                     meta: metadata,
                                     data: data_block,
-                                    expire: self.expire_config.get(&extension_name).cloned(),
+                                    expire: expire_config.get(&extension_name).cloned(),
                                 }),
                             )
                         });

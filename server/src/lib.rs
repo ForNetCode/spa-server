@@ -9,8 +9,9 @@ pub mod file_cache;
 pub mod hot_reload;
 pub mod tls;
 
-pub mod redirect_https;
 pub mod static_file_filter;
+pub mod service;
+pub mod cors;
 
 // utils
 use crate::admin_server::AdminServer;
@@ -43,7 +44,7 @@ async fn run_admin_server(
 fn load_config_and_cache() -> anyhow::Result<(Config, Arc<DomainStorage>)> {
     let config = Config::load()?;
     tracing::debug!("config load:{:?}", &config);
-    let cache = FileCache::new(config.cache.clone());
+    let cache = FileCache::new(&config);
     let domain_storage = Arc::new(DomainStorage::init(&config.file_dir.clone(), cache)?);
     Ok((config, domain_storage))
 }
@@ -57,7 +58,7 @@ pub async fn reload_server(
     // check: if cert file is ok.
     let config = Config::load()?;
     if config.admin_config.as_ref() == Some(admin_config) {
-        let cache = FileCache::new(config.cache.clone());
+        let cache = FileCache::new(&config);
         let domain_storage = Arc::new(DomainStorage::init(&config.file_dir.clone(), cache)?);
         let (state, http_rx, https_rx) = HotReloadState::init(&config);
         let server = Server::new(config.clone(), domain_storage.clone());

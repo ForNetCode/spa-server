@@ -10,7 +10,7 @@ use crate::api::API;
 use crate::commands::{CliCommand, Commands};
 use crate::config::Config;
 use crate::upload_files::upload_files;
-use anyhow::{anyhow, Context};
+use anyhow::anyhow;
 
 use clap::Parser;
 use console::style;
@@ -42,10 +42,10 @@ fn success(message: &str) {
 
 fn run_with_commands(commands: CliCommand) -> anyhow::Result<()> {
     let config = Config::load(commands.config_dir).map_err(|e| {
-        Err(anyhow!(
+        anyhow!(
             "Please set config file path or environment variable correctly, {}",
             e
-        ));
+        )
     })?;
     println!(
         "spa-client connect to admin server({})",
@@ -108,11 +108,11 @@ mod test {
     #[test]
     fn test_release() {
         init_config();
-        run_with_commands(CliCommand::parse_from(&[
+        let result = run_with_commands(CliCommand::parse_from(&[
             "test",
             "release",
             "self.noti.link",
-        ]))
-        .unwrap();
+        ]));
+        result.unwrap();
     }
 }

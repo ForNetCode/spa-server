@@ -8,3 +8,6 @@ VERSION=1.2.1
 DOCKER_BUILDKIT=1 docker build . -t="timzaak/spa-server:$VERSION"
 
 ```
+
+## SSL self sign
+you can go here to sign: http://cookcode.cc/selfsign

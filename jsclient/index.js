@@ -5,59 +5,29 @@ const { platform, arch } = process
 
 let nativeBinding = null
 let localFileExisted = false
+let isMusl = false
 let loadError = null
-
-function isMusl() {
-  // For Node 10
-  if (!process.report || typeof process.report.getReport !== 'function') {
-    try {
-      return readFileSync('/usr/bin/ldd', 'utf8').includes('musl')
-    } catch (e) {
-      return true
-    }
-  } else {
-    const { glibcVersionRuntime } = process.report.getReport().header
-    return !glibcVersionRuntime
-  }
-}
 
 switch (platform) {
   case 'android':
-    switch (arch) {
-      case 'arm64':
-        localFileExisted = existsSync(join(__dirname, 'spa-client.android-arm64.node'))
-        try {
-          if (localFileExisted) {
-            nativeBinding = require('./spa-client.android-arm64.node')
-          } else {
-            nativeBinding = require('spa-client-android-arm64')
-          }
-        } catch (e) {
-          loadError = e
-        }
-        break
-      case 'arm':
-        localFileExisted = existsSync(join(__dirname, 'spa-client.android-arm-eabi.node'))
-        try {
-          if (localFileExisted) {
-            nativeBinding = require('./spa-client.android-arm-eabi.node')
-          } else {
-            nativeBinding = require('spa-client-android-arm-eabi')
-          }
-        } catch (e) {
-          loadError = e
-        }
-        break
-      default:
-        throw new Error(`Unsupported architecture on Android ${arch}`)
+    if (arch !== 'arm64') {
+      throw new Error(`Unsupported architecture on Android ${arch}`)
+    }
+    localFileExisted = existsSync(join(__dirname, 'spa-client.android-arm64.node'))
+    try {
+      if (localFileExisted) {
+        nativeBinding = require('./spa-client.android-arm64.node')
+      } else {
+        nativeBinding = require('spa-client-android-arm64')
+      }
+    } catch (e) {
+      loadError = e
     }
     break
   case 'win32':
     switch (arch) {
       case 'x64':
-        localFileExisted = existsSync(
-          join(__dirname, 'spa-client.win32-x64-msvc.node')
-        )
+        localFileExisted = existsSync(join(__dirname, 'spa-client.win32-x64-msvc.node'))
         try {
           if (localFileExisted) {
             nativeBinding = require('./spa-client.win32-x64-msvc.node')
@@ -69,9 +39,7 @@ switch (platform) {
         }
         break
       case 'ia32':
-        localFileExisted = existsSync(
-          join(__dirname, 'spa-client.win32-ia32-msvc.node')
-        )
+        localFileExisted = existsSync(join(__dirname, 'spa-client.win32-ia32-msvc.node'))
         try {
           if (localFileExisted) {
             nativeBinding = require('./spa-client.win32-ia32-msvc.node')
@@ -83,9 +51,7 @@ switch (platform) {
         }
         break
       case 'arm64':
-        localFileExisted = existsSync(
-          join(__dirname, 'spa-client.win32-arm64-msvc.node')
-        )
+        localFileExisted = existsSync(join(__dirname, 'spa-client.win32-arm64-msvc.node'))
         try {
           if (localFileExisted) {
             nativeBinding = require('./spa-client.win32-arm64-msvc.node')
@@ -115,9 +81,7 @@ switch (platform) {
         }
         break
       case 'arm64':
-        localFileExisted = existsSync(
-          join(__dirname, 'spa-client.darwin-arm64.node')
-        )
+        localFileExisted = existsSync(join(__dirname, 'spa-client.darwin-arm64.node'))
         try {
           if (localFileExisted) {
             nativeBinding = require('./spa-client.darwin-arm64.node')
@@ -150,10 +114,9 @@ switch (platform) {
   case 'linux':
     switch (arch) {
       case 'x64':
-        if (isMusl()) {
-          localFileExisted = existsSync(
-            join(__dirname, 'spa-client.linux-x64-musl.node')
-          )
+        isMusl = readFileSync('/usr/bin/ldd', 'utf8').includes('musl')
+        if (isMusl) {
+          localFileExisted = existsSync(join(__dirname, 'spa-client.linux-x64-musl.node'))
           try {
             if (localFileExisted) {
               nativeBinding = require('./spa-client.linux-x64-musl.node')
@@ -164,9 +127,7 @@ switch (platform) {
             loadError = e
           }
         } else {
-          localFileExisted = existsSync(
-            join(__dirname, 'spa-client.linux-x64-gnu.node')
-          )
+          localFileExisted = existsSync(join(__dirname, 'spa-client.linux-x64-gnu.node'))
           try {
             if (localFileExisted) {
               nativeBinding = require('./spa-client.linux-x64-gnu.node')
@@ -179,10 +140,9 @@ switch (platform) {
         }
         break
       case 'arm64':
-        if (isMusl()) {
-          localFileExisted = existsSync(
-            join(__dirname, 'spa-client.linux-arm64-musl.node')
-          )
+        isMusl = readFileSync('/usr/bin/ldd', 'utf8').includes('musl')
+        if (isMusl) {
+          localFileExisted = existsSync(join(__dirname, 'spa-client.linux-arm64-musl.node'))
           try {
             if (localFileExisted) {
               nativeBinding = require('./spa-client.linux-arm64-musl.node')
@@ -193,9 +153,7 @@ switch (platform) {
             loadError = e
           }
         } else {
-          localFileExisted = existsSync(
-            join(__dirname, 'spa-client.linux-arm64-gnu.node')
-          )
+          localFileExisted = existsSync(join(__dirname, 'spa-client.linux-arm64-gnu.node'))
           try {
             if (localFileExisted) {
               nativeBinding = require('./spa-client.linux-arm64-gnu.node')
@@ -208,9 +166,7 @@ switch (platform) {
         }
         break
       case 'arm':
-        localFileExisted = existsSync(
-          join(__dirname, 'spa-client.linux-arm-gnueabihf.node')
-        )
+        localFileExisted = existsSync(join(__dirname, 'spa-client.linux-arm-gnueabihf.node'))
         try {
           if (localFileExisted) {
             nativeBinding = require('./spa-client.linux-arm-gnueabihf.node')
@@ -236,6 +192,7 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`)
 }
 
-const { runJs } = nativeBinding
+const { runJs, forTest } = nativeBinding
 
 module.exports.runJs = runJs
+module.exports.forTest = forTest

@@ -1,6 +1,6 @@
+use std::convert::Infallible;
 use crate::domain_storage::DomainStorage;
 use crate::file_cache::{CacheItem, DataBlock};
-use crate::with;
 use headers::{
     AcceptRanges, CacheControl, ContentEncoding, ContentLength, ContentRange, ContentType,
     HeaderMapExt, LastModified, Range,
@@ -13,24 +13,23 @@ use std::path::Path;
 use std::sync::Arc;
 use tokio::fs::File;
 use tokio::io;
-use warp::fs::{conditionals, file_stream, optimal_buf_size, Cond, Conditionals};
-use warp::host::Authority;
+use warp::fs::{file_stream, optimal_buf_size, Cond, Conditionals};
 use warp::http::{Response, StatusCode};
-use warp::{reject, Filter, Rejection};
+use crate::service::not_found;
 
 //from warp::fs
-fn sanitize_path(tail: &str) -> Result<String, Rejection> {
+fn sanitize_path(tail: &str) -> Result<String, Response<Body>> {
     if let Ok(p) = percent_decode_str(tail).decode_utf8() {
         for seg in p.split('/') {
             if seg.starts_with("..") {
-                return Err(reject::not_found());
+                return Err(not_found());
             } else if seg.contains('\\') {
-                return Err(reject::not_found());
+                return Err(not_found());
             }
         }
         Ok(p.into_owned())
     } else {
-        Err(reject::not_found())
+        Err(not_found())
     }
 }
 #[derive(Debug)]
@@ -84,7 +83,7 @@ async fn file_reply(
     path: &Path,
     range: Option<Range>,
     modified: Option<LastModified>,
-) -> Result<Response<Body>, Rejection> {
+) -> Response<Body>{
     let len = item.meta.len();
     match File::open(path).await {
         Ok(file) => {
@@ -115,7 +114,7 @@ async fn file_reply(
                         .typed_insert(ContentRange::unsatisfied_bytes(len));
                     resp
                 });
-            Ok(resp)
+            resp
         }
         Err(err) => {
             match err.kind() {
@@ -130,7 +129,7 @@ async fn file_reply(
                     tracing::error!("file open error (path={:?}): {} ", path.display(), err);
                 }
             };
-            Err(reject::not_found())
+            not_found()
         }
     }
 }
@@ -175,11 +174,11 @@ fn cache_reply(
         })
 }
 
-async fn cache_or_file_reply(
+pub async fn cache_or_file_reply(
     item: (String, Arc<CacheItem>),
     conditionals: Conditionals,
     accept_encoding: Option<String>,
-) -> Result<Response<Body>, Rejection> {
+) -> Result<Response<Body>, Infallible> {
     let (key, item) = item;
     let modified = item.meta.modified().map(LastModified::from).ok();
     match conditionals.check(modified) {
@@ -205,7 +204,7 @@ async fn cache_or_file_reply(
                 //false, true => file
                 if !client_accept_gzip && compressed {
                     tracing::debug!("{} hit disk", key);
-                    file_reply(&item, path.as_ref(), range, modified).await
+                    Ok(file_reply(&item, path.as_ref(), range, modified).await)
                 } else {
                     let mut resp = cache_reply(item.as_ref(), bytes, range, modified);
                     if client_accept_gzip && compressed {
@@ -219,7 +218,7 @@ async fn cache_or_file_reply(
             }
             DataBlock::FileBlock(path) => {
                 tracing::debug!("{} hit disk", key);
-                file_reply(&item, path.as_ref(), range, modified).await
+                Ok(file_reply(&item, path.as_ref(), range, modified).await)
             },
         },
     }
@@ -250,45 +249,20 @@ fn cache_item_to_response_header(
     }
 }
 
-async fn get_cache_file(
-    tail: warp::path::Tail,
-    authority_opt: Option<Authority>,
-    domain_storage: Arc<DomainStorage>,
-) -> Result<(String,Arc<CacheItem>), Rejection> {
-    match authority_opt {
-        Some(authority) => {
-            let key = sanitize_path(tail.as_str()).map(|s| {
-                if s.is_empty() {
-                    "index.html".to_owned()
-                } else {
-                    s
-                }
-            })?;
-            let host = authority.host();
-            if let Some(cache_item) = domain_storage.get_file(host, &key) {
-                Ok((key, cache_item))
-            } else {
-                tracing::debug!("no file for: {}/{}", &host, &key);
-                Err(reject::not_found())
-            }
+pub async fn get_cache_file2(tail:&str, host:&str, domain_storage:Arc<DomainStorage>) -> Result<(String, Arc<CacheItem>), Response<Body>> {
+    let key = sanitize_path(tail).map(|s| {
+        if s == "/" || s.is_empty() {
+            "index.html".to_owned()
+        } else {
+            let len = s.len();
+            s[1..len].to_owned()
         }
-        None => {
-            tracing::warn!("No Authority Request");
-            Err(reject::not_found())
-        },
+    })?;
+
+    if let Some(cache_item) = domain_storage.get_file(host, &key) {
+        Ok((key, cache_item))
+    } else {
+        tracing::debug!("no file for: {}/{}", &host, &key);
+        Err(not_found())
     }
-}
-pub fn static_file_filter(
-    domain_storage: Arc<DomainStorage>,
-) -> impl Filter<Extract = (Response<Body>,), Error = Rejection> + Clone {
-    warp::get()
-        .or(warp::head())
-        .unify()
-        .and(warp::path::tail())
-        .and(warp::host::optional())
-        .and(with(domain_storage.clone()))
-        .and_then(get_cache_file)
-        .and(conditionals())
-        .and(warp::header::optional::<String>("accept-encoding"))
-        .and_then(cache_or_file_reply)
 }

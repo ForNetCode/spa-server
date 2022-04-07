@@ -13,6 +13,7 @@ It is to provide a static web http server with cache and hot reload.
 - Http auto redirect to https.
 - Docker support(compressed size: 32M).
 - Provide command line/npm package to deploy spa.
+- Multiple configs for different domain.
 
 ## Document
 There is a nice [document](https://timzaak.github.io/spa-server/) powered by VitePress and GitHub Pages,

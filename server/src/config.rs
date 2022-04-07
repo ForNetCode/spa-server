@@ -6,7 +6,7 @@ use std::time::Duration;
 
 const CONFIG_PATH: &str = "config.conf";
 
-//pub struct DynamicConfig(Arc<Mutex<Config>>);
+// pub type Config = Arc<AppConfig>
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct Config {
@@ -19,6 +19,8 @@ pub struct Config {
     pub https: Option<HttpsConfig>,
     #[serde(default)]
     pub cache: CacheConfig,
+    #[serde(default)]
+    pub domains: Vec<DomainConfig>,
 }
 
 //TODO: create config with lots of default value
@@ -47,11 +49,31 @@ pub struct AdminConfig {
 fn default_max_upload_size() -> u64 {
     30 * 1024 * 1024
 }
-// TLS
+
 #[derive(Deserialize, Debug, Clone)]
-pub struct HttpsConfig {
+pub struct DomainConfig {
+    pub domain: String,
+    pub cors: Option<bool>,
+    pub cache: Option<DomainCacheConfig>,
+    pub https: Option<DomainHttpsConfig>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct DomainHttpsConfig {
+    pub ssl: Option<SSL>,
+    pub http_redirect_to_https: Option<bool>,
+    //#[serde(default)]
+    //pub disabled: bool,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct SSL {
     pub private: String,
     pub public: String,
+}
+#[derive(Deserialize, Debug, Clone)]
+pub struct HttpsConfig {
+    pub ssl: Option<SSL>,
     pub port: i32,
     pub addr: String,
     #[serde(default)]
@@ -66,6 +88,12 @@ pub struct CacheConfig {
     pub compression: bool,
     #[serde(default)]
     pub client_cache: Vec<ClientCacheItem>,
+}
+#[derive(Deserialize, Debug, Clone)]
+pub struct DomainCacheConfig {
+    pub max_size: Option<u64>,
+    pub compression: Option<bool>,
+    pub client_cache: Option<Vec<ClientCacheItem>>,
 }
 
 fn default_max_size() -> u64 {
