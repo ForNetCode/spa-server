@@ -19,10 +19,10 @@ jobs:
           node-version: "16"
           cache: "yarn"
           cache-dependency-path: yarn.lock
-
+      - name: Install dependencies
+        run: yarn install --ignore-scripts --frozen-lockfile --registry https://registry.npmjs.org --network-timeout 300000
       - name: Build Doc
         run: yarn run docs:build
-
       - name: Release Doc
         run: |  
           cd docs/.vitepress/dist
