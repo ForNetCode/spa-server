@@ -12,6 +12,11 @@ export default defineConfig({
         editLinks: true,
         editLinkText: 'Edit this page on GitHub',
         lastUpdated: 'Last Updated',
+        algolia: {
+            appId: 'NBNHWJCAL4',
+            apiKey: 'fa9bd1600dd455c6fc927a6fbafcd7b5',
+            indexName: 'spa-server',
+        },
         nav: [
             {text: 'Guide', link: '/', activeMatch: '^/$|^/guide/'},
             {

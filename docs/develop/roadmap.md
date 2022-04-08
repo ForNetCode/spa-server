@@ -14,3 +14,4 @@ There is no real roadmap for v1.3.x now, need users firstly.
 - [ ] doc: what's version control and file directory layout
 - [ ] chore: spa-client command help doc
 - [x] fix(build): disable generating new tag when build spa-client(js) success
+- [x] doc: add algolia search, thanks for algolia company! 
