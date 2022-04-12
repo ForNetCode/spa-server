@@ -249,7 +249,7 @@ fn cache_item_to_response_header(
     }
 }
 
-pub async fn get_cache_file2(tail:&str, host:&str, domain_storage:Arc<DomainStorage>) -> Result<(String, Arc<CacheItem>), Response<Body>> {
+pub async fn get_cache_file(tail:&str, host:&str, domain_storage:Arc<DomainStorage>) -> Result<(String, Arc<CacheItem>), Response<Body>> {
     let key = sanitize_path(tail).map(|s| {
         if s == "/" || s.is_empty() {
             "index.html".to_owned()

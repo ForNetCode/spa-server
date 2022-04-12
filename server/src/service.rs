@@ -11,7 +11,7 @@ use warp::fs::Conditionals;
 use crate::cors::{cors_resp, resp_cors_request, Validated};
 use crate::DomainStorage;
 
-use crate::static_file_filter::{cache_or_file_reply, get_cache_file2};
+use crate::static_file_filter::{cache_or_file_reply, get_cache_file};
 
 
 pub struct ServiceConfig {
@@ -60,7 +60,7 @@ pub async fn create_service(req: Request<Body>, service_config: Arc<ServiceConfi
         }
         // static file
 
-        let mut resp = match get_cache_file2(req.uri().path(), host, domain_storage).await {
+        let mut resp = match get_cache_file(req.uri().path(), host, domain_storage).await {
             Ok(item) => {
                 let headers = req.headers();
                 let conditionals = Conditionals {
