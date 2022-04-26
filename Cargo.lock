@@ -721,9 +721,9 @@ dependencies = [
 
 [[package]]
 name = "hocon"
-version = "0.7.0"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9ded0fc426537171e361b4f3ce37b4e6d70565a49dec6d0df47a931ce2478e01"
+checksum = "7dbf0338dac82c09762a1283d8bb117f2d0dddb97ee4eec711dd1b78f89975ee"
 dependencies = [
  "aho-corasick",
  "java-properties",
@@ -735,7 +735,7 @@ dependencies = [
  "serde",
  "serde_path_to_error",
  "thiserror",
- "uuid",
+ "uuid 1.0.0",
 ]
 
 [[package]]
@@ -932,7 +932,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "809e514e2cb8a9624701346ea3e694c1766d76778e343e537d873c1c366e79a7"
 dependencies = [
  "libc",
- "uuid",
+ "uuid 0.8.2",
  "winapi",
 ]
 
@@ -2224,6 +2224,12 @@ name = "uuid"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bc5cf98d8186244414c848017f0e2676b3fcb46807f6668a97dfe67359a3c4b7"
+
+[[package]]
+name = "uuid"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8cfcd319456c4d6ea10087ed423473267e1a071f3bc0aa89f80d60997843c6f0"
 dependencies = [
  "getrandom",
 ]

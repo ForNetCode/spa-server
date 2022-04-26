@@ -45,9 +45,7 @@ file_dir = "/data"
 # default cache config
 //cache {
 //  # if file size > max_size, it will not be cached. default is 10485760 (10MB).
-//  # do not use size unit format like 50MB!
-//  # It's blocked by [hocon #62](https://github.com/mockersf/hocon.rs/issues/62)
-//  max_size = 10485760  //10MB 10*1024*1024
+//  max_size = 10MB
 
 //  # http header Cache-Control config,
 //  # optional, if not set, won't sender this header to client
