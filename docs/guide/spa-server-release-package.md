@@ -1,6 +1,9 @@
 # spa-server distribution package
 ## Docker Image
-The docker image is distributed at `Docker Hub` as `timzaak/spa-server`, it support `linux/amd64`,`linux/arm64`.
+The docker image is distributed at `Docker Hub` as `timzaak/spa-server`.
+
+### AWS S3 Support
+We support S3 storage by docker `panubo/docker-s3fs`, and release as `timzaak/spa-server:${version}-s3`, all configure about S3fs fuse can be found [here](https://github.com/panubo/docker-s3fs).
 
 ## From Code
 There no plan to release binary package. You can `git clone` the code and build yourself.

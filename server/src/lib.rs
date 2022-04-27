@@ -13,7 +13,6 @@ pub mod static_file_filter;
 pub mod service;
 pub mod cors;
 
-// utils
 use crate::admin_server::AdminServer;
 use crate::config::{AdminConfig, Config};
 use crate::domain_storage::DomainStorage;
@@ -45,7 +44,7 @@ fn load_config_and_cache() -> anyhow::Result<(Config, Arc<DomainStorage>)> {
     let config = Config::load()?;
     tracing::debug!("config load:{:?}", &config);
     let cache = FileCache::new(&config);
-    let domain_storage = Arc::new(DomainStorage::init(&config.file_dir.clone(), cache)?);
+    let domain_storage = Arc::new(DomainStorage::init(&config.file_dir,cache)?);
     Ok((config, domain_storage))
 }
 
@@ -59,7 +58,7 @@ pub async fn reload_server(
     let config = Config::load()?;
     if config.admin_config.as_ref() == Some(admin_config) {
         let cache = FileCache::new(&config);
-        let domain_storage = Arc::new(DomainStorage::init(&config.file_dir.clone(), cache)?);
+        let domain_storage = Arc::new(DomainStorage::init(&config.file_dir,cache)?);
         let (state, http_rx, https_rx) = HotReloadState::init(&config);
         let server = Server::new(config.clone(), domain_storage.clone());
         tokio::task::spawn(async move { server.run(http_rx, https_rx).await });

@@ -50,6 +50,9 @@ serde_repr = "0.1"
 #cache
 dashmap = "5.2"
 
+#s3
+#rust-s3 = {version="0.31", features = ["blocking", "tokio-rustls-tls"], default-features = false}
+
 # util
 md-5 = "0.10"
 regex = "1.5"

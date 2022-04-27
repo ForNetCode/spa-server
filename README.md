@@ -11,7 +11,7 @@ It is to provide a static web http server with cache and hot reload.
 - Hot reload support(Mac and Linux).
 - CORS support.
 - Http auto redirect to https.
-- Docker support(compressed size: 32M).
+- Docker support(compressed size: 32M), and support S3 as storage by S3FS.
 - Provide command line/npm package to deploy spa.
 - Multiple configs for different domain.
 

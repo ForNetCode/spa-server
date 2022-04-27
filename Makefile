@@ -40,6 +40,9 @@ ifeq ($(VERSION), )
 else
 	DOCKER_BUILDKIT=1 docker build . -t="timzaak/spa-server:$(VERSION)"
     docker push timzaak/spa-server:$(VERSION)
+	cd docker
+	DOCKER_BUILDKIT=1 docker build . -f S3FS.Dockerfile -t="timzaak/spa-server:$(VERSION)-s3"
+	docker push timzaak/spa-server:$(VERSION)-s3
 endif
 
 spa-client-docker-release:

@@ -51,7 +51,7 @@ function getGuideSidebar() {
             text: 'SPA-Server', children: [
                 {text: 'Configuration', link: '/guide/spa-server-configuration'},
                 {text: 'Http API', link: '/guide/spa-server-api'},
-                {text: 'Package', link: '/guide/spa-server-release-pacakge'},
+                {text: 'Package', link: '/guide/spa-server-release-package'},
             ]
         },
         {
