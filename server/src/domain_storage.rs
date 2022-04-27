@@ -191,7 +191,7 @@ impl DomainStorage {
     }
 
     pub fn get_domain_info_by_domain(&self, domain: &str) -> Option<DomainInfo> {
-        let versions:Vec<u32> = walkdir::WalkDir::new(&self.prefix.join(domain)).max_depth(1).into_iter().filter_map(|version_entity|{
+        let versions:Vec<u32> = WalkDir::new(&self.prefix.join(domain)).max_depth(1).into_iter().filter_map(|version_entity|{
             let version_entity =version_entity.ok()?;
             let version = version_entity.file_name().to_str()?.parse::<u32>().ok()?;
             Some(version)
@@ -377,6 +377,23 @@ impl DomainStorage {
             );
         }
         Ok(())
+    }
+
+    pub fn remove_domain_version(&self, domain:&str, version:Option<u32>) ->anyhow::Result<bool> {
+        let mut path = self.prefix.join(domain);
+        if let Some(version) = version {
+            path = path.join(version.to_string());
+            if path.exists() {
+                fs::remove_dir_all(path)?;
+                return Ok(true);
+            }
+        }else {
+            if path.exists() {
+                fs::remove_dir_all(path)?;
+                return Ok(true);
+            }
+        }
+        return Ok(false)
     }
 }
 

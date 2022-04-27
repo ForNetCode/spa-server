@@ -1,7 +1,7 @@
 # SPA-SERVER
 It is to provide a static web http server with cache and hot reload.
 
-[中文 README](./README_CN.md)
+[中文说明](./README_CN.md)
 
 ## Feature
 - Built with Hyper and Warp, fast and small!

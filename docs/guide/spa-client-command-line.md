@@ -16,6 +16,9 @@ spa-client -c $CONFIG_PATH info $OPT_DOMAIN
 
 # reload spa-server, this is used to reload https cert
 spa-client -c $CONFIG_PATH reload
+
+# delete deprecated domain files
+spa-client -c $CONFIG_PATH delete $OPT_DOMAIN $OPT_MAX_RESERVE
 ```
 
 There also provides http api to interact with admin server,

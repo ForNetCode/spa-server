@@ -69,13 +69,20 @@ fn run_with_commands(commands: CliCommand) -> anyhow::Result<()> {
             api.reload_sap_server()?;
             success("reload success!");
         }
+        Commands::Delete {
+            domain,
+            max_reserve,
+        } => {
+            api.remove_files(domain, max_reserve)?;
+            success("delete success!");
+        }
     };
     Ok(())
 }
 
 #[cfg(test)]
 mod test {
-    use crate::{run_with_commands, CliCommand};
+    use crate::{run, run_with_commands, CliCommand};
     use clap::Parser;
     use std::env;
 
@@ -112,6 +119,17 @@ mod test {
             "test",
             "release",
             "self.noti.link",
+        ]));
+        result.unwrap();
+    }
+    #[test]
+    fn test_delete() {
+        init_config();
+        let result = run_with_commands(CliCommand::parse_from(&[
+            "test",
+            "delete",
+            "self.noti.link",
+            "2",
         ]));
         result.unwrap();
     }

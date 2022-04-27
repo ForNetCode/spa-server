@@ -1,6 +1,6 @@
 use crate::admin_server::request::{
-    DomainWithOptVersionOption, DomainWithVersionOption, GetDomainOption, GetDomainPositionOption,
-    UpdateUploadingStatusOption,
+    DeleteDomainVersionOption, DomainWithOptVersionOption, DomainWithVersionOption,
+    GetDomainOption, GetDomainPositionOption, UpdateUploadingStatusOption,
 };
 use crate::config::AdminConfig;
 use crate::domain_storage::DomainStorage;
@@ -45,7 +45,8 @@ impl AdminServer {
                 self.update_domain_version()
                     .or(self.reload_server())
                     .or(self.change_upload_status())
-                    .or(self.upload_file()),
+                    .or(self.upload_file())
+                    .or(self.remove_domain_version()),
             )),
         )
     }
@@ -150,12 +151,22 @@ impl AdminServer {
             .and(warp::query::<DomainWithVersionOption>())
             .map(service::get_files_metadata)
     }
+
+    fn remove_domain_version(
+        &self,
+    ) -> impl Filter<Extract = (impl warp::Reply,), Error = Rejection> + Clone {
+        warp::path!("files" / "delete")
+            .and(with(self.domain_storage.clone()))
+            .and(warp::query::<DeleteDomainVersionOption>())
+            .map(service::remove_domain_version)
+    }
 }
 
 pub mod service {
     use crate::admin_server::request::{
-        DomainWithOptVersionOption, DomainWithVersionOption, GetDomainOption,
-        GetDomainPositionFormat, GetDomainPositionOption, UpdateUploadingStatusOption,
+        DeleteDomainVersionOption, DomainWithOptVersionOption, DomainWithVersionOption,
+        GetDomainOption, GetDomainPositionFormat, GetDomainPositionOption,
+        UpdateUploadingStatusOption,
     };
     use crate::domain_storage::{DomainStorage, URI_REGEX};
     use crate::{AdminConfig, HotReloadManager};
@@ -184,7 +195,7 @@ pub mod service {
                     return Ok(StatusCode::NOT_FOUND.into_response());
                 }
             }
-            None => Ok(warp::reply::json(&domain_info).into_response()),
+            _ => Ok(warp::reply::json(&domain_info).into_response()),
         }
     }
 
@@ -344,6 +355,46 @@ pub mod service {
             }
         }
     }
+
+    pub(super) fn remove_domain_version(
+        storage: Arc<DomainStorage>,
+        query: DeleteDomainVersionOption,
+    ) -> Response {
+        let domains_info = if let Some(domain) = query.domain {
+            storage
+                .get_domain_info_by_domain(&domain)
+                .map(|v| vec![v])
+                .unwrap_or(vec![])
+        } else {
+            storage.get_domain_info()
+        };
+        for info in domains_info {
+            let delete_versions = if let Some(max_reserve) = query.max_reserve {
+                if let Some(mut max_version) =
+                    info.current_version
+                        .or(info.versions.iter().max().map(|x| *x))
+                {
+                    max_version = max_version - max_reserve;
+                    info.versions
+                        .into_iter()
+                        .filter(|v| *v < max_version)
+                        .collect::<Vec<u32>>()
+                } else {
+                    vec![]
+                }
+            } else {
+                let current_version = info.current_version.unwrap_or(u32::MAX);
+                info.versions
+                    .into_iter()
+                    .filter(|version| *version != current_version)
+                    .collect::<Vec<u32>>()
+            };
+            for version in delete_versions {
+                let _ = storage.remove_domain_version(&info.domain, Some(version));
+            }
+        }
+        Response::default()
+    }
 }
 
 pub mod request {
@@ -385,11 +436,18 @@ pub mod request {
         pub domain: String,
         pub version: Option<u32>,
     }
+
     #[derive(Deserialize, Serialize)]
     pub struct UpdateUploadingStatusOption {
         pub domain: String,
         pub version: u32,
         pub status: UploadingStatus,
+    }
+
+    #[derive(Deserialize, Serialize)]
+    pub struct DeleteDomainVersionOption {
+        pub domain: Option<String>,
+        pub max_reserve: Option<u32>,
     }
 }
 

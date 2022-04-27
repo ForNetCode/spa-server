@@ -2,7 +2,9 @@ use crate::Config;
 use anyhow::anyhow;
 use reqwest::{header, multipart, StatusCode};
 use serde_json::Value;
-use spa_server::admin_server::request::{DomainWithOptVersionOption, UpdateUploadingStatusOption};
+use spa_server::admin_server::request::{
+    DeleteDomainVersionOption, DomainWithOptVersionOption, UpdateUploadingStatusOption,
+};
 use spa_server::domain_storage::{ShortMetaData, UploadDomainPosition};
 use std::borrow::Cow;
 use std::path::PathBuf;
@@ -114,6 +116,22 @@ impl API {
 
     pub fn reload_sap_server(&self) -> anyhow::Result<()> {
         let resp = self.blocking_client.post(self.url("reload")).send()?;
+        handle!(resp)
+    }
+
+    pub fn remove_files(
+        &self,
+        domain: Option<String>,
+        max_reserve: Option<u32>,
+    ) -> anyhow::Result<()> {
+        let resp = self
+            .blocking_client
+            .post(self.url("files/delete"))
+            .json(&DeleteDomainVersionOption {
+                domain,
+                max_reserve,
+            })
+            .send()?;
         handle!(resp)
     }
 

@@ -105,3 +105,15 @@ curl -X POST "http://$ADMIN_SERVER/file/upload" \
 -F "file=@$PATH" -F "domain=$DOMAIN" -F "version=$VERSION" -F "path=$PATH"  -H "Authorization: Bearer $TOKEN"
 # return status code:200 if success 
 ```
+
+### Delete deprecated domain files
+```shell
+# keep 2 versions. 
+MAX_RESERVE = 1
+curl -X POST "http://$ADMIN_SERVER/files/delete" \
+--data-raw `{
+  "domain":$DOMAIN,
+  "max_reserve": $MAX_RESERVE
+}`
+# return status code:200 if success 
+```

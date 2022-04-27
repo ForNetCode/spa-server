@@ -18,6 +18,7 @@ pub enum Commands {
         domain: String,
         version: Option<u32> },
     Reload,
+    Delete {domain: Option<String>, max_reserve:Option<u32>}
 }
 
 #[derive(Args, Debug)]
