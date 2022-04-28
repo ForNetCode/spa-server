@@ -4,7 +4,7 @@ use serde::Deserialize;
 use std::env;
 use std::time::Duration;
 
-const CONFIG_PATH: &str = "config.conf";
+const CONFIG_PATH: &str = "/config/config.conf";
 
 // pub type Config = Arc<AppConfig>
 

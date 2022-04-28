@@ -21,7 +21,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 FROM ${RUNTIME_IMAGE}
 
 RUN mkdir /data
-COPY --from=builder ./config.release.conf ./config.conf
-COPY --from=builder ./target/release/spa-server .
+COPY --from=builder ./config.release.conf /config/config.conf
+COPY --from=builder ./target/release/spa-server /usr/bin/
 
 CMD ["./spa-server"]
