@@ -14,6 +14,8 @@ use std::sync::Arc;
 use warp::multipart::FormData;
 use warp::reply::Response;
 use warp::{Filter, Rejection};
+#[macro_use]
+use delay_timer::prelude::*;
 
 pub struct AdminServer {
     conf: AdminConfig,
@@ -55,6 +57,16 @@ impl AdminServer {
         let bind_address =
             SocketAddr::from_str(&format!("{}:{}", &self.conf.addr, &self.conf.port)).unwrap();
         warp::serve(self.routes()).run(bind_address).await;
+        if let Some(cron_config) = &self.conf.deprecated_version_delete {
+            let mut delay_timer = DelayTimerBuilder::default()
+                .tokio_runtime_by_default()
+                .build();
+            delay_timer.add_task(build_async_job(
+                self.domain_storage.clone(),
+                Some(cron_config.max_reserve),
+                &cron_config.cron,
+            )?)?;
+        }
         Ok(())
     }
 
@@ -451,6 +463,30 @@ pub mod request {
     }
 }
 
+fn build_async_job(
+    domain_storage: Arc<DomainStorage>,
+    max_reserve: Option<u32>,
+    cron: &str,
+) -> anyhow::Result<Task> {
+    let domain_storage = domain_storage.clone();
+
+    let body = move || {
+        service::remove_domain_version(
+            domain_storage.clone(),
+            DeleteDomainVersionOption {
+                domain: None,
+                max_reserve,
+            },
+        );
+        println!("tt");
+    };
+    let builder = TaskBuilder::default()
+        .set_frequency_repeated_by_cron_str(cron)
+        .set_task_id(1)
+        .set_maximum_parallel_runnable_num(1)
+        .spawn_routine(body)?;
+    Ok(builder)
+}
 // TODO: the code structure is not friendly with Unit Test, need refactor it.
 #[cfg(test)]
 mod test {

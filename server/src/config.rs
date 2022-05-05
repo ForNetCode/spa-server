@@ -44,6 +44,7 @@ pub struct AdminConfig {
     pub token: String,
     #[serde(default = "default_max_upload_size")]
     pub max_upload_size: u64,
+    pub deprecated_version_delete: Option<DeprecatedVersionRemove>,
 }
 
 fn default_max_upload_size() -> u64 {
@@ -115,4 +116,17 @@ impl Default for CacheConfig {
             compression: false,
         }
     }
+}
+#[derive(Deserialize, Debug, Clone, Eq, PartialEq)]
+pub struct DeprecatedVersionRemove {
+    #[serde(default = "default_cron")]
+    pub cron: String,
+    #[serde(default = "default_max_reserve")]
+    pub max_reserve: u32,
+}
+pub fn default_cron() -> String {
+    String::from("0 0 3 * * *")
+}
+pub fn default_max_reserve() -> u32 {
+    return 2;
 }

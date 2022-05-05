@@ -15,6 +15,7 @@ There is no real roadmap for v1.3.x now, need users firstly.
 - [ ] chore: spa-client command help doc
 - [ ] bench: add benchmark
 - [x] chore(break change): change server docker config and binary location
+- [x] feat: add cron job to delete deprecated version
 - [x] feat(with client): delete deprecated version to save storage
 - [x] feat: Support S3 by docker(backward: release docker image: timzaak/spa-server:1.2.5-s3)
 - [x] deps: bump hocon 0.9, fix size unit config parse

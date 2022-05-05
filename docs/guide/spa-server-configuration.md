@@ -81,6 +81,14 @@ file_dir = "/data"
 //  # max file size allowed to be uploaded,
 //  # default is 30MB(30*1024*1024)
 //  max_upload_size = 31457280
+
+//  # delete deprecated version by cron
+//  deprecated_version_delete {
+//    # default value: every day at 3am.
+//    cron: "0 0 3 * * *",
+//    # default value is 2
+//    max_preserve: 2,
+//  }
 //}
 
 
