@@ -53,7 +53,7 @@
     "format:prettier": "prettier . -w",
     "format:rs": "cargo fmt",
     "lint": "eslint . -c ./.eslintrc.yml",
-    "prepublishOnly": "napi prepublish -t npm --skip-gh-release=true",
+    "prepublishOnly": "napi prepublish --skip-gh-release=true -t npm",
     "test": "ava",
     "version": "napi version"
   },
