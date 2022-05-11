@@ -2118,7 +2118,7 @@ dependencies = [
 
 [[package]]
 name = "spa-client"
-version = "0.1.1"
+version = "0.1.4"
 dependencies = [
  "anyhow",
  "clap",
@@ -2151,7 +2151,7 @@ dependencies = [
 
 [[package]]
 name = "spa-server"
-version = "1.2.5"
+version = "1.2.6"
 dependencies = [
  "anyhow",
  "bytes",

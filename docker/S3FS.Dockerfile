@@ -1,5 +1,5 @@
 ARG BASE_IMAGE=timzaak/spa-server
-ARG VERSION=1.2.5
+ARG VERSION=1.2.6
 
 FROM ${BASE_IMAGE}:${VERSION} as Source
 
