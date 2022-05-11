@@ -1,5 +1,8 @@
 # Break Changes
 
+## v1.2.6(2022-05-11)
+* spa-server: move config path in docker: `config.conf` => `config/cnfig.conf` 
+
 ## v1.2.5(2022-04-06)
 * spa-server config breaks for support multiple domain config.
 ### Migrate(Change Config Position)
