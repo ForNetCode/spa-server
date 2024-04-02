@@ -40,12 +40,12 @@ jobs:
           cache-to: type=gha,mode=max
           tags: ${{ env.REGISTRY }}/fornetcode/spa-server:${{github.event.inputs.version}}, ${{ env.REGISTRY }}/fornetcode/spa-server:latest
 
-      - name: build and push spa-server with S3
-        uses: docker/build-push-action@v2
-        with:
-          context: "{{defaultContext}}:docker"
-          file: S3FS.Dockerfile
-          push: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          tags: ${{ env.REGISTRY }}/fornetcode/spa-server:${{github.event.inputs.version}}-s3
+#      - name: build and push spa-server with S3
+#        uses: docker/build-push-action@v2
+#        with:
+#          context: "{{defaultContext}}:docker"
+#          file: S3FS.Dockerfile
+#          push: true
+#          cache-from: type=gha
+#          cache-to: type=gha,mode=max
+#          tags: ${{ env.REGISTRY }}/fornetcode/spa-server:${{github.event.inputs.version}}-s3
