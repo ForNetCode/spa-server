@@ -14,18 +14,22 @@ use std::io;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::vec::Vec;
+use rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs1KeyDer};
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use tokio_rustls::rustls::ServerConfig;
 
 //code from https://github.com/rustls/hyper-rustls/blob/main/examples/server.rs
 // it's like warp/tls.rs
 
+#[derive(Debug)]
 struct AlwaysResolver(Arc<CertifiedKey>);
 impl ResolvesServerCert for AlwaysResolver {
     fn resolve(&self, _: ClientHello) -> Option<Arc<CertifiedKey>> {
         Some(self.0.clone())
     }
 }
+
+#[derive(Debug)]
 struct CertResolver {
     default: Option<Arc<CertifiedKey>>,
     wrapper: ResolvesServerCertUsingSni,
@@ -72,7 +76,6 @@ pub fn load_ssl_server_config(config: &Config) -> anyhow::Result<Arc<ServerConfi
         })
     };
     let mut cfg = rustls::ServerConfig::builder()
-        .with_safe_defaults()
         .with_no_client_auth()
         .with_cert_resolver(dynamic_resolver);
     cfg.alpn_protocols = vec!["h2".into(), "http/1.1".into()];
@@ -94,26 +97,26 @@ fn load_ssl_file(ssl: &SSL) -> anyhow::Result<sign::CertifiedKey> {
         File::open(cert_path).with_context(|| format!("fail to load cert:{}", cert_path))?;
 
     let mut reader = io::BufReader::new(cert_file);
-    let cert = rustls_pemfile::certs(&mut reader)
+    let certs = rustls_pemfile::certs(&mut reader)
+        .collect::<Result<Vec<CertificateDer<'static>>, _>>()
         .with_context(|| format!("fail to parse cert:{}", cert_path))?;
-    let certs = cert
-        .into_iter()
-        .map(rustls::Certificate)
-        .collect::<Vec<rustls::Certificate>>();
+
 
     tracing::debug!("load key:{}", key_path);
     let key_file =
         File::open(key_path).with_context(|| format!("fail to load private key:{}", cert_path))?;
     let mut reader = io::BufReader::new(key_file);
     let keys = rustls_pemfile::rsa_private_keys(&mut reader)
+        .collect::<Result<Vec<PrivatePkcs1KeyDer<'static>>, _>>()
         .with_context(|| format!("fail to parse private key:{}", cert_path))?;
     if keys.len() != 1 {
         return Err(anyhow!("expected a single private key"));
     }
-    let private_key = rustls::PrivateKey(keys[0].to_owned());
-    let key = sign::any_supported_type(&private_key)
+
+    let private_key = PrivateKeyDer::from(keys.into_iter().nth(0).unwrap());
+    let key = rustls::crypto::ring::sign::any_supported_type(&private_key)
         .map_err(|_| Error::General("invalid private key".into()))?;
-    Ok(sign::CertifiedKey::new(certs, key))
+    Ok(CertifiedKey::new(certs, key))
 }
 
 enum State {

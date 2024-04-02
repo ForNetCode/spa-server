@@ -1,4 +1,20 @@
 # Command Line
+We have provided command line in 1.x versions, but it seems no one need it. So we removed the binary release and docker release.
+
+But you can build it from source.
+
+## Source Code
+```shell
+git clone --recursive https://github.com/fornetcode/spa-server
+cargo build --package spa-client --release
+# you could get the binary from ./target/release directory
+```
+You can install it by:
+```shell
+cd client
+cargo install --bin spa-client  --path .
+```
+
 ## Overview
 spa-client it a command line tool to help user upload files and release new SPA.
 
@@ -23,37 +39,29 @@ spa-client -c $CONFIG_PATH delete $OPT_DOMAIN $OPT_MAX_RESERVE
 
 There also provides http api to interact with admin server,
 
+### Config
+the config file format is hocon:
+
+```hocon
+# admin server address and auth
+server {
+  # required
+  address: "http://127.0.0.1:9000"
+  # required
+  auth_token: "token"
+}
+
+# uploading file thread number.
+upload {
+  # optional, default value is 3.
+  parallel: 3
+}
+```
+the config file name would be `client.conf`
+
 ```shell
 # Uploading Files By scp and release 
 scp $SPA_DIRECTORY \
 user@ip:$(curl "http://$ADMIN_SERVER/upload/position?domain=$DOMAIN" -H "Authorization: Bearer $TOKEN") &&\
 curl "http://$ADMIN_SERVER/update_version?domain=$DOMAIN" -H "Authorization: Bearer $TOKEN"
-```
-
-## Docker Image
-We also release a docker image for spa-client.
-```shell
-$ docker run --rm -it -v $CONFIG_FILE_PATH:/client.conf \
- timzaak/client spa-client -c /client.conf info
-```
-
-## Binary package
-You can get the packed binary in [Release Notes](https://github.com/timzaak/spa-server/releases).
-
-It now supports three format:
-
-- x86_64 Linux-Musl
-- x86_64 Mac
-- x86_64 Windows exe
-
-## Source Code
-```shell
-git clone --recursive https://github.com/timzaak/spa-server
-cargo build --package spa-client --release
-# you could get the binary from ./target/release directory
-```
-You can install it by:
-```shell
-cd client
-cargo install --bin spa-client  --path .
 ```

@@ -15,7 +15,7 @@
 - 每个域名可拥有独立的配置
 
 ## 文档
-中文 README 目前仅提供一些简易`快速使用`指引，更多内容可参考英文文档， 中文版会在后续有精力的时候做，其网站托管在 [GitHub Pages](https://timzaak.github.io/spa-server) 和 [Gitee Pages](https://timzaak.gitee.io/spa-server)，
+中文 README 目前仅提供一些简易`快速使用`指引，更多内容可参考英文文档， 中文版会在后续有精力的时候做，其网站托管在 [GitHub Pages](https://fornetcode.github.io/spa-server)，
 
 ## 服务跑起来
 
@@ -38,7 +38,7 @@ docker run -d -p 80 -p 443 -v $HOST_VOLUME:/data -v $CONFIG:/config.conf timzaak
 ```
 
 ## 如何部署静态文件
-如果你想集成到JS项目中，请参阅：[example/js-aapp-example](example/js-app-example/README.md)。
+如果你想集成到JS项目中，请参阅：[example/js-aapp-example](example/tmp/README.md)。
 
 ## spa-server 使用场景
 ### 单独使用

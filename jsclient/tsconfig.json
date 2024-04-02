@@ -1,14 +1,25 @@
+
 {
   "compilerOptions": {
-    "target": "ES2018",
+    "target": "ES2015",
+    "module": "commonjs",
+    "lib": ["es2017", "es7", "es6", "dom"],
+    "declaration": true,
+    "outDir": "dist",
+    "rootDirs": ["src"],
+    "resolveJsonModule": true,
     "strict": true,
+    "allowJs": true,
+    "checkJs": false,
     "moduleResolution": "node",
-    "module": "CommonJS",
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true
+    "esModuleInterop": true
   },
-  "include": ["."],
-  "exclude": ["node_modules"]
+  "include": [
+    "src",
+    "test",
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
 }

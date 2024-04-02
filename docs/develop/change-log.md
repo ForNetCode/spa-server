@@ -1,5 +1,14 @@
 # Change Log
 
+### Version 2.0.0(client:2.0.0)
+- [x] move project from timzaak to ForNet
+- [x] upgrade warp and other dependencies
+- [x] upgrade vitePress to 1.0.1
+- [x] change js sdk implementation from Rust to typescript
+- [x] doc: rewrite to support new doc
+- [x] cicd: remove client docker, server s3 docker.
+
+
 ### Version v1.2.6(client:v0.1.4)
 - [x] chore(break change): change server docker config and binary location
 - [x] feat: add cron job to delete deprecated version

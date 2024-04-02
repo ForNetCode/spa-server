@@ -1,114 +1,47 @@
 {
   "name": "spa-client",
-  "version": "0.1.4",
-  "description": "node.js wrapper for spa-client",
-  "main": "index.js",
-  "repository": "https://github.com/timzaak/spa-server",
-  "license": "MIT",
-  "keywords": [
-    "napi-rs",
-    "NAPI",
-    "spa-server",
-    "node-addon",
-    "node-addon-api"
-  ],
-  "files": [
-    "index.d.ts",
-    "index.js"
-  ],
-  "bin": {
-    "spa-client": "run-spa.js"
-  },
-  "napi": {
-    "name": "spa-client",
-    "triples": {
-      "defaults": true,
-      "additional": [
-        "x86_64-unknown-linux-musl",
-        "aarch64-unknown-linux-gnu",
-        "i686-pc-windows-msvc",
-        "armv7-unknown-linux-gnueabihf",
-        "aarch64-apple-darwin",
-        "aarch64-linux-android",
-        "x86_64-unknown-freebsd",
-        "aarch64-unknown-linux-musl",
-        "aarch64-pc-windows-msvc",
-        "armv7-linux-androideabi"
-      ]
-    }
-  },
-  "engines": {
-    "node": ">= 10"
-  },
-  "publishConfig": {
-    "registry": "https://registry.npmjs.org/",
-    "access": "public"
-  },
+  "version": "2.0.0",
+  "description": "js sdk for spa-server",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
   "scripts": {
-    "artifacts": "napi artifacts",
-    "bench": "node -r @swc-node/register benchmark/bench.ts",
-    "build": "napi build --platform --release --pipe \"prettier -w\"",
-    "build:debug": "napi build --platform --pipe \"prettier -w\"",
-    "format": "run-p format:prettier format:rs",
-    "format:prettier": "prettier . -w",
-    "format:rs": "cargo fmt",
-    "lint": "eslint . -c ./.eslintrc.yml",
-    "prepublishOnly": "napi prepublish -t npm --skip-gh-release",
-    "test": "ava",
-    "version": "napi version"
+    "build": "tsc"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ForNetCode/spa-server.git"
+  },
+  "keywords": [
+    "spa-server"
+  ],
+  "author": "Timzaak",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ForNetCode/spa-server/issues"
+  },
+  "homepage": "https://github.com/ForNetCode/spa-server#readme",
+  "bin": {
+    "spa-client": "bin/run-spa"
+  },
+  "files": [
+    "bin",
+    "README.md",
+    "dist"
+  ],
+  "dependencies": {
+    "@pushcorn/hocon-parser": "^1.2.9",
+    "axios": "^1.6.8",
+    "chalk": "4.1.2",
+    "cmd-ts": "^0.13.0",
+    "formdata-node": "^6.0.3",
+    "modern-async": "^2.0.0",
+    "walkdir": "^0.4.1"
   },
   "devDependencies": {
-    "@napi-rs/cli": "^2.0.0",
-    "@swc-node/register": "^1.4.2",
-    "@typescript-eslint/eslint-plugin": "^5.7.0",
-    "@typescript-eslint/parser": "^5.7.0",
-    "ava": "^3.15.0",
-    "benny": "^3.7.1",
-    "chalk": "^5.0.0",
-    "eslint": "^8.4.1",
-    "eslint-config-prettier": "^8.3.0",
-    "eslint-plugin-import": "^2.25.3",
-    "eslint-plugin-prettier": "^4.0.0",
-    "husky": "^7.0.4",
-    "lint-staged": "^12.1.2",
-    "npm-run-all": "^4.1.5",
-    "prettier": "^2.5.1",
-    "typescript": "^4.5.4"
-  },
-  "dependencies": {
-    "@node-rs/helper": "^1.2.1"
-  },
-  "lint-staged": {
-    "*.@(js|ts|tsx)": [
-      "prettier --write",
-      "eslint -c .eslintrc.yml --fix"
-    ],
-    "*.@(yml|yaml)": [
-      "prettier --parser yaml --write"
-    ],
-    "*.md": [
-      "prettier --parser markdown --write"
-    ],
-    "*.json": [
-      "prettier --parser json --write"
-    ]
-  },
-  "ava": {
-    "require": [
-      "@swc-node/register"
-    ],
-    "extensions": [
-      "ts"
-    ],
-    "environmentVariables": {
-      "TS_NODE_PROJECT": "./tsconfig.json"
-    }
-  },
-  "prettier": {
-    "printWidth": 120,
-    "semi": false,
-    "trailingComma": "all",
-    "singleQuote": true,
-    "arrowParens": "always"
+    "@types/jest": "^29.5.12",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.3"
   }
 }

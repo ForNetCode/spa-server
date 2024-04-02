@@ -7,7 +7,7 @@ spa-server is to provide a static web http server with cache and hot reload.
 It supports multiple config for different domain, and has a client tool(npm package, command line) to help upload static web files to server. 
 
 ::: info Need Feedback
-sap-server features have been done, we are willing to get your feedback, fell free to open [issues](https://github.com/timzaak/spa-server/issues).
+sap-server features have been done, we are willing to get your feedback, fell free to open [issues](https://github.com/fornetcode/spa-server/issues).
 :::
 
 

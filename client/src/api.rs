@@ -114,7 +114,7 @@ impl API {
         string_resp!(resp)
     }
 
-    pub fn reload_sap_server(&self) -> anyhow::Result<()> {
+    pub fn reload_spa_server(&self) -> anyhow::Result<()> {
         let resp = self.blocking_client.post(self.url("reload")).send()?;
         handle!(resp)
     }
@@ -148,14 +148,12 @@ impl API {
         let len = file.metadata().await?.len();
         let file_part = multipart::Part::stream_with_length(file, len).file_name(name);
         let form = multipart::Form::new()
-            .text("domain", domain)
-            .text("version", version)
-            .text("path", key)
             .part("file", file_part);
 
         let resp = self
             .async_client
             .post(self.url("file/upload"))
+            .query(&[("domain", domain), ("version", version), ("path", key)])
             .multipart(form)
             .send()
             .await?;

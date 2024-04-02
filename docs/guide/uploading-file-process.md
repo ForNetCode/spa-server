@@ -1,7 +1,7 @@
 # Uploading File Process 
-This describes the process of `spa-client` uploading files to admin server.
+This article describes the process of uploading files to admin server.
 
-Firstly, there are lots of files needed upload, so `retry` and `correct` must be considered.
+Firstly, there are lots of files needed upload, so `retry` must be considered.
 there may exist large files which more than 20M(we would consider it later, we would have lots work to do to support 
 resume breakpoint).
 

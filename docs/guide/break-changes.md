@@ -1,4 +1,6 @@
 # Break Changes
+## v2.0.0(2024-04-02)
+* spa-server: `file/upload` param change for easy write. 
 
 ## v1.2.6(2022-05-11)
 * spa-server: move config path in docker: `config.conf` => `config/cnfig.conf` 

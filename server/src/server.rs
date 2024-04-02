@@ -141,7 +141,7 @@ pub fn get_socket(address: SocketAddr) -> anyhow::Result<TcpListener> {
     let socket = Socket::new(Domain::for_address(address), Type::STREAM, None)?;
     socket.set_nodelay(true)?;
     // socket.set_reuse_address(true)?;
-    #[cfg(any(target_os = "linux", target_vendor = "apple"))]
+    #[cfg(not(any(target_os = "solaris", target_os = "illumos", target_os = "windows")))]
     socket.set_reuse_port(true)?;
     socket.set_nonblocking(true)?;
     socket.bind(&address.into())?;

@@ -10,4 +10,4 @@ npm install && npm run build && npm run upload && npm run release
 
 PS: `self.noti.link` is routed to 127.0.0.1
 
-There has a nice [document](https://timzaak.github.io/spa-server/) deployed by GitHub Pages, You can get more information here.
+There has a nice [document](https://fornetcode.github.io/spa-server/) deployed by GitHub Pages, You can get more information here.

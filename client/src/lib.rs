@@ -66,7 +66,7 @@ fn run_with_commands(commands: CliCommand) -> anyhow::Result<()> {
             success(&resp);
         }
         Commands::Reload => {
-            api.reload_sap_server()?;
+            api.reload_spa_server()?;
             success("reload success!");
         }
         Commands::Delete {

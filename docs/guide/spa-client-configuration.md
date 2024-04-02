@@ -2,7 +2,7 @@
 ## Overview
 You can set config file path by `config-dir` commandline option or by environment variables `SPA_CLIENT_CONFIG`,
 you can also set all config by environment variables like
-[.env](https://github.com/timzaak/spa-server/blob/master/example/js-app-example/.env). Config override order is
+[.env](https://github.com/fornetcode/spa-server/blob/master/example/js-app-example/.env). Config override order is
 command line option > config file > environment.
 
 ## Reference

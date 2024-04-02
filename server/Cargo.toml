@@ -1,10 +1,10 @@
 [package]
 name = "spa-server"
-version = "1.2.6"
+version = "2.0.0"
 edition = "2021"
 authors = ["timzaak"]
 license = "MIT"
-repository = "https://github.com/timzaak/spa-server"
+repository = "https://github.com/fornetcode/spa-server"
 readme = "README.md"
 keywords = ["static-web-server", "spa-server"]
 categories = ["web-programming::http-server"]
@@ -19,30 +19,30 @@ path = "src/bin/main.rs"
 
 [dependencies]
 # web
-hyper = { version = "0.14", features = ["stream", "server", "http1", "http2", "tcp"] }
-tokio = { version = "1", features = ["macros", "rt-multi-thread", "io-std", "sync", "time", "tokio-macros"] }
-futures = "0.3"
+hyper = { version = "0.14", features = ["stream", "server", "http1", "http2", "tcp"] } # sync with warp
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "io-std", "sync", "time", "tokio-macros"] } # sync with warp
+futures = "0.3"# sync with warp
 warp = { path = "../warp", features = ["tls"] }
-socket2 = "0.4"
+socket2 = "0.4.4"
 
 # warp inner
 percent-encoding = "2.1"
-headers = "0.3"
+headers = "0.3.5"
 mime = "0.3"
-mime_guess = "2.0"
-rustls = "0.20"
-rustls-pemfile = "0.2"
-tokio-rustls = "0.23"
+mime_guess = "2.0.0"
+rustls = "0.22"
+rustls-pemfile = "2.0"
+tokio-rustls = "0.25"
 futures-util = "0.3"
 bytes = "1"
 # gzip
 flate2 = "1.0"
 
 # tokio trace and log
-tracing = "0.1"
-tracing-subscriber = "0.2"
+tracing = "0.1.21"# sync with warp
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # tokio cron
-delay_timer="0.11"
+delay_timer="0.11.5"
 
 #config
 hocon = "0.9"
@@ -50,19 +50,19 @@ serde = { version = "1.0", features = ["derive"] }
 serde_repr = "0.1"
 
 #cache
-dashmap = "5.2"
+dashmap = "5.5"
 
 #s3
 #rust-s3 = {version="0.31", features = ["blocking", "tokio-rustls-tls"], default-features = false}
 
 # util
 md-5 = "0.10"
-regex = "1.5"
+regex = "1.10"
 lazy_static = "1.4"
 # solve return  result
 anyhow = { version = "1.0", features = ["backtrace"] }
 # solve dir walk without recursion
-walkdir = "2.3"
+walkdir = "2.5"
 # time
 chrono = "0.4"
 #make if let more easy

@@ -18,7 +18,7 @@ admin_config {
 ' > config.conf
 
 $ docker run -it -p 8080 -p 9000 -v $(pwd)/config.conf:/config.conf \
-timzaak/spa-server:latest
+ghcr.io/fornetcode/spa-server:latest
 ```
 
 ## Run spa-client in npm project
@@ -27,7 +27,7 @@ timzaak/spa-server:latest
 npm install spa-client dotenv --save-dev
 ```
 2. add config for spa-client in the `.env` file
-```dotenv
+```
 # all config start with `SPA` for spa-client
 SPA_SERVER_ADDRESS=http://127.0.0.1:9000
 
@@ -49,24 +49,10 @@ SPA_UPLOAD_PARALLEL=3
 ```
 
 
-## Run spa-client by docker
-
-spa-client config support environment variables and file, for simple, we use environment variables to inject config.
-
-```shell
-$ docker run --rm -it -v /path/build:/build \
- -e SPA_SERVER_ADDRESS='http://127.0.0.1:9000' \
- -e SPA_SERVER_AUTH_TOKEN='token' \
- timzaak/spa-client:lastest \
- spa-client upload ./build www.example.com && \
- spa-client release www.example.com
-```
-By now, your single page application is in serving at `http://www.example.com:8080`.(please add this dns record to your host)
-
 ## What's More
-- a React example for spa-client: [js-app-example](https://github.com/timzaak/spa-server/blob/master/example/js-app-example/README.md).
+- a React example for spa-client: [js-app-example](https://github.com/fornetcode/spa-server/blob/master/example/js-app-example/README.md).
 - spa-server [configuration](./spa-server-configuration.md) and its admin-server [http api](./spa-server-api.md)
-- spa-client [commands](./spa-client-command-line.md) and [npm package](./spa-client-npm-package.md)
+- spa-client [npm package](./spa-client-npm-package.md)
 
 
 

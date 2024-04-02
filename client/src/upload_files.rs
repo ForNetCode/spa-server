@@ -33,15 +33,15 @@ pub fn upload_files(
 
     let prefix_path = path.to_str().unwrap().to_string();
     let version = get_upload_version(&api, &domain, version)?;
-    println!("Begin to fetch server file metadata with md5, you may need to wait if there are large number of files.");
+    println!("begin to fetch server file metadata with md5, you may need to wait if there are large number of files.");
     let server_metadata = api.get_file_metadata(&domain, version)?;
     if !server_metadata.is_empty() {
         println!(
-            "There are {} files already in server",
+            "there are {} files already in server",
             server_metadata.len()
         );
     } else {
-        println!("There are no files in server");
+        println!("there are no files in server");
     }
     let server_metadata = server_metadata
         .into_iter()

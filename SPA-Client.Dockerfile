@@ -4,7 +4,7 @@
 
 # You can override this `--build-arg BASE_IMAGE=...` to use different
 # version of Rust
-ARG BASE_IMAGE=rust:1.59
+ARG BASE_IMAGE=rust:1.77
 
 ARG RUNTIME_IMAGE=debian:buster-slim
 
