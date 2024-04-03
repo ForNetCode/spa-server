@@ -15,7 +15,7 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
           cache: 'npm'
           cache-dependency-path: './jsclient/package-lock.json'
-      - run: npm ci && npm build && npm publish
+      - run: npm ci && npm run build && npm publish
         working-directory: ./jsclient
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -4,7 +4,7 @@ ARG VERSION=2.0.0
 FROM ${BASE_IMAGE}:${VERSION} as Source
 
 
-FROM panubo/s3fs:1.87
+FROM efrecon/s3fs:1.94
 COPY --from=Source /test/config.conf /config/config.conf
 COPY --from=Source /usr/bin/spa-server /usr/bin/spa-server
 

@@ -10,7 +10,7 @@
 - 支持热更新(Mac and Linux)。
 - 支持 CORS 跨域
 - http/https 同时服务（http 也可返回 redirect https）。
-- 支持 Docker 镜像(压缩后大小:32M), 并通过S3FS 支持 S3 作为数据存储
+- 支持 Docker 镜像(压缩后大小:32M)
 - 提供 命令行/npm包 客户端，一行命令部署
 - 每个域名可拥有独立的配置
 
