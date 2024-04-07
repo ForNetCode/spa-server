@@ -26,7 +26,8 @@
   "files": [
     "bin",
     "README.md",
-    "dist"
+    "dist",
+    "!dist/test"
   ],
   "dependencies": {
     "@pushcorn/hocon-parser": "^1.2.9",
