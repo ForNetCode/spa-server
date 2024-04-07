@@ -1,7 +1,7 @@
 # All is from https://github.com/extrawurst/gitui
 SPC_CLIENT_JS_DIR = jsclient
 
-.PHONY: build-spa-client-js, build-release, docker-release, release-doc
+.PHONY: build-spa-client-js, build-release, docker-release, release-doc, release-mac, release-win, release-linux-musl
 
 build-release:
 	cargo build --bin spa-client --release
@@ -29,3 +29,25 @@ release-doc:
 	git commit -m 'deploy'
 	git push -f git@github.com:fornetcode/spa-server.git master:gh-pages
 	cd -
+
+release-mac: build-release
+	strip target/release/spa-client
+	otool -L target/release/spa-client
+	mkdir -p release
+	tar -C ./target/release/ -czvf ./release/spa-client-mac.tar.gz ./spa-client
+	ls -lisah ./release/spa-client-mac.tar.gz
+
+release-win: build-release
+	mkdir -p release
+	tar -C ./target/release/ -czvf ./release/spa-client-win.tar.gz ./spa-client.exe
+	ls -l ./release/spa-client-win.tar.gz
+
+build-linux-musl-release:
+	cargo build --package spa-client --bin spa-client --target=x86_64-unknown-linux-musl --release
+
+
+release-linux-musl: build-linux-musl-release
+	strip target/x86_64-unknown-linux-musl/release/spa-client
+	mkdir -p release
+	tar -C ./target/x86_64-unknown-linux-musl/release/ -czvf ./release/spa-client-linux-musl.tar.gz ./spa-client
+
