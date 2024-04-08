@@ -16,9 +16,6 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: true
-#      -
-#        name: Set up QEMU
-#        uses: docker/setup-qemu-action@v1
       -
         name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -49,3 +46,39 @@ jobs:
 #          cache-from: type=gha
 #          cache-to: type=gha,mode=max
 #          tags: ${{ env.REGISTRY }}/fornetcode/spa-server:${{github.event.inputs.version}}-s3
+  binFile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Cache cargo registry
+        uses: actions/cache@v2
+        with:
+          path: ~/.cargo/registry
+          key: cargo-registry-trimmed-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v2
+        with:
+          path: ~/.cargo/git
+          key: cargo-index-trimmed-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Setup MUSL
+        run: |
+          rustup target add x86_64-unknown-linux-musl
+          sudo apt-get -qq install musl-tools
+
+      - name: Build Release Linux
+        run: make release-linux-server-musl
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2
+        with:
+          path: ./release/*
+          if-no-files-found: error

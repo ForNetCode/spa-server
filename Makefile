@@ -51,3 +51,11 @@ release-linux-musl: build-linux-musl-release
 	mkdir -p release
 	tar -C ./target/x86_64-unknown-linux-musl/release/ -czvf ./release/spa-client-linux-musl.tar.gz ./spa-client
 
+release-linux-server-musl:
+	cargo build --package spa-client --bin spa-client --target=x86_64-unknown-linux-musl --release
+	strip target/x86_64-unknown-linux-musl/release/spa-server
+	mkdir -p release
+	tar -C ./target/x86_64-unknown-linux-musl/release/ -czvf ./release/spa-server-linux-musl.tar.gz ./spa-server
+
+
+
