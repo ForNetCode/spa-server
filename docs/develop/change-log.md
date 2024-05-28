@@ -1,4 +1,11 @@
 # Change Log
+### Version 2.1.0(client:2.0.1)
+- [x] fix: upload file api is not correct.
+- [x] fix: command line compile successfully.
+- [x] feat: add `_version` api to get domain current version.
+- [ ] feat: support serving multiple spa in one domain.
+- [x] chore: js client sdk add node.js version restriction.
+- [x] chore: it's now used in production environment! 
 
 ### Version 2.0.0(client:2.0.0)
 - [x] move project from timzaak to ForNet
