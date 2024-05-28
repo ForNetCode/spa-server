@@ -24,7 +24,7 @@ SPA.
 - SSL with Rustls.
 - Memory cache, client cache and compression(gzip).
 - Static web version control, you can regress or release new version easily.
-- Hot reload support(Mac and Linux).
+- Hot reload support(Mac and Linux, by reused port).
 - CORS support.
 - Http auto redirect to https.
 - Docker support(compressed size: 32M).

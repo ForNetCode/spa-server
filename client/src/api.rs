@@ -147,13 +147,16 @@ impl API {
         let file = tokio::fs::File::open(path).await?;
         let len = file.metadata().await?.len();
         let file_part = multipart::Part::stream_with_length(file, len).file_name(name);
-        let form = multipart::Form::new()
-            .part("file", file_part);
+        let form = multipart::Form::new().part("file", file_part);
 
         let resp = self
             .async_client
             .post(self.url("file/upload"))
-            .query(&[("domain", domain), ("version", version), ("path", key)])
+            .query(&[
+                ("domain", domain.into()),
+                ("version", version.into()),
+                ("path", key.into()),
+            ])
             .multipart(form)
             .send()
             .await?;

@@ -1,4 +1,4 @@
-import { defineConfig} from "vitepress";
+import {defineConfig} from "vitepress";
 
 export default defineConfig({
     lang: 'en-US',
@@ -9,7 +9,10 @@ export default defineConfig({
         lastUpdated: {
             text: 'Last Updated'
         },
-        search : {
+        socialLinks: [
+            {icon: 'github', link: 'https://github.com/fornetcode/spa-server'},
+        ],
+        search: {
             provider: 'algolia',
             options: {
                 appId: 'NBNHWJCAL4',
@@ -25,7 +28,7 @@ export default defineConfig({
                 activeMatch: '^/develop/'
             },
             {
-                text: 'Release Notes',
+                text: 'Release Page',
                 link: 'https://github.com/fornetcode/spa-server/releases'
             }
         ],
@@ -65,7 +68,7 @@ function getGuideSidebar() {
     ]
 }
 
-function getDevelopSideBar(){
+function getDevelopSideBar() {
     return [
         {
             text: 'Develop Log',

@@ -1,8 +1,12 @@
-use crate::admin_server::request::{DeleteDomainVersionOption, DomainWithOptVersionOption, DomainWithVersionOption, GetDomainOption, GetDomainPositionOption, UpdateUploadingStatusOption, UploadFileOption};
+use crate::admin_server::request::{
+    DeleteDomainVersionOption, DomainWithOptVersionOption, DomainWithVersionOption,
+    GetDomainOption, GetDomainPositionOption, UpdateUploadingStatusOption, UploadFileOption,
+};
 use crate::config::AdminConfig;
 use crate::domain_storage::DomainStorage;
 use crate::hot_reload::HotReloadManager;
 use crate::with;
+use delay_timer::prelude::*;
 use hyper::{Body, StatusCode};
 use std::convert::Infallible;
 use std::net::SocketAddr;
@@ -11,7 +15,6 @@ use std::sync::Arc;
 use warp::multipart::FormData;
 use warp::reply::Response;
 use warp::{Filter, Rejection};
-use delay_timer::prelude::*;
 
 pub struct AdminServer {
     conf: AdminConfig,
@@ -173,18 +176,22 @@ impl AdminServer {
 }
 
 pub mod service {
-    use crate::admin_server::request::{DeleteDomainVersionOption, DomainWithOptVersionOption, DomainWithVersionOption, GetDomainOption, GetDomainPositionFormat, GetDomainPositionOption, UpdateUploadingStatusOption, UploadFileOption};
+    use crate::admin_server::request::{
+        DeleteDomainVersionOption, DomainWithOptVersionOption, DomainWithVersionOption,
+        GetDomainOption, GetDomainPositionFormat, GetDomainPositionOption,
+        UpdateUploadingStatusOption, UploadFileOption,
+    };
     use crate::domain_storage::{DomainStorage, URI_REGEX};
     use crate::{AdminConfig, HotReloadManager};
     use anyhow::anyhow;
     use bytes::{Buf, Bytes};
-    use futures_util::{StreamExt, TryStreamExt};
+    use futures_util::TryStreamExt;
     use hyper::Body;
     use if_chain::if_chain;
     use std::convert::Infallible;
     use std::sync::Arc;
     use warp::http::StatusCode;
-    use warp::multipart::{FormData, Part};
+    use warp::multipart::FormData;
     use warp::reply::Response;
     use warp::Reply;
 
@@ -214,7 +221,10 @@ pub mod service {
             .await
         {
             Ok(version) => {
-                let text = format!("domain:{} static web version has changed to {}", option.domain, version);
+                let text = format!(
+                    "domain:{} static web version has changed to {}",
+                    option.domain, version
+                );
                 tracing::info!("{}", &text);
                 Ok(text.into_response())
             }
@@ -272,19 +282,33 @@ pub mod service {
         form: FormData,
         storage: Arc<DomainStorage>,
     ) -> anyhow::Result<Response> {
-
-        let file:Vec<Option<Bytes>> = form.and_then(|mut field| async move {
-            let name = field.name();
-            tracing::debug!("field name:{}", name);
-            let bytes = field.data().await.map(|x| {x.map(|mut x|{
-                let i = x.remaining();
-                (&mut x).copy_to_bytes(i)
-            }).ok()}).flatten();
-            Ok(bytes)
-        }).try_collect().await?;
+        let file: Vec<Option<Bytes>> = form
+            .and_then(|mut field| async move {
+                let name = field.name();
+                tracing::debug!("field name:{}", name);
+                let bytes = field
+                    .data()
+                    .await
+                    .map(|x| {
+                        x.map(|mut x| {
+                            let i = x.remaining();
+                            (&mut x).copy_to_bytes(i)
+                        })
+                        .ok()
+                    })
+                    .flatten();
+                Ok(bytes)
+            })
+            .try_collect()
+            .await?;
         let file = file.into_iter().nth(0).flatten();
 
-        tracing::debug!("uploading file: {:?}, {:?}, {:?}", &query.domain, &query.version, &query.path);
+        tracing::debug!(
+            "uploading file: {:?}, {:?}, {:?}",
+            &query.domain,
+            &query.version,
+            &query.path
+        );
 
         if_chain! {
             if let Some(file_buf) = file;
