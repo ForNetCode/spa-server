@@ -1,6 +1,5 @@
 use crate::file_cache::{CacheItem, FileCache};
 use anyhow::anyhow;
-use bytes::Bytes;
 use dashmap::DashMap;
 use lazy_static::lazy_static;
 use md5::{Digest, Md5};
@@ -76,7 +75,7 @@ impl DomainStorage {
                         let path_buf = path_prefix_buf
                             .join(domain_dir_name)
                             .join(max_version.to_string());
-                        let data = cache.cache_dir(&domain_dir_name,&path_buf)?;
+                        let data = cache.cache_dir(&domain_dir_name, &path_buf)?;
                         cache.update(domain_dir_name.to_string(), data);
                         domain_version.insert(domain_dir_name.to_owned(), (path_buf, max_version));
                     }
@@ -186,50 +185,63 @@ impl DomainStorage {
         }
     }
 
-    pub fn get_domain_serving_version(&self, domain:&str) -> Option<u32> {
-        self.meta.get(domain).map(|x|x.1)
+    pub fn get_domain_serving_version(&self, domain: &str) -> Option<u32> {
+        self.meta.get(domain).map(|x| x.1)
     }
 
     pub fn get_domain_info_by_domain(&self, domain: &str) -> Option<DomainInfo> {
-        let versions:Vec<u32> = WalkDir::new(&self.prefix.join(domain)).max_depth(1).into_iter().filter_map(|version_entity|{
-            let version_entity =version_entity.ok()?;
-            let version = version_entity.file_name().to_str()?.parse::<u32>().ok()?;
-            Some(version)
-        }).collect();
+        let versions: Vec<u32> = WalkDir::new(&self.prefix.join(domain))
+            .max_depth(1)
+            .into_iter()
+            .filter_map(|version_entity| {
+                let version_entity = version_entity.ok()?;
+                let version = version_entity.file_name().to_str()?.parse::<u32>().ok()?;
+                Some(version)
+            })
+            .collect();
         if versions.is_empty() {
             None
         } else {
             let domain = domain.to_string();
-            let current_version = self.meta.get(&domain).map(|x|x.1);
+            let current_version = self.meta.get(&domain).map(|x| x.1);
             Some(DomainInfo {
                 domain,
                 current_version,
-                versions
+                versions,
             })
         }
     }
 
     pub fn get_domain_info(&self) -> Vec<DomainInfo> {
-        let ret:Vec<DomainInfo> = walkdir::WalkDir::new(&self.prefix).max_depth(1).into_iter().filter_map(|dir_entity|{
-            let dir_entity = dir_entity.ok()?;
-            let domain_dir_name = dir_entity.file_name().to_str()?;
-            if dir_entity.metadata().ok()?.is_dir() && URI_REGEX.is_match(domain_dir_name) {
-                let domain = domain_dir_name.to_string();
-                let current_version = self.meta.get(&domain).map(|x|x.1);
-                let versions = walkdir::WalkDir::new(dir_entity.path()).max_depth(1).into_iter().filter_map(|version_entity|{
-                    let version_entity =version_entity.ok()?;
-                    let version = version_entity.file_name().to_str()?.parse::<u32>().ok()?;
-                    Some(version)
-                }).collect();
-                Some(DomainInfo {
-                    domain,
-                    current_version,
-                    versions
-                })
-            } else {
-                None
-            }
-        }).collect();
+        let ret: Vec<DomainInfo> = walkdir::WalkDir::new(&self.prefix)
+            .max_depth(1)
+            .into_iter()
+            .filter_map(|dir_entity| {
+                let dir_entity = dir_entity.ok()?;
+                let domain_dir_name = dir_entity.file_name().to_str()?;
+                if dir_entity.metadata().ok()?.is_dir() && URI_REGEX.is_match(domain_dir_name) {
+                    let domain = domain_dir_name.to_string();
+                    let current_version = self.meta.get(&domain).map(|x| x.1);
+                    let versions = walkdir::WalkDir::new(dir_entity.path())
+                        .max_depth(1)
+                        .into_iter()
+                        .filter_map(|version_entity| {
+                            let version_entity = version_entity.ok()?;
+                            let version =
+                                version_entity.file_name().to_str()?.parse::<u32>().ok()?;
+                            Some(version)
+                        })
+                        .collect();
+                    Some(DomainInfo {
+                        domain,
+                        current_version,
+                        versions,
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect();
         ret
     }
     fn check_is_in_upload_process(&self, domain: &str, version: &u32) -> bool {
@@ -290,7 +302,7 @@ impl DomainStorage {
         domain: String,
         version: u32,
         path: String,
-        data: Bytes,
+        data: Vec<u8>,
     ) -> anyhow::Result<()> {
         if self.check_is_in_upload_process(&domain, &version) {
             let file_path = sanitize_path(self.get_version_path(&domain, version), &path)
@@ -379,7 +391,11 @@ impl DomainStorage {
         Ok(())
     }
 
-    pub fn remove_domain_version(&self, domain:&str, version:Option<u32>) ->anyhow::Result<bool> {
+    pub fn remove_domain_version(
+        &self,
+        domain: &str,
+        version: Option<u32>,
+    ) -> anyhow::Result<bool> {
         let mut path = self.prefix.join(domain);
         if let Some(version) = version {
             path = path.join(version.to_string());
@@ -387,13 +403,13 @@ impl DomainStorage {
                 fs::remove_dir_all(path)?;
                 return Ok(true);
             }
-        }else {
+        } else {
             if path.exists() {
                 fs::remove_dir_all(path)?;
                 return Ok(true);
             }
         }
-        return Ok(false)
+        return Ok(false);
     }
 }
 

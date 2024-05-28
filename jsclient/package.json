@@ -29,6 +29,9 @@
     "dist",
     "!dist/test"
   ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "dependencies": {
     "@pushcorn/hocon-parser": "^1.2.9",
     "axios": "^1.6.8",

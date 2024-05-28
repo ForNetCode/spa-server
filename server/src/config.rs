@@ -30,7 +30,7 @@ impl Config {
 
         let load_file = hocon::HoconLoader::new()
             .load_file(&config_path)
-            .with_context(|| "can not read config file")?;
+            .with_context(|| format!("can not read config file: {config_path}"))?;
 
         load_file
             .resolve::<Config>()

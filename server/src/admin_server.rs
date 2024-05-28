@@ -183,11 +183,10 @@ pub mod service {
     };
     use crate::domain_storage::{DomainStorage, URI_REGEX};
     use crate::{AdminConfig, HotReloadManager};
-    use anyhow::anyhow;
-    use bytes::{Buf, Bytes};
-    use futures_util::TryStreamExt;
+    use anyhow::{anyhow, Context};
+    use bytes::Buf;
+    use futures_util::{StreamExt, TryStreamExt};
     use hyper::Body;
-    use if_chain::if_chain;
     use std::convert::Infallible;
     use std::sync::Arc;
     use warp::http::StatusCode;
@@ -282,43 +281,27 @@ pub mod service {
         form: FormData,
         storage: Arc<DomainStorage>,
     ) -> anyhow::Result<Response> {
-        let file: Vec<Option<Bytes>> = form
-            .and_then(|mut field| async move {
-                let name = field.name();
-                tracing::debug!("field name:{}", name);
-                let bytes = field
-                    .data()
-                    .await
-                    .map(|x| {
-                        x.map(|mut x| {
-                            let i = x.remaining();
-                            (&mut x).copy_to_bytes(i)
-                        })
-                        .ok()
-                    })
-                    .flatten();
-                Ok(bytes)
-            })
-            .try_collect()
-            .await?;
-        let file = file.into_iter().nth(0).flatten();
-
-        tracing::debug!(
-            "uploading file: {:?}, {:?}, {:?}",
-            &query.domain,
-            &query.version,
-            &query.path
-        );
-
-        if_chain! {
-            if let Some(file_buf) = file;
-            then {
-                storage.save_file(query.domain, query.version, query.path, file_buf)?;
-                Ok(Response::default())
-            } else {
-                Err(anyhow!("bad params, please check the api doc: https://github.com/fornetcode/spa-server/blob/master/docs/guide/sap-server-api.md"))
-            }
+        let mut parts = form.into_stream();
+        while let Some(Ok(part)) = parts.next().await {
+            // let name = part.name();
+            let file = part
+                .stream()
+                .try_fold(Vec::new(), |mut acc, buf| async move {
+                    acc.extend_from_slice(buf.chunk());
+                    Ok(acc)
+                })
+                .await
+                .with_context(|| "get form failure")?;
+            tracing::debug!(
+                "uploading file: {:?}, {:?}, {:?}",
+                &query.domain,
+                &query.version,
+                &query.path
+            );
+            storage.save_file(query.domain, query.version, query.path, file)?;
+            return Ok(Response::default());
         }
+        return Err(anyhow!("bad params, please check the api doc: https://github.com/fornetcode/spa-server/blob/master/docs/guide/sap-server-api.md"));
     }
 
     pub(super) fn get_files_metadata(
