@@ -23,7 +23,12 @@
     "eject": "react-scripts eject",
     "info": "dotenv spa-client info",
     "upload": "dotenv spa-client upload ./build self.noti.link",
-    "release": "dotenv spa-client release self.noti.link"
+    "release": "dotenv spa-client release self.noti.link",
+    "upload:m1": "dotenv spa-client upload ./build self.noti.link/a",
+    "release:m1": "dotenv spa-client release self.noti.link/a",
+    "upload:m2": "dotenv spa-client upload ./build self.noti.link/b",
+    "release:m2": "dotenv spa-client release self.noti.link/b"
+
   },
   "eslintConfig": {
     "extends": [

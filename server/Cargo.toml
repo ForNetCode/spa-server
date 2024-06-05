@@ -5,7 +5,7 @@ edition = "2021"
 authors = ["timzaak"]
 license = "MIT"
 repository = "https://github.com/fornetcode/spa-server"
-readme = "README.md"
+readme = "../README.md"
 keywords = ["static-web-server", "spa-server"]
 categories = ["web-programming::http-server"]
 
@@ -42,10 +42,11 @@ flate2 = "1.0"
 tracing = "0.1.21"# sync with warp
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # tokio cron
-delay_timer="0.11.5"
+delay_timer = "0.11.5"
 
 #config
 hocon = "0.9"
+#serde_yml = "0.0.9"
 serde = { version = "1.0", features = ["derive"] }
 serde_repr = "0.1"
 

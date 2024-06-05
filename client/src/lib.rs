@@ -1,46 +1,31 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
-mod api;
+pub mod api;
 pub mod commands;
-mod config;
+pub mod config;
 mod upload_files;
 
 use crate::api::API;
 use crate::commands::{CliCommand, Commands};
 use crate::config::Config;
-use crate::upload_files::upload_files;
+pub use crate::upload_files::upload_files;
 use anyhow::anyhow;
 
 use clap::Parser;
 use console::style;
 
 // this is for bin
-pub fn run() {
+pub async fn run() -> anyhow::Result<()>{
     let commands = CliCommand::parse();
-    let result = run_with_commands(commands);
-    if let Some(err) = result.err() {
-        eprintln!("{}", err);
-        std::process::exit(-1);
-    }
-}
-//this is for js
-pub fn run_js() {
-    let args = std::env::args_os().skip(1);
-    // println!("{:?}", &args);
-    let commands = CliCommand::parse_from(args);
-    let result = run_with_commands(commands);
-    if let Some(err) = result.err() {
-        eprintln!("{}\n", err);
-        std::process::exit(1);
-    }
+    run_with_commands(commands).await
 }
 
 fn success(message: &str) {
     println!("{}", style(message).green());
 }
 
-fn run_with_commands(commands: CliCommand) -> anyhow::Result<()> {
+async fn run_with_commands(commands: CliCommand) -> anyhow::Result<()> {
     let config = Config::load(commands.config_dir).map_err(|e| {
         anyhow!(
             "Please set config file path or environment variable correctly, {}",
@@ -55,25 +40,25 @@ fn run_with_commands(commands: CliCommand) -> anyhow::Result<()> {
 
     match commands.commands {
         Commands::Info { domain } => {
-            println!("{}", api.get_domain_info(domain)?);
+            println!("{}", api.get_domain_info(domain).await?);
         }
         Commands::Upload(arg) => {
             let parallel = arg.parallel.unwrap_or(config.upload.parallel);
-            upload_files(api, arg.domain, arg.version, arg.path, parallel)?;
+            upload_files(api, arg.domain, arg.version, arg.path, parallel).await?;
         }
         Commands::Release { domain, version } => {
-            let resp = api.release_domain_version(domain, version)?;
+            let resp = api.release_domain_version(domain, version).await?;
             success(&resp);
         }
         Commands::Reload => {
-            api.reload_spa_server()?;
+            api.reload_spa_server().await?;
             success("reload success!");
         }
         Commands::Delete {
             domain,
             max_reserve,
         } => {
-            api.remove_files(domain, max_reserve)?;
+            api.remove_files(domain, max_reserve).await?;
             success("delete success!");
         }
     };

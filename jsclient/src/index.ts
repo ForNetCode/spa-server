@@ -115,7 +115,7 @@ export default class SPAClient {
         if(!version) {
             const positionResp = await this.getUploadPosition(domain)
             if(positionResp.status === GetDomainPositionStatus.NewDomain) {
-                console.log(`domain:${domain} is new in server!`)
+                console.log(chalk.green(`domain:${domain} is new in server!`))
             }
             realVersion = positionResp.version
         } else {

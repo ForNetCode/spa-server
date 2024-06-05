@@ -1,4 +1,5 @@
 use crate::config::CacheConfig;
+use crate::Config;
 use anyhow::anyhow;
 use dashmap::DashMap;
 use flate2::read::GzEncoder;
@@ -15,12 +16,10 @@ use std::sync::Arc;
 use std::time::Duration;
 use walkdir::WalkDir;
 use warp::fs::ArcPath;
-use crate::Config;
 
 pub struct FileCache {
     conf: DomainCacheConfig,
     data: DashMap<String, HashMap<String, Arc<CacheItem>>>,
-
 }
 
 pub struct DomainCacheConfig {
@@ -29,32 +28,47 @@ pub struct DomainCacheConfig {
 }
 
 impl DomainCacheConfig {
-    pub fn new(conf: &Config) -> Self{
+    pub fn new(conf: &Config) -> Self {
         let default = conf.cache.clone();
-        let inner: HashMap<String, CacheConfig> = conf.domains.iter().map(|domain| {
-            let cache = domain.cache.as_ref();
-            let max_size = cache.map(|x| x.max_size).flatten().unwrap_or(default.max_size);
-            let compression = cache.map(|x| x.compression).flatten().unwrap_or(default.compression);
-            let client_cache = cache.map(|x| x.client_cache.as_ref()).flatten().unwrap_or(&default.client_cache).clone();
-            (domain.domain.clone(), CacheConfig {
-                max_size,
-                compression,
-                client_cache,
+        let inner: HashMap<String, CacheConfig> = conf
+            .domains
+            .iter()
+            .map(|domain| {
+                let cache = domain.cache.as_ref();
+                let max_size = cache
+                    .map(|x| x.max_size)
+                    .flatten()
+                    .unwrap_or(default.max_size);
+                let compression = cache
+                    .map(|x| x.compression)
+                    .flatten()
+                    .unwrap_or(default.compression);
+                let client_cache = cache
+                    .map(|x| x.client_cache.as_ref())
+                    .flatten()
+                    .unwrap_or(&default.client_cache)
+                    .clone();
+                (
+                    domain.domain.clone(),
+                    CacheConfig {
+                        max_size,
+                        compression,
+                        client_cache,
+                    },
+                )
             })
-        }).collect();
+            .collect();
 
-        DomainCacheConfig {
-            default,
-            inner
-        }
+        DomainCacheConfig { default, inner }
     }
     pub fn get_domain_cache_config(&self, domain: &str) -> &CacheConfig {
         self.inner.get(domain).unwrap_or(&self.default)
     }
-    pub fn get_domain_expire_config(&self, domain:&str) -> HashMap<String,Duration> {
+    pub fn get_domain_expire_config(&self, domain: &str) -> HashMap<String, Duration> {
         let conf = self.get_domain_cache_config(domain);
         let ret: HashMap<String, Duration> = conf
-            .client_cache.iter()
+            .client_cache
+            .iter()
             .map(|item| {
                 item.extension_names
                     .iter()
@@ -85,15 +99,46 @@ impl FileCache {
             data: DashMap::new(),
         }
     }
+
     pub fn update(
         &self,
         domain: String,
+        sub_path: Option<&str>,
         data: HashMap<String, Arc<CacheItem>>,
-    ) -> Option<HashMap<String, Arc<CacheItem>>> {
-        self.data.insert(domain, data)
+    ) {
+        let data = match sub_path {
+            Some(sub_path) => match self.data.get(&domain) {
+                Some(ref info) => {
+                    let mut new_hash_map: HashMap<String, Arc<CacheItem>> = info
+                        .value()
+                        .iter()
+                        .filter_map(|(v, k)| {
+                            if v.starts_with(sub_path) {
+                                None
+                            } else {
+                                Some((v.clone(), k.clone()))
+                            }
+                        })
+                        .collect();
+                    // inesrt before get would trigger deadlock. so move out insert function
+                    //drop(info);
+                    new_hash_map.extend(data);
+                    new_hash_map
+                    //self.data.insert(domain, new_hash_map);
+                }
+                None => data,
+            },
+            None => data,
+        };
+        self.data.insert(domain, data);
     }
 
-    pub fn cache_dir(&self, domain:&str, path: &PathBuf) -> anyhow::Result<HashMap<String, Arc<CacheItem>>> {
+    pub fn cache_dir(
+        &self,
+        domain: &str, //www.example.com
+        sub_path: Option<&str>,
+        path: &PathBuf,
+    ) -> anyhow::Result<HashMap<String, Arc<CacheItem>>> {
         let prefix = path
             .to_str()
             .map(|x| Ok(format!("{}/", x.to_string())))
@@ -114,6 +159,7 @@ impl FileCache {
                         reader.read_to_end(&mut bytes).ok()?;
                         let mime = mime_guess::from_path(path).first_or_octet_stream();
                         let entry_path = entry.into_path();
+
                         return entry_path.clone().to_str().map(|x| {
                             let key = x.replace(&prefix, "");
                             let extension_name = key
@@ -121,8 +167,15 @@ impl FileCache {
                                 .last()
                                 .map_or("".to_string(), |x| x.to_string());
 
+                            let key = sub_path
+                                .map(|sub_path| format!("{sub_path}/{key}"))
+                                .unwrap_or(key);
+
                             let data_block = if conf.max_size < metadata.len() {
-                                tracing::debug!("file block:{}", entry_path.display());
+                                tracing::debug!(
+                                    "file block:{}, url:{domain}/{key}",
+                                    entry_path.display()
+                                );
                                 DataBlock::FileBlock(ArcPath(Arc::new(entry_path)))
                             } else {
                                 let (bytes, compressed) = if conf.compression
@@ -138,9 +191,8 @@ impl FileCache {
                                     (Bytes::from(bytes), false)
                                 };
                                 tracing::debug!(
-                                    "cache block:{:?}, compressed:{}",
-                                    entry_path.display(),
-                                    compressed
+                                    "cache block:{:?}, compressed:{compressed}, url:{domain}/{key}",
+                                    entry_path,
                                 );
 
                                 DataBlock::CacheBlock {
@@ -165,15 +217,25 @@ impl FileCache {
                 None
             })
             .collect();
-
         Ok(result)
     }
 
     pub fn get_item(&self, domain: &str, path: &str) -> Option<Arc<CacheItem>> {
         self.data
             .get(domain)
-            .map(|x| x.get(path).map(Arc::clone))
+            .map(|x| {
+                return x.get(path).map(Arc::clone);
+            })
             .flatten()
+    }
+    pub fn get_all_keys(&self, host: &str) -> Vec<String> {
+        self.data
+            .get(host)
+            .map(|x| {
+                let keys = x.value().keys();
+                keys.map(|x| x.to_string()).collect()
+            })
+            .unwrap_or_else(|| vec![])
     }
 }
 

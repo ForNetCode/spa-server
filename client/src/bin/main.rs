@@ -1,9 +1,19 @@
 use spa_client::run;
+use tracing::Level;
 use tracing_subscriber::EnvFilter;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::from_default_env())
+        .with_env_filter(
+            EnvFilter::builder()
+                .with_default_directive(Level::INFO.into())
+                .from_env_lossy(),
+        )
         .init();
-    run();
+    let result = run().await;
+    if let Some(err) = result.err() {
+        eprintln!("{}", err);
+        std::process::exit(-1);
+    }
 }

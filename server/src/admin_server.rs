@@ -189,6 +189,7 @@ pub mod service {
     use hyper::Body;
     use std::convert::Infallible;
     use std::sync::Arc;
+    use tracing::error;
     use warp::http::StatusCode;
     use warp::multipart::FormData;
     use warp::reply::Response;
@@ -198,16 +199,22 @@ pub mod service {
         option: GetDomainOption,
         storage: Arc<DomainStorage>,
     ) -> Result<Response, Infallible> {
-        let domain_info = storage.get_domain_info();
-        match option.domain {
-            Some(domain) => {
-                if let Some(data) = domain_info.iter().find(|x| x.domain == domain) {
-                    return Ok(warp::reply::json(data).into_response());
-                } else {
-                    return Ok(StatusCode::NOT_FOUND.into_response());
+        match storage.get_domain_info() {
+            Ok(domain_info) => match option.domain {
+                Some(domain) => {
+                    if let Some(data) = domain_info.iter().find(|x| x.domain == domain) {
+                        return Ok(warp::reply::json(data).into_response());
+                    } else {
+                        return Ok(StatusCode::NOT_FOUND.into_response());
+                    }
                 }
+                _ => Ok(warp::reply::json(&domain_info).into_response()),
+            },
+            Err(e) => {
+                let mut resp = Response::new(Body::from(e.to_string()));
+                *resp.status_mut() = StatusCode::BAD_REQUEST;
+                Ok(resp)
             }
-            _ => Ok(warp::reply::json(&domain_info).into_response()),
         }
     }
 
@@ -227,7 +234,10 @@ pub mod service {
                 tracing::info!("{}", &text);
                 Ok(text.into_response())
             }
-            Err(_) => Ok(StatusCode::NOT_FOUND.into_response()),
+            Err(e) => {
+                error!("upload domain({}) version failure {:?}", option.domain, e);
+                Ok(StatusCode::NOT_FOUND.into_response())
+            }
         }
     }
 
@@ -318,6 +328,9 @@ pub mod service {
         }
     }
 
+    // TODO: how to handle uploading versions
+    // TODO: remove domain directory if there's no version dir.
+    // TODO: handle multiple domain meta.
     pub(super) fn remove_domain_version(
         storage: Arc<DomainStorage>,
         query: DeleteDomainVersionOption,
@@ -328,7 +341,7 @@ pub mod service {
                 .map(|v| vec![v])
                 .unwrap_or(vec![])
         } else {
-            storage.get_domain_info()
+            storage.get_domain_info().unwrap_or_else(|_| vec![])
         };
         for info in domains_info {
             let delete_versions = if let Some(max_reserve) = query.max_reserve {
@@ -336,6 +349,7 @@ pub mod service {
                     info.current_version
                         .or(info.versions.iter().max().map(|x| *x))
                 {
+                    //TODO: fix it, get reserve versions by array index compare, rather than -.
                     max_version = max_version - max_reserve;
                     info.versions
                         .into_iter()
@@ -345,6 +359,7 @@ pub mod service {
                     vec![]
                 }
             } else {
+                // TODO: keep uploading versions ?
                 let current_version = info.current_version.unwrap_or(u32::MAX);
                 info.versions
                     .into_iter()

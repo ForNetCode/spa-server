@@ -1,0 +1,17 @@
+[package]
+name = "tests"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[[test]]
+name = "starter"
+
+[dependencies]
+spa-client = { path = "../client" }
+spa-server = { path = "../server" }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "io-std", "sync", "time", "tokio-macros", "test-util"] } # sync with spa-server
+reqwest = { version = "0.12", features = ["json", "multipart", "stream"], default-features = false } # from spa-client
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+anyhow = "1.0.56"

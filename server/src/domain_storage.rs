@@ -1,5 +1,5 @@
 use crate::file_cache::{CacheItem, FileCache};
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 use dashmap::DashMap;
 use lazy_static::lazy_static;
 use md5::{Digest, Md5};
@@ -7,10 +7,11 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use std::fs;
-use std::fs::File;
+use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use tracing::{debug, info};
 use walkdir::{DirEntry, WalkDir};
 use warp::fs::sanitize_path;
 
@@ -23,11 +24,19 @@ lazy_static! {
 }
 
 pub(crate) const UPLOADING_FILE_NAME: &str = ".SPA-Processing";
+pub(crate) const MULTIPLE_WEB_FILE_NAME: &str = ".SPA-Multiple";
 
+#[derive(Debug)]
+pub enum DomainMeta {
+    OneWeb(PathBuf, u32),                         // path, u32
+    MultipleWeb(DashMap<String, (PathBuf, u32)>), // path, u32  {a/b: ($path_prefix/$domain/a/b/${serving_version},  serving_version)}
+}
+
+// TODO: add write locker for domain storage or domain. to keep it free from multiple update at same time.
 pub struct DomainStorage {
-    meta: DashMap<String, (PathBuf, u32)>,
+    meta: DashMap<String, DomainMeta>,
     prefix: PathBuf,
-    cache: FileCache,
+    cache: FileCache, // {[${domain}/${multiple_path}|$domain]: ${absolute_path}/version}
     uploading_status: DashMap<String, u32>,
 }
 
@@ -35,8 +44,9 @@ impl DomainStorage {
     pub fn init<T: AsRef<Path>>(path_prefix: T, cache: FileCache) -> anyhow::Result<DomainStorage> {
         let path_prefix = path_prefix.as_ref();
         let path_prefix_buf = path_prefix.to_path_buf();
+
         if path_prefix.exists() {
-            let domain_version: DashMap<String, (PathBuf, u32)> = DashMap::new();
+            let domain_version: DashMap<String, DomainMeta> = DashMap::new();
             let uploading_status: DashMap<String, u32> = DashMap::new();
 
             let domain_dirs = fs::read_dir(path_prefix)?;
@@ -44,40 +54,78 @@ impl DomainStorage {
                 let domain_dir = domain_dir?;
                 let metadata = domain_dir.metadata()?;
                 let domain_dir_name = domain_dir.file_name();
+                //domain_dir_name = www.example.com
                 let domain_dir_name = domain_dir_name.to_str().unwrap();
-
                 if metadata.is_dir() && URI_REGEX.is_match(domain_dir_name) {
-                    let mut max_version = 0;
-                    for version_dir_entry in fs::read_dir(domain_dir.path())? {
-                        let version_dir_entry = version_dir_entry?;
-                        if let Some(version_dir) = version_dir_entry
-                            .file_name()
-                            .to_str()
-                            .map(|file_name| file_name.parse::<u32>().ok())
-                            .flatten()
-                        {
-                            let mut path = version_dir_entry.path();
-                            path.push(UPLOADING_FILE_NAME);
-                            // this directory is in uploading
-                            if path.exists() {
-                                uploading_status.insert(domain_dir_name.to_string(), version_dir);
-                            } else if max_version < version_dir {
-                                max_version = version_dir
+                    let domain_dir = domain_dir.path();
+                    // domain_dir = ${path_prefix}/www.example.com
+                    let multiple_web_file = domain_dir.join(MULTIPLE_WEB_FILE_NAME);
+                    // confirm it's multiple web
+                    if multiple_web_file.exists() {
+                        let sub_dirs = Self::get_multiple_path_data(
+                            &domain_dir,
+                            domain_dir_name,
+                            &multiple_web_file,
+                        )?;
+                        // sub_dirs = [("${path_prefix}/www.example.com/a/b", "www.example.com/a/b", a/b)]
+                        for (sub_dir, domain_with_sub_path, sub_path) in sub_dirs {
+                            let (uploading_version, max_version) =
+                                Self::get_meta_info(&sub_dir, &domain_with_sub_path)?;
+                            if let Some(uploading_version) = uploading_version {
+                                uploading_status
+                                    .insert(domain_with_sub_path.clone(), uploading_version);
+                            }
+                            if let Some(max_version) = max_version {
+                                let path_buf = sub_dir.join(max_version.to_string());
+                                let data = cache.cache_dir(
+                                    domain_dir_name,
+                                    Some(sub_path.as_str()),
+                                    &path_buf,
+                                )?;
+                                cache.update(
+                                    domain_dir_name.to_string(),
+                                    Some(sub_path.as_str()),
+                                    data,
+                                );
+                                match domain_version.get_mut(domain_dir_name) {
+                                    Some(mut domain_meta) => {
+                                        match domain_meta.value_mut() {
+                                            DomainMeta::MultipleWeb(ref mut map) => {
+                                                map.insert(sub_path, (path_buf, max_version));
+                                            }
+                                            DomainMeta::OneWeb(..) => {
+                                                panic!("init failure, {sub_dir:?} should be multiple web");
+                                            }
+                                        }
+                                    }
+                                    None => {
+                                        let map = DashMap::new();
+                                        map.insert(sub_path, (path_buf, max_version));
+                                        domain_version.insert(
+                                            domain_dir_name.to_string(),
+                                            DomainMeta::MultipleWeb(map),
+                                        );
+                                    }
+                                }
                             }
                         }
-                    }
-                    if max_version > 0 {
-                        tracing::info!(
-                            "serve domain: {},version: {}",
-                            domain_dir_name,
-                            max_version
-                        );
-                        let path_buf = path_prefix_buf
-                            .join(domain_dir_name)
-                            .join(max_version.to_string());
-                        let data = cache.cache_dir(&domain_dir_name, &path_buf)?;
-                        cache.update(domain_dir_name.to_string(), data);
-                        domain_version.insert(domain_dir_name.to_owned(), (path_buf, max_version));
+                    } else {
+                        let (uploading_version, max_version) =
+                            Self::get_meta_info(&domain_dir, domain_dir_name)?;
+                        if let Some(uploading_version) = uploading_version {
+                            uploading_status.insert(domain_dir_name.to_string(), uploading_version);
+                        }
+                        if let Some(max_version) = max_version {
+                            let path_buf = path_prefix_buf
+                                .join(domain_dir_name)
+                                .join(max_version.to_string());
+                            let data = cache.cache_dir(domain_dir_name, None, &path_buf)?;
+                            cache.update(domain_dir_name.to_string(), None, data);
+                            domain_version.insert(
+                                domain_dir_name.to_string(),
+                                DomainMeta::OneWeb(path_buf, max_version),
+                            );
+                        }
                     }
                 }
             }
@@ -92,6 +140,58 @@ impl DomainStorage {
         }
     }
 
+    fn get_multiple_path_data<'a>(
+        domain_dir: &PathBuf,
+        domain_dir_name: &'a str,
+        multiple_web_path: &PathBuf,
+    ) -> anyhow::Result<Vec<(PathBuf, String, String)>> {
+        let sub_dirs = fs::read_to_string(multiple_web_path)
+            .with_context(|| format!("read path fail: {:?}", &multiple_web_path))?;
+        let sub_dirs = sub_dirs
+            .lines()
+            .map(|path| {
+                (
+                    domain_dir.join(path),
+                    format!("{domain_dir_name}/{path}"),
+                    path.to_string(),
+                )
+            })
+            .collect();
+        Ok(sub_dirs)
+    }
+
+    fn get_meta_info<'a>(
+        domain_dir: &PathBuf,
+        domain_dir_name: &'a str,
+    ) -> anyhow::Result<(Option<u32>, Option<u32>)> {
+        let mut max_version = 0;
+        let mut uploading_version = None;
+        for version_dir_entry in fs::read_dir(domain_dir)? {
+            let version_dir_entry = version_dir_entry?;
+            if let Some(version_dir) = version_dir_entry
+                .file_name()
+                .to_str()
+                .map(|file_name| file_name.parse::<u32>().ok())
+                .flatten()
+            {
+                let mut path = version_dir_entry.path();
+                path.push(UPLOADING_FILE_NAME);
+                // this directory is in uploading
+                if path.exists() {
+                    //
+                    uploading_version = Some(version_dir);
+                    //uploading_status.insert(domain_dir_name.to_string(), version_dir);
+                } else if max_version < version_dir {
+                    max_version = version_dir;
+                }
+            }
+        }
+        if max_version > 0 {
+            tracing::info!("serve: {},version: {}", domain_dir_name, max_version);
+            return Ok((uploading_version, Some(max_version)));
+        }
+        return Ok((uploading_version, None));
+    }
     pub fn get_file(&self, host: &str, key: &str) -> Option<Arc<CacheItem>> {
         self.cache.get_item(host, key)
     }
@@ -101,6 +201,7 @@ impl DomainStorage {
         domain: String,
         version: Option<u32>,
     ) -> anyhow::Result<u32> {
+        //TODO: check if multiple
         let version = if let Some(version) = version {
             version
         } else {
@@ -132,16 +233,71 @@ impl DomainStorage {
                 version
             ))
         } else if new_path.is_dir() {
-            tracing::info!(
+            info!(
                 "begin to update domain:{}, version:{}, putting files to cache",
-                &domain,
-                version
+                &domain, version
             );
-            self.meta
-                .insert(domain.clone(), (new_path.clone(), version));
-            let data = self.cache.cache_dir(&domain, &new_path)?;
-            tracing::info!("update domain:{}, version:{} finish!", &domain, version);
-            self.cache.update(domain, data);
+            let (host, path) = match domain.split_once('/') {
+                Some(v) => v,
+                None => (domain.as_str(), ""),
+            };
+            match self.meta.get_mut(host) {
+                Some(ref mut domain_meta) => {
+                    //TODO: check path and DomainMeta if is pattern
+                    match domain_meta.value_mut() {
+                        DomainMeta::OneWeb(..) => {
+                            self.meta.insert(
+                                host.to_string(),
+                                DomainMeta::OneWeb(new_path.clone(), version),
+                            );
+                        }
+                        DomainMeta::MultipleWeb(ref mut map) => {
+                            let multiple_file =
+                                self.prefix.join(&host).join(MULTIPLE_WEB_FILE_NAME);
+                            if multiple_file.exists() {
+                                let mut file =
+                                    OpenOptions::new().append(true).open(multiple_file)?;
+                                writeln!(file, "{}", path.to_string())?;
+                            }
+                            map.insert(path.to_string(), (new_path.clone(), version));
+                        }
+                    };
+                }
+                None => {
+                    //TODO: check if MULTIPLE_WEB_FILE_NAME exists
+                    if path == "" {
+                        self.meta.insert(
+                            host.to_string(),
+                            DomainMeta::OneWeb(new_path.clone(), version),
+                        );
+                    } else {
+                        let multiple_file = self.prefix.join(&host).join(MULTIPLE_WEB_FILE_NAME);
+                        let mut file = OpenOptions::new()
+                            .create(true)
+                            .append(true)
+                            .open(&multiple_file)?;
+
+                        let map = DashMap::new();
+                        writeln!(file, "{}", path.to_string())?;
+                        info!("create multiple_file {multiple_file:?}, append {path}");
+                        map.insert(path.to_string(), (new_path.clone(), version));
+
+                        self.meta
+                            .insert(host.to_string(), DomainMeta::MultipleWeb(map));
+                    }
+                }
+            };
+            let path = if path == "" { None } else { Some(path) };
+            let data = self.cache.cache_dir(host, path, &new_path)?;
+            self.cache.update(host.to_string(), path, data);
+            debug!(
+                "domain: {host} all keys:{:?}",
+                self.cache.get_all_keys(host)
+            );
+            info!(
+                "update domain:{}, sub_path: {:?} ,version:{} finish!",
+                host, path, version
+            );
             Ok(version)
         } else {
             Err(anyhow!("{:?} does not exits", new_path))
@@ -186,63 +342,107 @@ impl DomainStorage {
     }
 
     pub fn get_domain_serving_version(&self, domain: &str) -> Option<u32> {
-        self.meta.get(domain).map(|x| x.1)
+        let (host, path) = match domain.split_once('/') {
+            Some(v) => v,
+            None => (domain, ""),
+        };
+        let domain_meta = self.meta.get(host)?;
+        match domain_meta.value() {
+            DomainMeta::OneWeb(_, version) if path == "" => Some(version.clone()),
+            DomainMeta::MultipleWeb(map) if path != "" => map.get(path).map(|v| {
+                let (_, v) = v.value();
+                v.clone()
+            }),
+            _ => None,
+        }
     }
 
+    //domain: www.example.com|www.example.com/a/b
     pub fn get_domain_info_by_domain(&self, domain: &str) -> Option<DomainInfo> {
-        let versions: Vec<u32> = WalkDir::new(&self.prefix.join(domain))
+        let path = self.prefix.join(domain);
+        let versions: Vec<u32> = WalkDir::new(&path)
             .max_depth(1)
+            .min_depth(1)
             .into_iter()
             .filter_map(|version_entity| {
                 let version_entity = version_entity.ok()?;
-                let version = version_entity.file_name().to_str()?.parse::<u32>().ok()?;
-                Some(version)
+                let version = version_entity.file_name().to_str()?.parse::<u32>();
+                Some(version.ok()?)
             })
             .collect();
         if versions.is_empty() {
             None
         } else {
             let domain = domain.to_string();
-            let current_version = self.meta.get(&domain).map(|x| x.1);
+            let current_version = self.get_domain_serving_version(&domain);
+            /*
+            let web_path: Vec<String> = if let Some(current_version) = &current_version {
+                let path = path.join(current_version.to_string());
+                let path_str = path.display().to_string();
+                WalkDir::new(&path)
+                    .into_iter()
+                    .filter_map(|dir_entry| {
+                        let path = dir_entry.ok()?;
+                        let path = path.path();
+                        if path.is_file() {
+                            let path = format!(
+                                "{domain}/{}",
+                                path.display().to_string().replace(&path_str, "")
+                            );
+                            return Some(path);
+                        }
+                        None
+                    })
+                    .collect()
+            } else {
+                Vec::new()
+            };*/
             Some(DomainInfo {
                 domain,
                 current_version,
                 versions,
+                // web_path,
             })
         }
     }
 
-    pub fn get_domain_info(&self) -> Vec<DomainInfo> {
-        let ret: Vec<DomainInfo> = walkdir::WalkDir::new(&self.prefix)
+    pub fn get_domain_info(&self) -> anyhow::Result<Vec<DomainInfo>> {
+        let ret: Vec<DomainInfo> = WalkDir::new(&self.prefix)
             .max_depth(1)
+            .min_depth(1)
             .into_iter()
             .filter_map(|dir_entity| {
                 let dir_entity = dir_entity.ok()?;
                 let domain_dir_name = dir_entity.file_name().to_str()?;
                 if dir_entity.metadata().ok()?.is_dir() && URI_REGEX.is_match(domain_dir_name) {
-                    let domain = domain_dir_name.to_string();
-                    let current_version = self.meta.get(&domain).map(|x| x.1);
-                    let versions = walkdir::WalkDir::new(dir_entity.path())
-                        .max_depth(1)
-                        .into_iter()
-                        .filter_map(|version_entity| {
-                            let version_entity = version_entity.ok()?;
-                            let version =
-                                version_entity.file_name().to_str()?.parse::<u32>().ok()?;
-                            Some(version)
-                        })
-                        .collect();
-                    Some(DomainInfo {
-                        domain,
-                        current_version,
-                        versions,
-                    })
+                    let domain_dir = dir_entity.path().to_path_buf();
+                    let multiple_web_path = domain_dir.join(MULTIPLE_WEB_FILE_NAME);
+                    if multiple_web_path.is_file() {
+                        //[("${path_prefix}/www.example.com/a/b", "www.example.com/a/b", a/b)]
+                        let sub_dirs = Self::get_multiple_path_data(
+                            &domain_dir,
+                            domain_dir_name,
+                            &multiple_web_path,
+                        )
+                        .ok()?;
+                        let result: Vec<DomainInfo> = sub_dirs
+                            .iter()
+                            .filter_map(|(_, domain_with_sub_path, _)| {
+                                self.get_domain_info_by_domain(&domain_with_sub_path)
+                            })
+                            .collect();
+                        Some(result)
+                    } else {
+                        self.get_domain_info_by_domain(domain_dir_name)
+                            .map(|v| vec![v])
+                    }
                 } else {
                     None
                 }
             })
+            .flatten()
             .collect();
-        ret
+        Ok(ret)
     }
     fn check_is_in_upload_process(&self, domain: &str, version: &u32) -> bool {
         self.uploading_status
@@ -335,6 +535,7 @@ impl DomainStorage {
         version: u32,
         uploading_status: UploadingStatus,
     ) -> anyhow::Result<()> {
+        // TODO: check if multiple and domain match
         if let Some(uploading_version) = self.uploading_status.get(&domain).map(|v| *v.value()) {
             if uploading_version != version {
                 return Err(anyhow!(
@@ -342,16 +543,16 @@ impl DomainStorage {
                     domain,
                     uploading_version,
                 ));
-            } else if uploading_status == UploadingStatus::Finish {
+            }
+            if uploading_status == UploadingStatus::Finish {
                 let mut p = self.get_version_path(&domain, version);
                 p.push(UPLOADING_FILE_NAME);
                 fs::remove_file(p)?;
                 self.uploading_status
                     .remove_if(&domain, |_, v| *v == version);
-                tracing::info!(
+                info!(
                     "domain:{}, version:{} change to upload status:finish",
-                    domain,
-                    version
+                    domain, version
                 );
             }
         } else if uploading_status == UploadingStatus::Uploading {
@@ -370,10 +571,9 @@ impl DomainStorage {
             fs::create_dir_all(&p)?;
             p.push(UPLOADING_FILE_NAME);
             File::create(p)?;
-            tracing::info!(
+            info!(
                 "domain:{}, version:{} change to upload status:uploading",
-                domain,
-                version
+                domain, version
             );
             self.uploading_status.insert(domain, version);
         } else {
@@ -382,15 +582,15 @@ impl DomainStorage {
             fs::remove_file(p)?;
             self.uploading_status
                 .remove_if(&domain, |_, v| *v == version);
-            tracing::info!(
+            info!(
                 "domain:{}, version:{} change to upload status:finish",
-                domain,
-                version
+                domain, version
             );
         }
         Ok(())
     }
 
+    // No Check, wo use this must check if illegal to delete files
     pub fn remove_domain_version(
         &self,
         domain: &str,
@@ -432,11 +632,14 @@ pub fn md5_file(path: impl AsRef<Path>, byte_buffer: &mut Vec<u8>) -> Option<Str
         })
         .flatten()
 }
+
 #[derive(Deserialize, Serialize, Debug)]
 pub struct DomainInfo {
-    pub domain: String,
+    pub domain: String, // www.example.com|www.example.com/a/b
     pub current_version: Option<u32>,
     pub versions: Vec<u32>,
+    //pub uploading_version: Vec<u32>, //TODO: add uploading_versions
+    //pub web_path: Vec<String>, // [www.example.com/index.html|www.example.com/a/b/index.html,...]
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -471,7 +674,10 @@ pub struct UploadDomainPosition {
 #[cfg(test)]
 mod test {
     use crate::domain_storage::URI_REGEX_STR;
+    use hyper::Uri;
     use regex::Regex;
+    use std::path::PathBuf;
+    use std::str::FromStr;
 
     #[test]
     fn test_uri_regex() {
@@ -488,4 +694,41 @@ mod test {
         assert!(r2.is_match("."));
         assert!(!r2.is_match("x"));
     }
+    #[test]
+    fn test_path() {
+        assert_eq!(
+            PathBuf::from("/etc").display().to_string(),
+            "/etc".to_string()
+        );
+        assert_eq!(
+            PathBuf::from("/etc/").display().to_string(),
+            "/etc/".to_string()
+        );
+    }
+
+    #[test]
+    fn test_parse() {
+        let z = Uri::from_str("http://www.example.com/a/b").unwrap();
+        println!("{z:?}, {:?}, {:?}", z.path(), z.host());
+
+        let z = Uri::from_str("http://www.example.com").unwrap();
+        println!("{z:?}, {:?}, {:?}", z.path(), z.host());
+        let z = "www.example.com/abc/cde".split_once('/');
+        println!("{z:?}");
+        let z = "www.example.com/".split_once('/');
+        println!("{z:?}");
+    }
+    #[test]
+    fn test_lines() {
+        let z = "a\nb\n".to_string();
+        let z = z.lines();
+        let z: Vec<&str> = z.collect();
+        println!("{}", z.len());
+    }
+    // #[test]
+    // fn test_path() {
+    //     let path = PathBuf::from("/");
+    //     assert!(path.join("usr/lib/pam/").is_dir());
+    //     println!("{:?}", path.join("usr/lib/pam/").to_str());
+    // }
 }

@@ -16,7 +16,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use walkdir::WalkDir;
 
-pub fn upload_files(
+pub async fn upload_files(
     api: API,
     domain: String,
     version: Option<u32>,
@@ -32,9 +32,9 @@ pub fn upload_files(
     }
 
     let prefix_path = path.to_str().unwrap().to_string();
-    let version = get_upload_version(&api, &domain, version)?;
+    let version = get_upload_version(&api, &domain, version).await?;
     println!("begin to fetch server file metadata with md5, you may need to wait if there are large number of files.");
-    let server_metadata = api.get_file_metadata(&domain, version)?;
+    let server_metadata = api.get_file_metadata(&domain, version).await?;
     if !server_metadata.is_empty() {
         println!(
             "there are {} files already in server",
@@ -90,7 +90,8 @@ pub fn upload_files(
         domain: domain.clone(),
         version,
         status: UploadingStatus::Uploading,
-    })?;
+    })
+    .await?;
     println!(
         "{}",
         style(format!(
@@ -100,48 +101,46 @@ pub fn upload_files(
         .green()
     );
 
-    let rt = tokio::runtime::Builder::new_multi_thread()
-        .worker_threads(parallel as usize)
-        .enable_all()
-        .build()?;
+    // let rt = tokio::runtime::Builder::new_multi_thread()
+    //     .worker_threads(parallel as usize)
+    //     .enable_all()
+    //     .build()?;
 
-    println!(
-        "{}",
-        style(format!("Tokio init {} workers", parallel)).green()
-    );
+    // println!(
+    //     "{}",
+    //     style(format!("Tokio init {} workers", parallel)).green()
+    // );
     let api = Arc::new(api);
-    let domain: std::borrow::Cow<'static, str> = domain.into();
-    let str_version: std::borrow::Cow<'static, str> = version.to_string().into();
+    let domain: Cow<'static, str> = domain.into();
+    let str_version: Cow<'static, str> = version.to_string().into();
 
     let process_count = Arc::new(AtomicU64::new(1));
-    let upload_result = rt.block_on(async {
-        let api = api.clone();
-        futures::stream::iter(uploading_files.into_iter().map(|(key, path)| {
-            let key: std::borrow::Cow<'static, str> = key.into();
-            let r = retry_upload(
-                api.as_ref(),
-                domain.clone(),
-                str_version.clone(),
-                key,
-                path,
-                process_count.clone(),
-            );
-            r
-        }))
-        .buffer_unordered(parallel as usize)
-        .map(|result| match result {
-            Either::Left((key, count)) => {
-                eprintln!("({}/{}) {} [Fail]", count, uploading_file_count, key);
-                Some(key)
-            }
-            Either::Right((key, count)) => {
-                println!("({}/{}) {} [Success]", count, uploading_file_count, key);
-                None
-            }
-        })
-        .collect::<Vec<Option<String>>>()
-        .await
-    });
+    let upload_result = futures::stream::iter(uploading_files.into_iter().map(|(key, path)| {
+        let key: Cow<'static, str> = key.into();
+        let r = retry_upload(
+            api.as_ref(),
+            domain.clone(),
+            str_version.clone(),
+            key,
+            path,
+            process_count.clone(),
+        );
+        r
+    }))
+    .buffer_unordered(parallel as usize)
+    .map(|result| match result {
+        Either::Left((key, count)) => {
+            eprintln!("({}/{}) {} [Fail]", count, uploading_file_count, key);
+            Some(key)
+        }
+        Either::Right((key, count)) => {
+            println!("({}/{}) {} [Success]", count, uploading_file_count, key);
+            None
+        }
+    })
+    .collect::<Vec<Option<String>>>()
+    .await;
+
     let fail_keys: Vec<String> = upload_result.into_iter().filter_map(|x| x).collect();
     if !fail_keys.is_empty() {
         return Err(anyhow!(
@@ -153,7 +152,8 @@ pub fn upload_files(
             domain: domain.clone().to_string(),
             version,
             status: UploadingStatus::Finish,
-        })?;
+        })
+        .await?;
     }
     Ok(())
 }
@@ -179,11 +179,11 @@ async fn retry_upload<T: Into<Cow<'static, str>> + Clone>(
     Either::Left((key.into().to_string(), count))
 }
 
-fn get_upload_version(api: &API, domain: &str, version: Option<u32>) -> anyhow::Result<u32> {
+async fn get_upload_version(api: &API, domain: &str, version: Option<u32>) -> anyhow::Result<u32> {
     if let Some(version) = version {
         Ok(version)
     } else {
-        let resp = api.get_upload_position(domain)?;
+        let resp = api.get_upload_position(domain).await?;
         match resp.status {
             GetDomainPositionStatus::NewDomain => {
                 println!("domain:{} is new in server!", domain);
