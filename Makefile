@@ -1,9 +1,8 @@
 # All is from https://github.com/extrawurst/gitui
-SPC_CLIENT_JS_DIR = jsclient
 
-.PHONY: build-spa-client-js, build-release, docker-release, release-doc, release-mac, release-win, release-linux-musl
+.PHONY: docker-release, release-doc, release-client-mac, release-client-win, release-linux-client-musl, release-linux-server-musl
 
-build-release:
+build-client-release:
 	cargo build --bin spa-client --release
 
 build-spa-client-js:
@@ -30,29 +29,26 @@ release-doc:
 	git push -f git@github.com:fornetcode/spa-server.git master:gh-pages
 	cd -
 
-release-mac: build-release
+release-client-mac: build-client-release
 	strip target/release/spa-client
 	otool -L target/release/spa-client
 	mkdir -p release
 	tar -C ./target/release/ -czvf ./release/spa-client-mac.tar.gz ./spa-client
 	ls -lisah ./release/spa-client-mac.tar.gz
 
-release-win: build-release
+release-client-win: build-client-release
 	mkdir -p release
 	tar -C ./target/release/ -czvf ./release/spa-client-win.tar.gz ./spa-client.exe
 	ls -l ./release/spa-client-win.tar.gz
 
-build-linux-musl-release:
+release-linux-client-musl:
 	cargo build --package spa-client --bin spa-client --target=x86_64-unknown-linux-musl --release
-
-
-release-linux-musl: build-linux-musl-release
 	strip target/x86_64-unknown-linux-musl/release/spa-client
 	mkdir -p release
 	tar -C ./target/x86_64-unknown-linux-musl/release/ -czvf ./release/spa-client-linux-musl.tar.gz ./spa-client
 
 release-linux-server-musl:
-	cargo build --package spa-client --bin spa-client --target=x86_64-unknown-linux-musl --release
+	cargo build --package spa-server --bin spa-server --target=x86_64-unknown-linux-musl --release
 	strip target/x86_64-unknown-linux-musl/release/spa-server
 	mkdir -p release
 	tar -C ./target/x86_64-unknown-linux-musl/release/ -czvf ./release/spa-server-linux-musl.tar.gz ./spa-server
