@@ -2,7 +2,9 @@
 
 ### Version 2.1.1
 
-- [ ] fix:
+- [x] fix: cache discard correctly
+- [ ] feat: server could start should serve old version
+- [x] improve: .SPA-Multiple file create when upload
 
 ### Version 2.1.0
 
