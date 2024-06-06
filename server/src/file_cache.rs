@@ -104,32 +104,42 @@ impl FileCache {
         &self,
         domain: String,
         sub_path: Option<&str>,
+        version: u32,
         data: HashMap<String, Arc<CacheItem>>,
     ) {
-        let data = match sub_path {
-            Some(sub_path) => match self.data.get(&domain) {
-                Some(ref info) => {
-                    let mut new_hash_map: HashMap<String, Arc<CacheItem>> = info
-                        .value()
-                        .iter()
-                        .filter_map(|(v, k)| {
-                            if v.starts_with(sub_path) {
+        let data = match self.data.get(&domain) {
+            Some(ref info) => {
+                let mut new_hash_map: HashMap<String, Arc<CacheItem>> = info
+                    .value()
+                    .iter()
+                    .filter_map(|(v, k)| match sub_path {
+                        Some(sub_path) => {
+                            if v.starts_with(sub_path)
+                                && version > k.version
+                                && version - k.version > 2
+                            {
                                 None
                             } else {
                                 Some((v.clone(), k.clone()))
                             }
-                        })
-                        .collect();
-                    // inesrt before get would trigger deadlock. so move out insert function
-                    //drop(info);
-                    new_hash_map.extend(data);
-                    new_hash_map
-                    //self.data.insert(domain, new_hash_map);
-                }
-                None => data,
-            },
+                        }
+                        None => {
+                            if version > k.version && version - k.version > 2 {
+                                None
+                            } else {
+                                Some((v.clone(), k.clone()))
+                            }
+                        }
+                    })
+                    .collect();
+                // inesrt before get would trigger deadlock. so move out insert function
+                //drop(info);
+                new_hash_map.extend(data);
+                new_hash_map
+            }
             None => data,
         };
+
         self.data.insert(domain, data);
     }
 
@@ -137,6 +147,7 @@ impl FileCache {
         &self,
         domain: &str, //www.example.com
         sub_path: Option<&str>,
+        version: u32,
         path: &PathBuf,
     ) -> anyhow::Result<HashMap<String, Arc<CacheItem>>> {
         let prefix = path
@@ -147,6 +158,7 @@ impl FileCache {
         let conf = self.conf.get_domain_cache_config(domain);
         let expire_config = self.conf.get_domain_expire_config(domain);
         let result: HashMap<String, Arc<CacheItem>> = WalkDir::new(path)
+            .min_depth(1)
             .into_iter()
             .filter_map(|x| x.ok())
             .filter_map(|entry| {
@@ -208,6 +220,7 @@ impl FileCache {
                                     mime,
                                     meta: metadata,
                                     data: data_block,
+                                    version,
                                     expire: expire_config.get(&extension_name).cloned(),
                                 }),
                             )
@@ -239,6 +252,7 @@ impl FileCache {
     }
 }
 
+#[derive(Debug)]
 pub enum DataBlock {
     CacheBlock {
         bytes: Bytes,
@@ -263,6 +277,7 @@ pub struct CacheItem {
     pub meta: Metadata,
     pub data: DataBlock,
     pub mime: Mime,
+    pub version: u32,
     pub expire: Option<Duration>,
     //    pub etag: ETag,
 }
@@ -278,3 +293,18 @@ pub fn etag_calculate(meta: &Metadata, real_len: u64) -> anyhow::Result<ETag> {
     };
     Ok(etag)
 }*/
+
+#[cfg(test)]
+mod test {
+    use std::collections::HashMap;
+
+    #[test]
+    fn test_extend() {
+        let mut hash = HashMap::new();
+        hash.insert(1, 1);
+        let mut hash2 = HashMap::new();
+        hash2.insert(1, 2);
+        hash.extend(hash2);
+        println!("hash2 {:?}", hash.get(&1));
+    }
+}

@@ -1,6 +1,6 @@
+use reqwest::StatusCode;
 use std::path::PathBuf;
 use std::{env, fs, io};
-use reqwest::StatusCode;
 use tokio::task::JoinHandle;
 use tracing::Level;
 use tracing_subscriber::EnvFilter;
@@ -57,7 +57,7 @@ pub async fn upload_file_and_check(
         client_api.clone(),
         domain.to_string(),
         None,
-        get_template_version(domain, 1),
+        get_template_version(domain, version),
         client_config.upload.parallel,
     )
     .await
@@ -72,38 +72,37 @@ pub async fn upload_file_and_check(
 
     assert_files(domain, request_prefix, version, check_path).await;
 }
-pub async fn assert_files(domain: &str,
-                          request_prefix: &str,
-                          version: u32,
-                          check_path: Vec<&'static str>,) {
-
+pub async fn assert_files(
+    domain: &str,
+    request_prefix: &str,
+    version: u32,
+    check_path: Vec<&'static str>,
+) {
     for file in check_path {
-        println!("begin to check: {request_prefix}/{file}");
+        println!("begin to check: {request_prefix}/{file}, version:{version}");
+        let result = reqwest::get(format!("{request_prefix}/{file}"))
+            .await
+            .unwrap();
+        assert_eq!(result.status(), StatusCode::OK);
         assert_eq!(
-            reqwest::get(format!("{request_prefix}/{file}"))
-                .await
-                .unwrap()
-                .text()
-                .await
-                .unwrap(),
+            result.text().await.unwrap(),
             get_file_text(domain, version, file).unwrap()
         );
     }
 }
-pub async fn assert_files_no_exists(
-                                    request_prefix: &str,
-                                    check_path: Vec<&'static str>,) {
+pub async fn assert_files_no_exists(request_prefix: &str, check_path: Vec<&'static str>) {
     for file in check_path {
         println!("begin to check: {request_prefix}/{file} no exists");
         assert_eq!(
             reqwest::get(format!("{request_prefix}/{file}"))
-            .await
-            .unwrap().status(),
+                .await
+                .unwrap()
+                .status(),
             StatusCode::NOT_FOUND
         );
     }
 }
-pub fn clean_test_dir(domain:&str) {
+pub fn clean_test_dir(domain: &str) {
     let path = get_test_dir().join("web").join(domain);
     if path.exists() {
         fs::remove_dir_all(path).unwrap();

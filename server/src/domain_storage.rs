@@ -1,5 +1,5 @@
 use crate::file_cache::{CacheItem, FileCache};
-use anyhow::{anyhow, Context};
+use anyhow::{anyhow, bail, Context};
 use dashmap::DashMap;
 use lazy_static::lazy_static;
 use md5::{Digest, Md5};
@@ -80,11 +80,13 @@ impl DomainStorage {
                                 let data = cache.cache_dir(
                                     domain_dir_name,
                                     Some(sub_path.as_str()),
+                                    max_version,
                                     &path_buf,
                                 )?;
                                 cache.update(
                                     domain_dir_name.to_string(),
                                     Some(sub_path.as_str()),
+                                    max_version,
                                     data,
                                 );
                                 match domain_version.get_mut(domain_dir_name) {
@@ -119,8 +121,9 @@ impl DomainStorage {
                             let path_buf = path_prefix_buf
                                 .join(domain_dir_name)
                                 .join(max_version.to_string());
-                            let data = cache.cache_dir(domain_dir_name, None, &path_buf)?;
-                            cache.update(domain_dir_name.to_string(), None, data);
+                            let data =
+                                cache.cache_dir(domain_dir_name, None, max_version, &path_buf)?;
+                            cache.update(domain_dir_name.to_string(), None, max_version, data);
                             domain_version.insert(
                                 domain_dir_name.to_string(),
                                 DomainMeta::OneWeb(path_buf, max_version),
@@ -288,8 +291,8 @@ impl DomainStorage {
                 }
             };
             let path = if path == "" { None } else { Some(path) };
-            let data = self.cache.cache_dir(host, path, &new_path)?;
-            self.cache.update(host.to_string(), path, data);
+            let data = self.cache.cache_dir(host, path, version, &new_path)?;
+            self.cache.update(host.to_string(), path, version, data);
             debug!(
                 "domain: {host} all keys:{:?}",
                 self.cache.get_all_keys(host)
@@ -568,6 +571,27 @@ impl DomainStorage {
                 ));
             }
             let mut p = self.get_version_path(&domain, version);
+            let (host, path) = match domain.split_once('/') {
+                Some(v) => v,
+                None => (domain.as_str(), ""),
+            };
+            let multiple = self.prefix.join(host).join(MULTIPLE_WEB_FILE_NAME);
+            if path != "" {
+                if !multiple.exists() {
+                    let parent = self.prefix.join(host);
+                    if !parent.exists() && fs::create_dir_all(&parent).is_err() {
+                        bail!(
+                            "create host directory {} failure",
+                            parent.display().to_string()
+                        )
+                    }
+                    if File::create_new(multiple).is_err() {
+                        bail!("files in same domain should not create at same time")
+                    }
+                }
+            } else if multiple.exists() {
+                bail!("This already has multiple SPA, should not upload single SPA at top path")
+            }
             fs::create_dir_all(&p)?;
             p.push(UPLOADING_FILE_NAME);
             File::create(p)?;
@@ -676,6 +700,7 @@ mod test {
     use crate::domain_storage::URI_REGEX_STR;
     use hyper::Uri;
     use regex::Regex;
+    use std::fs::File;
     use std::path::PathBuf;
     use std::str::FromStr;
 
@@ -730,5 +755,11 @@ mod test {
     //     let path = PathBuf::from("/");
     //     assert!(path.join("usr/lib/pam/").is_dir());
     //     println!("{:?}", path.join("usr/lib/pam/").to_str());
+    // }
+
+    // would crea
+    // #[test]
+    // fn test_create_file() {
+    //     File::create_new(PathBuf::from("/tmp/bccskwef")).unwrap();
     // }
 }
