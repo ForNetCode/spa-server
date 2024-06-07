@@ -25,7 +25,7 @@
 
 ### 通过源码
 ```shell
-git clone git@github.com:timzaak/spa-server.git
+git clone git@github.com:fornetcode/spa-server.git
 cd spa-server
 git submodule init && git submodule update
 cp config.release.conf config.conf # please remember to change `file_dir` in config.conf
@@ -34,7 +34,7 @@ cargo run --bin spa-server
 
 ### 通过镜像
 ```shell
-docker run -d -p 80 -p 443 -v $HOST_VOLUME:/data -v $CONFIG:/config.conf timzaak/spa-server:latest
+docker run -d -p 80 -p 443 -v $HOST_VOLUME:/data -v $CONFIG:/config.conf fornetcode/spa-server:latest
 ```
 
 ## 如何部署静态文件
