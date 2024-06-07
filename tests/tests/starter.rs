@@ -65,7 +65,6 @@ async fn evoke_cache_when_serving_new_index() {
     assert_files_no_exists(request_prefix, vec!["1.html"]).await;
 }
 
-// TODO: to fix it
 // This must run after evoke_cache_when_serving_new_index
 #[tokio::test(flavor = "multi_thread", worker_threads = 3)]
 async fn cool_start_server_and_serving_files() {

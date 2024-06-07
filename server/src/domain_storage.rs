@@ -9,6 +9,7 @@ use serde_repr::{Deserialize_repr, Serialize_repr};
 use std::fs;
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
+use std::ops::RangeInclusive;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tracing::{debug, info};
@@ -75,25 +76,36 @@ impl DomainStorage {
                                 uploading_status
                                     .insert(domain_with_sub_path.clone(), uploading_version);
                             }
-                            if let Some(max_version) = max_version {
-                                let path_buf = sub_dir.join(max_version.to_string());
-                                let data = cache.cache_dir(
-                                    domain_dir_name,
-                                    Some(sub_path.as_str()),
-                                    max_version,
-                                    &path_buf,
-                                )?;
-                                cache.update(
-                                    domain_dir_name.to_string(),
-                                    Some(sub_path.as_str()),
-                                    max_version,
-                                    data,
-                                );
+
+                            if let Some(version) = max_version {
+                                for version in Self::get_init_version(version) {
+                                    let path_buf = sub_dir.join(version.to_string());
+                                    if sub_dir
+                                        .join(version.to_string())
+                                        .join(UPLOADING_FILE_NAME)
+                                        .exists()
+                                    {
+                                        continue;
+                                    }
+                                    let data = cache.cache_dir(
+                                        domain_dir_name,
+                                        Some(sub_path.as_str()),
+                                        version,
+                                        &path_buf,
+                                    )?;
+                                    cache.update(
+                                        domain_dir_name.to_string(),
+                                        Some(sub_path.as_str()),
+                                        version,
+                                        data,
+                                    );
+                                }
+                                let path_buf = sub_dir.join(version.to_string());
                                 match domain_version.get_mut(domain_dir_name) {
                                     Some(mut domain_meta) => {
                                         match domain_meta.value_mut() {
                                             DomainMeta::MultipleWeb(ref mut map) => {
-                                                map.insert(sub_path, (path_buf, max_version));
+                                                map.insert(sub_path.clone(), (path_buf, version));
                                             }
                                             DomainMeta::OneWeb(..) => {
                                                 panic!("init failure, {sub_dir:?} should be multiple web");
@@ -102,7 +114,7 @@ impl DomainStorage {
                                     }
                                     None => {
                                         let map = DashMap::new();
-                                        map.insert(sub_path, (path_buf, max_version));
+                                        map.insert(sub_path.clone(), (path_buf, version));
                                         domain_version.insert(
                                             domain_dir_name.to_string(),
                                             DomainMeta::MultipleWeb(map),
@@ -117,16 +129,21 @@ impl DomainStorage {
                         if let Some(uploading_version) = uploading_version {
                             uploading_status.insert(domain_dir_name.to_string(), uploading_version);
                         }
-                        if let Some(max_version) = max_version {
+                        if let Some(version) = max_version {
+                            for version in Self::get_init_version(version) {
+                                let path_buf = path_prefix_buf
+                                    .join(domain_dir_name)
+                                    .join(version.to_string());
+                                let data =
+                                    cache.cache_dir(domain_dir_name, None, version, &path_buf)?;
+                                cache.update(domain_dir_name.to_string(), None, version, data);
+                            }
                             let path_buf = path_prefix_buf
                                 .join(domain_dir_name)
-                                .join(max_version.to_string());
-                            let data =
-                                cache.cache_dir(domain_dir_name, None, max_version, &path_buf)?;
-                            cache.update(domain_dir_name.to_string(), None, max_version, data);
+                                .join(version.to_string());
                             domain_version.insert(
                                 domain_dir_name.to_string(),
-                                DomainMeta::OneWeb(path_buf, max_version),
+                                DomainMeta::OneWeb(path_buf, version),
                             );
                         }
                     }
@@ -140,6 +157,14 @@ impl DomainStorage {
             })
         } else {
             Err(anyhow!("{:?} does not exist", path_prefix))
+        }
+    }
+
+    fn get_init_version(version: u32) -> RangeInclusive<u32> {
+        if version > 2 {
+            version - 2..=version
+        } else {
+            1..=version
         }
     }
 
@@ -697,10 +722,10 @@ pub struct UploadDomainPosition {
 
 #[cfg(test)]
 mod test {
-    use crate::domain_storage::URI_REGEX_STR;
+    use crate::domain_storage::{DomainStorage, URI_REGEX_STR};
     use hyper::Uri;
     use regex::Regex;
-    use std::fs::File;
+    use std::ops::RangeInclusive;
     use std::path::PathBuf;
     use std::str::FromStr;
 
@@ -749,6 +774,14 @@ mod test {
         let z = z.lines();
         let z: Vec<&str> = z.collect();
         println!("{}", z.len());
+    }
+
+    #[test]
+    fn get_init_version_test() {
+        assert_eq!(DomainStorage::get_init_version(3), 1..=3);
+        assert_eq!(DomainStorage::get_init_version(2), 1..=2);
+        assert_eq!(DomainStorage::get_init_version(4), 2..=4);
+        assert!(RangeInclusive::new(1, 0).is_empty());
     }
     // #[test]
     // fn test_path() {
