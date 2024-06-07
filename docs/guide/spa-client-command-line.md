@@ -1,25 +1,33 @@
 # Command Line
-We have provided command line in 1.x versions, but it seems no one need it. So we removed the binary release and docker release.
+
+We have provided command line in 1.x versions, but it seems no one need it. So we removed the binary release and docker
+release.
 
 But you can build it from source.
 
 ## Source Code
+
 ```shell
 git clone --recursive https://github.com/fornetcode/spa-server
 cargo build --package spa-client --release
 # you could get the binary from ./target/release directory
 ```
-You can install it by:
+
+Install it by:
+
 ```shell
 cd client
 cargo install --bin spa-client  --path .
 ```
 
 ## Overview
+
 spa-client it a command line tool to help user upload files and release new SPA.
 
 ## Usage Example
+
 There are some usage examples of `spa-client`, you also can get help by typing `spa-client -h`.
+
 ```shell
 # upload static files to admin server, if not set $OPT_VERSION, will try to 
 spa-client -c $CONFIG_PATH upload $STATIC_FILE_PATH $DOMAIN $OPT_VERSION -p 3
@@ -37,9 +45,8 @@ spa-client -c $CONFIG_PATH reload
 spa-client -c $CONFIG_PATH delete $OPT_DOMAIN $OPT_MAX_RESERVE
 ```
 
-There also provides http api to interact with admin server,
-
 ### Config
+
 the config file format is hocon:
 
 ```hocon
@@ -57,7 +64,10 @@ upload {
   parallel: 3
 }
 ```
-the config file name would be `client.conf`
+
+the config default file name is `client.conf`.
+
+We also provide http api to interact with admin server, the following command is ok to upload and serve new version.
 
 ```shell
 # Uploading Files By scp and release 
