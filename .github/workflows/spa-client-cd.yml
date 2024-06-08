@@ -59,7 +59,7 @@ jobs:
         run: make release-client-win
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           path: ./release/*
           if-no-files-found: error
