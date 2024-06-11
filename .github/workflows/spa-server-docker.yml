@@ -1,4 +1,4 @@
-name: spa-server-docker release
+name: spa-server-docker test release
 
 on:
   workflow_dispatch:
