@@ -32,4 +32,4 @@ jobs:
           push: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          tags: ${{ env.REGISTRY }}/fornetcode/spa-server:${{github.event.inputs.version}}, ${{ env.REGISTRY }}/fornetcode/spa-server:latest
+          tags: ${{ env.REGISTRY }}/fornetcode/spa-server:${{github.event.inputs.version}}
