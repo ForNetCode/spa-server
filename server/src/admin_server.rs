@@ -450,7 +450,6 @@ fn build_async_job(
                 max_reserve,
             },
         );
-        println!("tt");
     };
     let builder = TaskBuilder::default()
         .set_frequency_repeated_by_cron_str(cron)
@@ -463,6 +462,10 @@ fn build_async_job(
 #[cfg(test)]
 mod test {
     use crate::admin_server::request::DomainWithVersionOption;
+    use chrono::prelude::*;
+    use delay_timer::entity::DelayTimerBuilder;
+    use delay_timer::prelude::TaskBuilder;
+    use std::time::Duration;
     use warp::test::request;
 
     #[tokio::test]
@@ -478,5 +481,32 @@ mod test {
             .json(&body)
             .reply(&api)
             .await;*/
+    }
+
+    #[tokio::test]
+    async fn delay_is_ok() {
+        let body = move || {
+            println!("run delay job");
+        };
+        let mut task = TaskBuilder::default()
+            .set_frequency_repeated_by_cron_str("0 0 3 * * *")
+            .set_task_id(1)
+            .set_maximum_parallel_runnable_num(1)
+            .spawn_routine(body)
+            .unwrap();
+        assert!(task.is_valid());
+        for _ in 0..10 {
+            let time = task.get_next_exec_timestamp().unwrap() as i64;
+            let time = NaiveDateTime::from_timestamp(time, 0);
+            let time: DateTime<Utc> = DateTime::from_utc(time, Utc);
+            println!("{}", time.format("%Y-%m-%d %H:%M:%S"));
+        }
+        let delay_timer = DelayTimerBuilder::default()
+            .tokio_runtime_by_default()
+            .build();
+        delay_timer.add_task(task).unwrap();
+
+        tokio::time::sleep(Duration::from_secs(10)).await;
+        println!("finish");
     }
 }
