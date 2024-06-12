@@ -14,6 +14,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use tracing::warn;
 use walkdir::WalkDir;
 
 pub async fn upload_files(
@@ -167,12 +168,18 @@ async fn retry_upload<T: Into<Cow<'static, str>> + Clone>(
     count: Arc<AtomicU64>,
 ) -> Either<(String, u64), (String, u64)> {
     for retry in (0..3).into_iter() {
-        let r = api
+        let result = api
             .upload_file(domain.clone(), version.clone(), key.clone(), path.clone())
             .await;
-        if r.is_ok() {
-            let count = count.fetch_add(1, Ordering::SeqCst);
-            return Either::Right((key.into().to_string(), count));
+        let key_string = key.clone().into().to_string();
+        match result {
+            Ok(_) => {
+                let count = count.fetch_add(1, Ordering::SeqCst);
+                return Either::Right((key_string, count));
+            }
+            Err(e) => {
+                warn!("key:{} upload fail at {}:\n{}", &key_string, retry + 1, e);
+            }
         }
     }
     let count = count.fetch_add(1, Ordering::SeqCst);

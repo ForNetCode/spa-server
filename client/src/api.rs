@@ -90,7 +90,8 @@ impl API {
             .async_client
             .post(self.url("files/upload_status"))
             .json(&param)
-            .send().await?;
+            .send()
+            .await?;
         handle!(resp)
     }
 
@@ -103,7 +104,8 @@ impl API {
             .async_client
             .post(self.url("update_version"))
             .json(&DomainWithOptVersionOption { domain, version })
-            .send().await?;
+            .send()
+            .await?;
         string_resp!(resp)
     }
 
@@ -124,10 +126,12 @@ impl API {
                 domain,
                 max_reserve,
             })
-            .send().await?;
+            .send()
+            .await?;
         handle!(resp)
     }
 
+    //TODO: use thiserror instead of anyhow
     pub async fn upload_file<T: Into<Cow<'static, str>>>(
         &self,
         domain: T,
@@ -169,7 +173,8 @@ impl API {
             .async_client
             .get(self.url("files/metadata"))
             .query(&[("domain", domain), ("version", &version.to_string())])
-            .send().await?;
+            .send()
+            .await?;
         json_resp!(resp, Vec<ShortMetaData>)
     }
 
@@ -178,7 +183,8 @@ impl API {
             .async_client
             .get(self.url("upload/position"))
             .query(&[("domain", domain), ("format", "Json")])
-            .send().await?;
+            .send()
+            .await?;
         json_resp!(resp, UploadDomainPosition)
     }
 }
