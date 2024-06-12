@@ -22,7 +22,10 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 
 FROM ${RUNTIME_IMAGE}
 RUN mkdir /data
+RUN apk add --no-cache tini
 COPY --from=builder ./config.release.conf /config/config.conf
 COPY --from=builder ./target/release/spa-server /usr/bin/
+
+ENTRYPOINT ["/sbin/tini", "--"]
 
 CMD ["spa-server"]
