@@ -14,6 +14,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::time::Duration;
 use tracing::warn;
 use walkdir::WalkDir;
 
@@ -167,7 +168,7 @@ async fn retry_upload<T: Into<Cow<'static, str>> + Clone>(
     path: PathBuf,
     count: Arc<AtomicU64>,
 ) -> Either<(String, u64), (String, u64)> {
-    for retry in (0..3).into_iter() {
+    for retry in (0..3:u32).into_iter() {
         let result = api
             .upload_file(domain.clone(), version.clone(), key.clone(), path.clone())
             .await;
@@ -179,6 +180,7 @@ async fn retry_upload<T: Into<Cow<'static, str>> + Clone>(
             }
             Err(e) => {
                 warn!("key:{} upload fail at {}:\n{}", &key_string, retry + 1, e);
+                tokio::time::sleep(Duration::from_secs(1<<(retry+1))).await;
             }
         }
     }
