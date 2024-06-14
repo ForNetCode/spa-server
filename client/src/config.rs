@@ -29,6 +29,19 @@ impl Config {
     pub fn load(config_dir: Option<PathBuf>) -> anyhow::Result<Config> {
         let mut conf_loader = HoconLoader::new();
 
+        let config_dir = config_dir.or_else(|| {
+            std::env::current_exe().ok().and_then(|p| {
+                p.parent().and_then(|p| {
+                    let p = p.join("config.conf");
+                    if p.exists() {
+                        Some(p)
+                    } else {
+                        None
+                    }
+                })
+            })
+        });
+
         if let Some(config_dir) = config_dir {
             conf_loader = conf_loader.load_file(config_dir)?;
         }
