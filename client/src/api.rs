@@ -197,28 +197,28 @@ mod test {
         let config = crate::config::test::default_local_config().unwrap();
         API::new(&config).unwrap()
     }
-    #[test]
-    fn get_domain_info() {
+    #[tokio::test]
+    async fn get_domain_info() {
         let api = get_api();
-        let response = api.get_domain_info(None).unwrap();
+        let response = api.get_domain_info(None).await.unwrap();
         println!("{:?}", response);
     }
 
     #[tokio::test]
     async fn get_file_metadata() {
         let api = get_api();
-        let r = api.get_file_metadata("self.noti.link", 1);
+        let r = api.get_file_metadata("self.noti.link", 1).await;
         println!("{:?}", r);
         //api.upload_file("self.noti.link", &2.to_string(),PathBuf::new(""));
     }
-    #[test]
-    fn update_upload_status() {
+    #[tokio::test]
+    async fn update_upload_status() {
         let api = get_api();
         let r = api.change_uploading_status(UpdateUploadingStatusOption {
             domain: "www.baidu.com".to_owned(),
             version: 1,
             status: UploadingStatus::Finish,
-        });
+        }).await;
         println!("{:?}", r);
     }
 }

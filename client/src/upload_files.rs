@@ -168,7 +168,7 @@ async fn retry_upload<T: Into<Cow<'static, str>> + Clone>(
     path: PathBuf,
     count: Arc<AtomicU64>,
 ) -> Either<(String, u64), (String, u64)> {
-    for retry in (0..3:u32).into_iter() {
+    for retry in (0..3u32).into_iter() {
         let result = api
             .upload_file(domain.clone(), version.clone(), key.clone(), path.clone())
             .await;

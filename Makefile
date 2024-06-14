@@ -12,7 +12,7 @@ build-spa-client-js:
 # make docker-release VERSION=1.2.3
 docker-release:
 ifeq ($(VERSION), )
-	$(error VEDRSION is not set)
+	$(error VERSION is not set)
 else
 	DOCKER_BUILDKIT=1 docker build . -t="ghcr.io/fornetcode/spa-server:$(VERSION)"
 	docker push ghcr.io/fornetcode/spa-server:$(VERSION)

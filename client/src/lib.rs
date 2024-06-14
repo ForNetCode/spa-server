@@ -77,45 +77,45 @@ mod test {
         env::set_var("SPA_UPLOAD_PARALLEL", "4");
     }
 
-    #[test]
-    fn test_info() {
+    #[tokio::test]
+    async fn test_info() {
         init_config();
-        run_with_commands(CliCommand::parse_from(&["test", "info"])).unwrap();
+        run_with_commands(CliCommand::parse_from(&["test", "info"])).await.unwrap();
     }
 
-    #[test]
-    fn test_upload() {
+    #[tokio::test]
+    async fn test_upload() {
         init_config();
         let ret = run_with_commands(CliCommand::parse_from(&[
             "test",
             "upload",
             "../example/js-app-example/build",
             "self.noti.link",
-        ]));
+        ])).await;
 
         if let Err(ret) = ret {
             println!("{:?}", ret);
         }
     }
-    #[test]
-    fn test_release() {
+    #[tokio::test]
+    async fn test_release() {
         init_config();
         let result = run_with_commands(CliCommand::parse_from(&[
             "test",
             "release",
             "self.noti.link",
-        ]));
+        ])).await;
         result.unwrap();
     }
-    #[test]
-    fn test_delete() {
+    #[tokio::test]
+    async fn test_delete() {
         init_config();
         let result = run_with_commands(CliCommand::parse_from(&[
             "test",
             "delete",
             "self.noti.link",
             "2",
-        ]));
+        ])).await;
         result.unwrap();
     }
 }

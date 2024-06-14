@@ -2329,6 +2329,7 @@ name = "tests"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "headers",
  "reqwest 0.12.2",
  "spa-client",
  "spa-server",
