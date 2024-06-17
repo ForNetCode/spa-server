@@ -1,14 +1,21 @@
 use std::time::Duration;
-mod common;
-use crate::common::{assert_files, assert_files_no_exists, clean_test_dir, copy_dir_all, get_server_data_path, get_template_version, reload_server, upload_file_and_check};
-use common::run_server;
+use reqwest::{ClientBuilder, StatusCode};
+use reqwest::redirect::Policy;
 
+mod common;
+use crate::common::*;
+use common::run_server;
+use spa_server::LOCAL_HOST;
+
+// cargo test --package tests
 #[tokio::test(flavor = "multi_thread", worker_threads = 3)]
 async fn start_server_and_client_upload_file() {
-    let domain = "self.noti.link/27";
-    let request_prefix = "http://self.noti.link:8080/27";
+    let domain = LOCAL_HOST.to_owned() + "/27";
+    let domain = &domain;
+    let request_prefix = format!("http://{LOCAL_HOST}:8080/27");
+    let request_prefix = &request_prefix;
 
-    clean_test_dir("self.noti.link");
+    clean_test_dir(LOCAL_HOST);
 
     run_server();
 
@@ -16,19 +23,31 @@ async fn start_server_and_client_upload_file() {
 
     upload_file_and_check(domain, request_prefix, 1, vec!["index.html"]).await;
 
+    assert_expired(request_prefix, vec![("1.html", Some(0)), ("test.js", Some(30*24*60*60)), ("test.bin", None)]).await;
+
     upload_file_and_check(domain, request_prefix, 2, vec!["index.html", "2.html"]).await;
 
     assert_files(domain, request_prefix, 1, vec!["1.html"]).await;
+
+    let (api, _) = get_client_api("client_config.conf");
+    api.remove_files(Some(domain.to_string()), Some(1)).await.unwrap();
+    
+    assert_files_no_exists(request_prefix,vec!["1.html"]).await;
+    assert_files(domain, request_prefix, 2, vec!["index.html", "2.html"]).await;
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 3)]
 async fn multiple_domain_check() {
-    clean_test_dir("self.noti.link");
+    clean_test_dir(LOCAL_HOST);
+    let domain = format!("{LOCAL_HOST}/27");
+    let domain = &domain;
+    let request_prefix = format!("http://{LOCAL_HOST}:8080/27");
+    let request_prefix = &request_prefix;
 
-    let domain = "self.noti.link/27";
-    let request_prefix = "http://self.noti.link:8080/27";
-    let domain2 = "self.noti.link/a";
-    let request_prefix2 = "http://self.noti.link:8080/a";
+    let domain2 = format!("{LOCAL_HOST}/a");
+    let domain2 = &domain2;
+    let request_prefix2 = format!("http://{LOCAL_HOST}:8080/a");
+    let request_prefix2 = &request_prefix2;
 
     run_server();
 
@@ -41,11 +60,12 @@ async fn multiple_domain_check() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 3)]
-async fn evoke_cache_when_serving_new_index() {
-    clean_test_dir("self.noti.link");
-    let domain = "self.noti.link/27";
-    let request_prefix = "http://self.noti.link:8080/27";
-
+async fn evoke_cache_when_serving_new_version() {
+    clean_test_dir(LOCAL_HOST);
+    let domain = format!("{LOCAL_HOST}/27");
+    let domain = &domain;
+    let request_prefix = format!("http://{LOCAL_HOST}:8080/27");
+    let request_prefix = &request_prefix;
     run_server();
 
     tokio::time::sleep(Duration::from_secs(1)).await;
@@ -67,8 +87,11 @@ async fn evoke_cache_when_serving_new_index() {
 // This must run after evoke_cache_when_serving_new_index
 #[tokio::test(flavor = "multi_thread", worker_threads = 3)]
 async fn cool_start_server_and_serving_files() {
-    let domain = "self.noti.link/27";
-    let request_prefix = "http://self.noti.link:8080/27";
+    let domain = format!("{LOCAL_HOST}/27");
+    let domain = &domain;
+    let request_prefix = format!("http://{LOCAL_HOST}:8080/27");
+    let request_prefix = &request_prefix;
+
     run_server();
     tokio::time::sleep(Duration::from_secs(2)).await;
     assert_files(domain, request_prefix, 4, vec!["index.html", "4.html"]).await;
@@ -78,9 +101,11 @@ async fn cool_start_server_and_serving_files() {
 
 #[tokio::test]
 async fn simple_hot_reload() {
-    clean_test_dir("self.noti.link");
-    let domain = "self.noti.link/27";
-    let request_prefix = "http://self.noti.link:8080/27";
+    clean_test_dir(LOCAL_HOST);
+    let domain = format!("{LOCAL_HOST}/27");
+    let domain = &domain;
+    let request_prefix = format!("http://{LOCAL_HOST}:8080/27");
+    let request_prefix = &request_prefix;
 
     run_server();
     tokio::time::sleep(Duration::from_secs(2)).await;
@@ -94,14 +119,19 @@ async fn simple_hot_reload() {
     upload_file_and_check(domain, request_prefix, 2, vec!["index.html", "2.html"]).await;
 }
 
-#[ignore]
 #[tokio::test]
 async fn self_signed_cert_https() {
-    clean_test_dir("self.noti.link");
-    let domain = "self.noti.link/27";
-    let request_prefix = "https://self.noti.link/27";
+    clean_test_dir(LOCAL_HOST);
+    let domain = format!("{LOCAL_HOST}/27");
+    let domain = &domain;
+    let request_prefix = format!("https://{LOCAL_HOST}/27");
+    let request_prefix = &request_prefix;
 
-    run_server();
+    run_server_with_config("server_config_https.conf");
     tokio::time::sleep(Duration::from_secs(2)).await;
     upload_file_and_check(domain, request_prefix, 1, vec!["index.html", "1.html"]).await;
+    assert_files(domain, &format!("http://{LOCAL_HOST}:8080/27"), 1, vec!["index.html", "1.html"]).await;
+    let req = ClientBuilder::new().redirect(Policy::none()).build().unwrap();
+    let result = req.get(&format!("http://{LOCAL_HOST}:8080/27/index.html")).send().await.unwrap();
+    assert_eq!(result.status(), StatusCode::MOVED_PERMANENTLY);
 }

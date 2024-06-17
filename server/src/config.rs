@@ -6,16 +6,13 @@ use std::time::Duration;
 
 const CONFIG_PATH: &str = "/config/config.conf";
 
-// pub type Config = Arc<AppConfig>
-
 #[derive(Deserialize, Debug, Clone)]
 pub struct Config {
-    pub port: u32,
-    pub addr: String,
     pub file_dir: String,
     #[serde(default)]
     pub cors: bool,
     pub admin_config: Option<AdminConfig>,
+    pub http: Option<HttpConfig>,
     pub https: Option<HttpsConfig>,
     #[serde(default)]
     pub cache: CacheConfig,
@@ -63,8 +60,8 @@ pub struct DomainConfig {
 pub struct DomainHttpsConfig {
     pub ssl: Option<SSL>,
     pub http_redirect_to_https: Option<bool>,
-    //#[serde(default)]
-    //pub disabled: bool,
+    #[serde(default)]
+    pub disable_acme: bool,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -72,10 +69,26 @@ pub struct SSL {
     pub private: String,
     pub public: String,
 }
+
+#[derive(Deserialize, Debug, Clone, Default)]
+pub struct ACMEConfig {
+    pub emails: Vec<String>,
+    pub dir: Option<String>,
+    #[serde(default)]
+    pub stage: bool,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct HttpConfig {
+    pub addr: String,
+    pub port: u32,
+}
+
 #[derive(Deserialize, Debug, Clone)]
 pub struct HttpsConfig {
     pub ssl: Option<SSL>,
-    pub port: i32,
+    pub acme: Option<ACMEConfig>,
+    pub port: u32,
     pub addr: String,
     #[serde(default)]
     pub http_redirect_to_https: bool,

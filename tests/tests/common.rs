@@ -1,14 +1,13 @@
-use reqwest::StatusCode;
+use reqwest::header::CACHE_CONTROL;
+use reqwest::{ClientBuilder, StatusCode};
 use std::path::{Path, PathBuf};
 use std::{env, fs, io};
-use std::time::Duration;
-use reqwest::header::CACHE_CONTROL;
-use headers::{CacheControl, Header, HeaderMapExt};
-
-
+use reqwest::redirect::Policy;
 use tokio::task::JoinHandle;
-use tracing::Level;
+use tracing::{error, Level};
 use tracing_subscriber::EnvFilter;
+use spa_client::api::API;
+
 
 pub fn get_test_dir() -> PathBuf {
     env::current_dir().unwrap().join("data")
@@ -24,15 +23,18 @@ pub fn get_file_text(domain: &str, version: u32, path: &str) -> io::Result<Strin
     fs::read_to_string(path)
 }
 
-pub fn get_server_data_path(domain:&str, version: u32) -> PathBuf {
-    get_test_dir().join("web").join(domain).join(version.to_string())
+pub fn get_server_data_path(domain: &str, version: u32) -> PathBuf {
+    get_test_dir()
+        .join("web")
+        .join(domain)
+        .join(version.to_string())
 }
 
-pub fn run_server() -> JoinHandle<()> {
+pub fn run_server_with_config(config_file_name: &str) -> JoinHandle<()>{
     env::set_var(
         "SPA_CONFIG",
         get_test_dir()
-            .join("server_config.conf")
+            .join(config_file_name)
             .display()
             .to_string(),
     );
@@ -45,16 +47,28 @@ pub fn run_server() -> JoinHandle<()> {
         .init();
 
     return tokio::spawn(async {
-        spa_server::run_server().await.unwrap();
+        let result = spa_server::run_server().await;
+        if result.is_err() {
+            error!("spa server run error: {:?}", result.unwrap_err())
+        }
     });
 }
-
+pub fn run_server() -> JoinHandle<()> {
+    return run_server_with_config("server_config.conf");
+}
 
 pub async fn reload_server() {
     let client_config =
         spa_client::config::Config::load(Some(get_test_dir().join("client_config.conf"))).unwrap();
-    let client_api = spa_client::api::API::new(&client_config).unwrap();
+    let client_api = API::new(&client_config).unwrap();
     client_api.reload_spa_server().await.unwrap()
+}
+
+
+pub fn get_client_api(config_file_name:&str) -> (API, spa_client::config::Config) {
+    let client_config =
+        spa_client::config::Config::load(Some(get_test_dir().join(config_file_name))).unwrap();
+    (API::new(&client_config).unwrap(), client_config)
 }
 
 pub async fn upload_file_and_check(
@@ -63,12 +77,8 @@ pub async fn upload_file_and_check(
     version: u32,
     check_path: Vec<&'static str>,
 ) {
-    let client_config =
-        spa_client::config::Config::load(Some(get_test_dir().join("client_config.conf"))).unwrap();
-
+    let (client_api, client_config) = get_client_api("client_config.conf");
     println!("begin to upload file");
-
-    let client_api = spa_client::api::API::new(&client_config).unwrap();
 
     spa_client::upload_files(
         client_api.clone(),
@@ -95,9 +105,12 @@ pub async fn assert_files(
     version: u32,
     check_path: Vec<&'static str>,
 ) {
+    let client = ClientBuilder::new().danger_accept_invalid_certs(true)
+        .redirect(Policy::default())
+        .build().unwrap();
     for file in check_path {
         println!("begin to check: {request_prefix}/{file}, version:{version}");
-        let result = reqwest::get(format!("{request_prefix}/{file}"))
+        let result = client.get(format!("{request_prefix}/{file}")).send()
             .await
             .unwrap();
         assert_eq!(result.status(), StatusCode::OK);
@@ -119,29 +132,29 @@ pub async fn assert_files_no_exists(request_prefix: &str, check_path: Vec<&'stat
         );
     }
 }
-pub async fn assert_expired(request_prefix: &str, check_path: Vec<(&'static str, u64)>) {
+
+pub async fn assert_expired(request_prefix: &str, check_path: Vec<(&'static str, Option<u64>)>) {
     for (file, expired) in check_path {
         println!("begin to check: {request_prefix}/{file} expired");
-        let result = reqwest::get(format!("{request_prefix}/{file}")).await.unwrap();
+        let result = reqwest::get(format!("{request_prefix}/{file}"))
+            .await
+            .unwrap();
 
-        let mut cache_option = result.headers().get(CACHE_CONTROL).unwrap().clone();
-        
-        let cache = CacheControl::decode(&mut cache_option).unwrap();
-        
+        let cache_option = result.headers().get(CACHE_CONTROL);
 
-        let mut expect = CacheControl::new();
-        if expired > 0 {
-            expect = expect.with_max_age(Duration::from_secs(expired));
-        } else {
-            expect = expect.with_no_cache();
+        match expired  {
+            Some(expired) => {
+                let mut expect = "no-cache".to_string();
+                if expired > 0 {
+                    //expect = expect.with_max_age(Duration::from_secs(expired));
+                    expect = format!("max-age={expired}");
+                }
+                assert_eq!(cache_option.unwrap().to_str().unwrap(), &expect);
+            }
+            None => assert_eq!(cache_option, None)
         }
-
-        assert_eq!(cache, expect);
     }
-
 }
-
-
 
 pub fn clean_test_dir(domain: &str) {
     let path = get_test_dir().join("web").join(domain);
@@ -150,8 +163,7 @@ pub fn clean_test_dir(domain: &str) {
     }
 }
 
-
-pub fn copy_dir_all<P1:AsRef<Path>, P2:AsRef<Path>>(src: P1, dst: P2) -> io::Result<()> {
+pub fn copy_dir_all<P1: AsRef<Path>, P2: AsRef<Path>>(src: P1, dst: P2) -> io::Result<()> {
     let src = src.as_ref();
     let dst = dst.as_ref();
     if !dst.exists() {

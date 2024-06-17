@@ -233,9 +233,9 @@ impl FileCache {
         Ok(result)
     }
 
-    pub fn get_item(&self, domain: &str, path: &str) -> Option<Arc<CacheItem>> {
+    pub fn get_item(&self, host: &str, path: &str) -> Option<Arc<CacheItem>> {
         self.data
-            .get(domain)
+            .get(host)
             .map(|x| {
                 return x.get(path).map(Arc::clone);
             })
@@ -249,6 +249,29 @@ impl FileCache {
                 keys.map(|x| x.to_string()).collect()
             })
             .unwrap_or_else(|| vec![])
+    }
+    pub fn delete_by_host(&self, host:&str, sub_dir:Option<String>, version:Option<u32>) {
+        match (sub_dir, version) {
+            (None,None) => {
+                self.data.remove(host);
+            }
+            (sub_dir, version) => {
+                let map = self.data.get(host).map(|x| {
+                   x.iter().filter_map(|(key, value)| {
+                       if sub_dir.as_ref().map(|sub_dir| key.starts_with(sub_dir)).unwrap_or(true) &&
+                           version.as_ref().map(|version| value.version == *version).unwrap_or(true)
+                           {
+                           None
+                       }else {
+                           Some((key.clone(), value.clone()))
+                       }
+                   }).collect::<HashMap<String, Arc<CacheItem>>>()
+                });
+                if let Some(keys) = map {
+                    self.data.insert(host.to_string(), keys);
+                }
+            }
+        }
     }
 }
 

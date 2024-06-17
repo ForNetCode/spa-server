@@ -16,7 +16,7 @@ use clap::Parser;
 use console::style;
 
 // this is for bin
-pub async fn run() -> anyhow::Result<()>{
+pub async fn run() -> anyhow::Result<()> {
     let commands = CliCommand::parse();
     run_with_commands(commands).await
 }
@@ -69,6 +69,7 @@ async fn run_with_commands(commands: CliCommand) -> anyhow::Result<()> {
 mod test {
     use crate::{run, run_with_commands, CliCommand};
     use clap::Parser;
+    use spa_server::LOCAL_HOST;
     use std::env;
 
     fn init_config() {
@@ -90,9 +91,8 @@ mod test {
             "test",
             "upload",
             "../example/js-app-example/build",
-            "self.noti.link",
+            LOCAL_HOST,
         ])).await;
-
         if let Err(ret) = ret {
             println!("{:?}", ret);
         }
@@ -103,7 +103,7 @@ mod test {
         let result = run_with_commands(CliCommand::parse_from(&[
             "test",
             "release",
-            "self.noti.link",
+            LOCAL_HOST,
         ])).await;
         result.unwrap();
     }
@@ -113,7 +113,7 @@ mod test {
         let result = run_with_commands(CliCommand::parse_from(&[
             "test",
             "delete",
-            "self.noti.link",
+            LOCAL_HOST,
             "2",
         ])).await;
         result.unwrap();

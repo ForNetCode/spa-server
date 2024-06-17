@@ -1,6 +1,6 @@
 [package]
 name = "spa-server"
-version = "2.2.1"
+version = "2.2.0"
 edition = "2021"
 authors = ["timzaak"]
 license = "MIT"
@@ -21,6 +21,7 @@ path = "src/bin/main.rs"
 # web
 hyper = { version = "0.14", features = ["stream", "server", "http1", "http2", "tcp"] } # sync with warp
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "io-std", "sync", "time", "tokio-macros"] } # sync with warp
+#tokio-util = "0.6.9" # sync with warp -> hyper -> h2
 futures = "0.3"# sync with warp
 warp = { path = "../warp", features = ["tls"] }
 socket2 = "0.4.4"
@@ -30,8 +31,11 @@ percent-encoding = "2.1"
 headers = "0.3.5"
 mime = "0.3"
 mime_guess = "2.0.0"
-rustls = "0.22"
+rustls = { version = "0.22" }
 rustls-pemfile = "2.0"
+rustls-platform-verifier = "0.3"
+rustls-webpki = { version = "0.102.4", features = ["alloc"] } #sync with rustls
+x509-parser = "0.16"
 tokio-rustls = "0.25"
 futures-util = "0.3"
 bytes = "1"
@@ -42,19 +46,25 @@ flate2 = "1.0"
 tracing = "0.1.21"# sync with warp
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # tokio cron
-delay_timer = "0.11.5"
+delay_timer = "0.11.6" # dashmap is same
 
 #config
 hocon = "0.9"
-#serde_yml = "0.0.9"
+serde_yml = "0.0.10"
 serde = { version = "1.0", features = ["derive"] }
 serde_repr = "0.1"
+serde_json = "1"
 
+base64 = "0.22"
 #cache
 dashmap = "5.5"
 
 #s3
 #rust-s3 = {version="0.31", features = ["blocking", "tokio-rustls-tls"], default-features = false}
+small-acme = "0.2"
+rcgen = "0.12" # sync with small-acme
+pem = "3.0"# sync with pem
+#tokio-rustls-acme = "0.3"
 
 # util
 md-5 = "0.10"

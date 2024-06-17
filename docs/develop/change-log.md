@@ -1,4 +1,11 @@
 # Change Log
+### Version 2.2.0
+- [x] fix: admin can handle http/https init/hot reload error.
+- [x] fix: http redirect https, now only support 443 port.
+- [x] config: (break change) `port, addr` => `http.port, http.addr`
+- [x] support https with let's encrypt
+- [x] cicd: fix docker run failure, and add spa-server docker test image cd.
+- [x] improve: more integration tests.
 
 ### Version 2.1.1
 

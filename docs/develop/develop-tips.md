@@ -1,5 +1,7 @@
 # Develop Tips
+
 ## Docker Build
+
 Use [moby/buildkit](https://github.com/moby/buildkit) to speed up building process.
 
 ```bash
@@ -10,4 +12,5 @@ DOCKER_BUILDKIT=1 docker build . -t="ghcr.io/fornetcode/spa-server:$VERSION"
 ```
 
 ## SSL self sign
-you can go here to sign: http://cookcode.cc/selfsign
+
+ref: https://docs.rancher.cn/docs/rancher2/installation/resources/advanced/self-signed-ssl/_index/

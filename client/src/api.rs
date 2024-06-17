@@ -193,6 +193,8 @@ mod test {
     use crate::api::API;
     use spa_server::admin_server::request::UpdateUploadingStatusOption;
     use spa_server::domain_storage::UploadingStatus;
+    use spa_server::LOCAL_HOST;
+
     fn get_api() -> API {
         let config = crate::config::test::default_local_config().unwrap();
         API::new(&config).unwrap()
@@ -207,18 +209,19 @@ mod test {
     #[tokio::test]
     async fn get_file_metadata() {
         let api = get_api();
-        let r = api.get_file_metadata("self.noti.link", 1).await;
+        let r = api.get_file_metadata(LOCAL_HOST, 1).await;
         println!("{:?}", r);
-        //api.upload_file("self.noti.link", &2.to_string(),PathBuf::new(""));
     }
     #[tokio::test]
     async fn update_upload_status() {
         let api = get_api();
-        let r = api.change_uploading_status(UpdateUploadingStatusOption {
-            domain: "www.baidu.com".to_owned(),
-            version: 1,
-            status: UploadingStatus::Finish,
-        }).await;
+        let r = api
+            .change_uploading_status(UpdateUploadingStatusOption {
+                domain: "www.baidu.com".to_owned(),
+                version: 1,
+                status: UploadingStatus::Finish,
+            })
+            .await;
         println!("{:?}", r);
     }
 }

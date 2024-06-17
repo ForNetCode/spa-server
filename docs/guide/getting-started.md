@@ -8,8 +8,10 @@ This section will help you bring spa-server up, and upload your static web files
 
 ```bash
 $ echo '
-port = 8080
-addr = "0.0.0.0"
+http {
+  port = 8080
+  addr = "0.0.0.0"
+}
 file_dir = "/data"
 
 admin_config {

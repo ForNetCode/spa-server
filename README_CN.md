@@ -10,9 +10,10 @@
 - 支持热更新(Mac and Linux)。
 - 支持 CORS 跨域
 - http/https 同时服务（http 也可返回 redirect https）。
-- 支持 Docker 镜像(压缩后大小:32M)
+- 支持 Docker 镜像(压缩后大小:~26M)
 - 提供 命令行/npm包 客户端，一行命令部署
 - 每个域名可拥有独立的配置
+- 支持 Let's Encrypt
 
 ## 文档
 中文 README 目前仅提供一些简易`快速使用`指引，更多内容可参考英文文档， 中文版会在后续有精力的时候做，其网站托管在 [GitHub Pages](https://fornetcode.github.io/spa-server)，

@@ -639,7 +639,7 @@ impl DomainStorage {
         Ok(())
     }
 
-    // No Check, wo use this must check if illegal to delete files
+    // No Check, who use this must check if illegal to delete files
     pub fn remove_domain_version(
         &self,
         domain: &str,
@@ -652,13 +652,16 @@ impl DomainStorage {
                 fs::remove_dir_all(path)?;
                 return Ok(true);
             }
-        } else {
-            if path.exists() {
-                fs::remove_dir_all(path)?;
-                return Ok(true);
-            }
+        } else if path.exists() {
+            fs::remove_dir_all(path)?;
+            return Ok(true);
         }
-        return Ok(false);
+        let (host, path) = match domain.split_once('/') {
+            Some((host, path)) => (host, Some(path.to_string())),
+            None => (domain, None),
+        };
+        self.cache.delete_by_host(host, path, version);
+        Ok(false)
     }
 }
 

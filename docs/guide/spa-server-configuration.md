@@ -30,6 +30,16 @@ file_dir = "/data"
 //    public = "public.cert path"
 //  }
 
+//  # acme config, it doest not support run with https.ssl config.  
+//  acme {
+//    emails = ["email@example.com"]
+//    # directory to store account and certificate
+//    # optional, default is ${file_dir}/acme 
+//    // dir = "/data/acme"
+//    # optional ,default is false
+//    //stage = false
+//  }
+
 //  # https bind address
 //  port = 443
 //  addr = "0.0.0.0"

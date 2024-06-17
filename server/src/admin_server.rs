@@ -1,3 +1,4 @@
+use crate::acme::ACMEManager;
 use crate::admin_server::request::{
     DeleteDomainVersionOption, DomainWithOptVersionOption, DomainWithVersionOption,
     GetDomainOption, GetDomainPositionOption, UpdateUploadingStatusOption, UploadFileOption,
@@ -17,9 +18,11 @@ use warp::reply::Response;
 use warp::{Filter, Rejection};
 
 pub struct AdminServer {
-    conf: AdminConfig,
+    conf: Arc<AdminConfig>,
     domain_storage: Arc<DomainStorage>,
-    reload_manager: HotReloadManager,
+    reload_manager: Arc<HotReloadManager>,
+    acme_manager: Arc<ACMEManager>,
+    delay_timer: DelayTimer,
 }
 
 impl AdminServer {
@@ -27,11 +30,15 @@ impl AdminServer {
         conf: &AdminConfig,
         domain_storage: Arc<DomainStorage>,
         reload_manager: HotReloadManager,
+        acme_manager: Arc<ACMEManager>,
+        delay_timer: DelayTimer,
     ) -> Self {
         AdminServer {
-            conf: conf.clone(),
+            conf: Arc::new(conf.clone()),
             domain_storage,
-            reload_manager,
+            reload_manager: Arc::new(reload_manager),
+            acme_manager,
+            delay_timer,
         }
     }
 
@@ -57,10 +64,7 @@ impl AdminServer {
             SocketAddr::from_str(&format!("{}:{}", &self.conf.addr, &self.conf.port)).unwrap();
         warp::serve(self.routes()).run(bind_address).await;
         if let Some(cron_config) = &self.conf.deprecated_version_delete {
-            let delay_timer = DelayTimerBuilder::default()
-                .tokio_runtime_by_default()
-                .build();
-            delay_timer.add_task(build_async_job(
+            self.delay_timer.add_task(build_async_job(
                 self.domain_storage.clone(),
                 Some(cron_config.max_reserve),
                 &cron_config.cron,
@@ -111,13 +115,15 @@ impl AdminServer {
     fn reload_server(
         &self,
     ) -> impl Filter<Extract = (impl warp::Reply,), Error = Rejection> + Clone {
-        let admin_config = Arc::new(self.conf.clone());
-        let reload_manager = Arc::new(self.reload_manager.clone());
+        let admin_config = self.conf.clone();
+        let reload_manager = self.reload_manager.clone();
+        let acme_manager = self.acme_manager.clone();
 
         warp::path("reload")
             .and(warp::path::end())
             .and(with(reload_manager))
             .and(with(admin_config))
+            .and(with(acme_manager))
             .and_then(service::reload_server)
     }
 
@@ -176,6 +182,7 @@ impl AdminServer {
 }
 
 pub mod service {
+    use crate::acme::ACMEManager;
     use crate::admin_server::request::{
         DeleteDomainVersionOption, DomainWithOptVersionOption, DomainWithVersionOption,
         GetDomainOption, GetDomainPositionFormat, GetDomainPositionOption,
@@ -260,8 +267,11 @@ pub mod service {
     pub(super) async fn reload_server(
         reload_manager: Arc<HotReloadManager>,
         admin_config: Arc<AdminConfig>,
+        acme_manager: Arc<ACMEManager>,
     ) -> Result<Response, Infallible> {
-        let resp = match crate::reload_server(&admin_config, reload_manager.as_ref()).await {
+        let resp = match crate::reload_server(&admin_config, reload_manager.as_ref(), acme_manager)
+            .await
+        {
             Ok(_) => Response::default(),
             Err(e) => {
                 let mut resp = Response::new(Body::from(format!("error:{}", e)));
@@ -292,7 +302,7 @@ pub mod service {
         storage: Arc<DomainStorage>,
     ) -> anyhow::Result<Response> {
         let mut parts = form.into_stream();
-        while let Some(Ok(part)) = parts.next().await {
+        if let Some(Ok(part)) = parts.next().await {
             // let name = part.name();
             let file = part
                 .stream()
@@ -330,7 +340,6 @@ pub mod service {
 
     // TODO: how to handle uploading versions
     // TODO: remove domain directory if there's no version dir.
-    // TODO: handle multiple domain meta.
     pub(super) fn remove_domain_version(
         storage: Arc<DomainStorage>,
         query: DeleteDomainVersionOption,
@@ -461,27 +470,10 @@ fn build_async_job(
 // TODO: the code structure is not friendly with Unit Test, need refactor it.
 #[cfg(test)]
 mod test {
-    use crate::admin_server::request::DomainWithVersionOption;
     use chrono::prelude::*;
     use delay_timer::entity::DelayTimerBuilder;
     use delay_timer::prelude::TaskBuilder;
     use std::time::Duration;
-    use warp::test::request;
-
-    #[tokio::test]
-    async fn update_domain_version_test() {
-        let body = DomainWithVersionOption {
-            domain: "self.noti.link".to_string(),
-            version: 1,
-        };
-        /*
-        let resp = request()
-            .method("POST")
-            .path("/update_version")
-            .json(&body)
-            .reply(&api)
-            .await;*/
-    }
 
     #[tokio::test]
     async fn delay_is_ok() {

@@ -1,20 +1,23 @@
+use crate::acme::ACMEManager;
 use crate::config::SSL;
 use crate::Config;
 use anyhow::{anyhow, Context as _};
 use core::task::{Context, Poll};
+use dashmap::DashMap;
 use futures_util::ready;
 use hyper::server::accept::Accept;
 use hyper::server::conn::{AddrIncoming, AddrStream};
+use rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs1KeyDer};
 use rustls::server::{ClientHello, ResolvesServerCert, ResolvesServerCertUsingSni};
 use rustls::sign::CertifiedKey;
-use rustls::{sign, Error};
+use rustls::Error;
 use std::fs::File;
 use std::future::Future;
 use std::io;
+use std::path::PathBuf;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::vec::Vec;
-use rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs1KeyDer};
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use tokio_rustls::rustls::ServerConfig;
 
@@ -30,85 +33,121 @@ impl ResolvesServerCert for AlwaysResolver {
 }
 
 #[derive(Debug)]
-struct CertResolver {
+struct FileCertResolver {
     default: Option<Arc<CertifiedKey>>,
     wrapper: ResolvesServerCertUsingSni,
 }
 
-pub fn load_ssl_server_config(config: &Config) -> anyhow::Result<Arc<ServerConfig>> {
-    let default = if let Some(ref ssl) = config.https.as_ref().map(|x| x.ssl.clone()).flatten() {
-        Some(load_ssl_file(ssl)?)
-    } else {
-        None
-    };
-
-    let ssls: Vec<(String, SSL)> = config
-        .domains
-        .iter()
-        .filter_map(|domain| {
-            domain
-                .https
-                .as_ref()
-                .map(|x| {
-                    x.ssl
-                        .as_ref()
-                        .map(|ssl| (domain.domain.clone(), ssl.clone()))
-                })
-                .flatten()
-        })
-        .collect();
-
-    let dynamic_resolver: Arc<dyn ResolvesServerCert> = if ssls.is_empty() && default.is_none() {
-        return Err(anyhow!(""));
-    } else if ssls.is_empty() {
-        default
-            .map(|cert_key| Arc::new(AlwaysResolver(Arc::new(cert_key))))
-            .ok_or_else(|| anyhow!("The default https ssl can't parse correctly"))?
-    } else {
-        let mut wrapper = ResolvesServerCertUsingSni::new();
-        for (domain, ssl) in ssls.iter() {
-            let certified_key = load_ssl_file(ssl)?;
-            wrapper.add(domain, certified_key)?;
-        }
-        Arc::new(CertResolver {
-            default: default.map(Arc::new),
-            wrapper,
-        })
-    };
-    let mut cfg = rustls::ServerConfig::builder()
-        .with_no_client_auth()
-        .with_cert_resolver(dynamic_resolver);
-    cfg.alpn_protocols = vec!["h2".into(), "http/1.1".into()];
-    Ok(Arc::new(cfg))
-}
-
-impl ResolvesServerCert for CertResolver {
+impl ResolvesServerCert for FileCertResolver {
     fn resolve(&self, client_hello: ClientHello) -> Option<Arc<CertifiedKey>> {
         self.wrapper.resolve(client_hello).or(self.default.clone())
     }
 }
 
-fn load_ssl_file(ssl: &SSL) -> anyhow::Result<sign::CertifiedKey> {
-    let cert_path = &ssl.public;
-    let key_path = &ssl.private;
+// code from ResolvesServerCertUsingSni
+#[derive(Debug)]
+struct DashMapCertResolver {
+    dash_map: Arc<DashMap<String, Arc<CertifiedKey>>>,
+}
 
-    tracing::debug!("load cert:{}", cert_path);
+impl ResolvesServerCert for DashMapCertResolver {
+    fn resolve(&self, client_hello: ClientHello) -> Option<Arc<CertifiedKey>> {
+        if let Some(name) = client_hello.server_name() {
+            self.dash_map.get(name).map(|v| v.value().clone())
+        } else {
+            None
+        }
+    }
+}
+
+pub fn load_ssl_server_config(
+    config: &Config,
+    acme_manager: Arc<ACMEManager>,
+) -> anyhow::Result<Option<Arc<ServerConfig>>> {
+    let dynamic_resolver: Arc<dyn ResolvesServerCert> = if config
+        .https
+        .as_ref()
+        .and_then(|v| v.acme.as_ref())
+        .is_some()
+    {
+        Arc::new(DashMapCertResolver {
+            dash_map: acme_manager.certificate_map.clone(),
+        })
+    } else if config.https.is_some() {
+        let default = if let Some(ref ssl) = config.https.as_ref().and_then(|x| x.ssl.clone()) {
+            Some(load_ssl_file(
+                &PathBuf::from(&ssl.public),
+                &PathBuf::from(&ssl.private),
+            )?)
+        } else {
+            None
+        };
+
+        let ssls: Vec<(String, SSL)> = config
+            .domains
+            .iter()
+            .filter_map(|domain| {
+                domain
+                    .https
+                    .as_ref()
+                    .map(|x| {
+                        x.ssl
+                            .as_ref()
+                            .map(|ssl| (domain.domain.clone(), ssl.clone()))
+                    })
+                    .flatten()
+            })
+            .collect();
+
+        if ssls.is_empty() && default.is_none() {
+            return Err(anyhow!("no https certificate define"));
+        } else if ssls.is_empty() {
+            default
+                .map(|cert_key| Arc::new(AlwaysResolver(Arc::new(cert_key))))
+                .ok_or_else(|| anyhow!("The default https ssl can't parse correctly"))?
+        } else {
+            let mut wrapper = ResolvesServerCertUsingSni::new();
+            for (domain, ssl) in ssls.iter() {
+                let certified_key =
+                    load_ssl_file(&PathBuf::from(&ssl.public), &PathBuf::from(&ssl.private))?;
+                wrapper.add(domain, certified_key)?;
+            }
+            Arc::new(FileCertResolver {
+                default: default.map(Arc::new),
+                wrapper,
+            })
+        }
+    } else {
+        return Ok(None)
+    };
+    let mut cfg = ServerConfig::builder()
+        .with_no_client_auth()
+        .with_cert_resolver(dynamic_resolver);
+    cfg.alpn_protocols = vec!["h2".into(), "http/1.1".into()];
+    Ok(Some(Arc::new(cfg)))
+}
+
+pub(crate) fn load_ssl_file(
+    cert_path: &PathBuf,
+    key_path: &PathBuf,
+) -> anyhow::Result<CertifiedKey> {
+    tracing::debug!("load cert:{:?}", cert_path);
     let cert_file =
-        File::open(cert_path).with_context(|| format!("fail to load cert:{}", cert_path))?;
+        File::open(&cert_path).with_context(|| format!("fail to load cert:{:?}", cert_path))?;
 
     let mut reader = io::BufReader::new(cert_file);
+
     let certs = rustls_pemfile::certs(&mut reader)
         .collect::<Result<Vec<CertificateDer<'static>>, _>>()
-        .with_context(|| format!("fail to parse cert:{}", cert_path))?;
+        .with_context(|| format!("fail to parse cert:{:?}", cert_path))?;
 
-
-    tracing::debug!("load key:{}", key_path);
-    let key_file =
-        File::open(key_path).with_context(|| format!("fail to load private key:{}", cert_path))?;
+    tracing::debug!("load key:{:?}", key_path);
+    let key_file = File::open(key_path)
+        .with_context(|| format!("fail to load private key:{:?}", cert_path))?;
     let mut reader = io::BufReader::new(key_file);
     let keys = rustls_pemfile::rsa_private_keys(&mut reader)
         .collect::<Result<Vec<PrivatePkcs1KeyDer<'static>>, _>>()
-        .with_context(|| format!("fail to parse private key:{}", cert_path))?;
+        .with_context(|| format!("fail to parse private key:{:?}", cert_path))?;
     if keys.len() != 1 {
         return Err(anyhow!("expected a single private key"));
     }
@@ -222,4 +261,11 @@ impl Accept for TlsAcceptor {
             None => Poll::Ready(None),
         }
     }
+}
+
+#[cfg(test)]
+mod test {
+
+    #[test]
+    fn test_acme() {}
 }

@@ -1,40 +1,66 @@
+use crate::acme::{ReloadACMEState, ReloadACMEStateMessage};
 use crate::Config;
 use anyhow::anyhow;
 use std::sync::Arc;
+use tokio::sync::mpsc::{Receiver as MReceiver, Sender as MSender};
 use tokio::sync::oneshot::{Receiver, Sender};
 use tokio::sync::{oneshot, Mutex};
 
-pub struct HotReloadManager(Arc<Mutex<HotReloadState>>);
+pub struct HotReloadManager(
+    Arc<Mutex<OneShotReloadState>>,
+    MSender<ReloadACMEStateMessage>,
+);
 
 impl Clone for HotReloadManager {
     fn clone(&self) -> Self {
-        HotReloadManager(self.0.clone())
+        HotReloadManager(self.0.clone(), self.1.clone())
     }
 }
 
 impl HotReloadManager {
-    pub fn init(config: &Config) -> (HotReloadManager, Option<Receiver<()>>, Option<Receiver<()>>) {
-        let (state, http, https) = HotReloadState::init(config);
-        (HotReloadManager(Arc::new(Mutex::new(state))), http, https)
+    pub fn init(
+        config: &Config,
+    ) -> (
+        HotReloadManager,
+        Option<Receiver<()>>,
+        Option<Receiver<()>>,
+        MReceiver<ReloadACMEStateMessage>,
+    ) {
+        let (state, http, https) = OneShotReloadState::init(config);
+
+        let (acme_signal, acme_rx) = tokio::sync::mpsc::channel::<ReloadACMEStateMessage>(1);
+
+        (
+            HotReloadManager(Arc::new(Mutex::new(state)), acme_signal),
+            http,
+            https,
+            acme_rx,
+        )
     }
     // this could only reload once. once error happens, need to restart.
-    pub async fn reload(&self, state: HotReloadState) -> anyhow::Result<()> {
+    pub async fn reload(
+        &self,
+        state: OneShotReloadState,
+        reload_acme: Option<ReloadACMEState>,
+    ) -> anyhow::Result<()> {
+        let _ = self.1.send(ReloadACMEStateMessage(reload_acme)).await;
         let mut lock = self.0.lock().await;
         lock.reload()?;
         *lock = state;
+
         Ok(())
     }
 }
 
-pub struct HotReloadState {
+pub struct OneShotReloadState {
     http_signal: Option<Sender<()>>,
     https_signal: Option<Sender<()>>,
 }
 
-impl HotReloadState {
+impl OneShotReloadState {
     pub fn init(config: &Config) -> (Self, Option<Receiver<()>>, Option<Receiver<()>>) {
         // enable http
-        let (http_signal, http_rx) = if config.port > 0 {
+        let (http_signal, http_rx) = if config.http.is_some() {
             let (tx, rx) = oneshot::channel::<()>();
             (Some(tx), Some(rx))
         } else {
@@ -46,7 +72,8 @@ impl HotReloadState {
         } else {
             (None, None)
         };
-        let manager = HotReloadState {
+
+        let manager = OneShotReloadState {
             http_signal,
             https_signal,
         };
@@ -81,7 +108,6 @@ impl HotReloadState {
             };
             handle_https?;
         }
-
         Ok(())
     }
 }

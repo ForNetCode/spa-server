@@ -1,4 +1,6 @@
 # Break Changes
+## V2.2.0
+* spa-server: `port, addr` => `http.port, http.addr`
 ## v2.0.0(2024-04-02)
 * spa-server: `file/upload` param change for easy write. 
 

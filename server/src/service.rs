@@ -3,14 +3,13 @@ use crate::DomainStorage;
 use futures_util::future::Either;
 use headers::HeaderMapExt;
 use hyper::header::LOCATION;
-use hyper::http::uri::{Authority, Scheme};
+use hyper::http::uri::Authority;
 use hyper::{Body, Request, Response, StatusCode};
 use std::collections::HashMap;
 use std::convert::Infallible;
 use std::str::FromStr;
 use std::sync::Arc;
 use warp::fs::Conditionals;
-use warp::Reply;
 
 use crate::static_file_filter::{cache_or_file_reply, get_cache_file};
 
@@ -34,7 +33,9 @@ pub async fn create_service(
     req: Request<Body>,
     service_config: Arc<ServiceConfig>,
     domain_storage: Arc<DomainStorage>,
+    is_https: bool,
 ) -> Result<Response<Body>, Infallible> {
+    
     let from_uri = req.uri().authority().cloned();
     // trick, need more check
     let authority_opt = from_uri.or_else(|| {
@@ -58,13 +59,12 @@ pub async fn create_service(
             Either::Left(x) => Some(x),
             Either::Right(v) => return Ok(v),
         };
-
-        let scheme = req.uri().scheme();
         // redirect to https
-        if scheme == Some(&Scheme::HTTP) && service_config.http_redirect_to_https {
+        if !is_https && service_config.http_redirect_to_https {
             let mut resp = Response::default();
+            let redirect_path = format!("https://{host}{}",req.uri());
             resp.headers_mut()
-                .insert(LOCATION, req.uri().to_string().parse().unwrap());
+                .insert(LOCATION, redirect_path.parse().unwrap());
             *resp.status_mut() = StatusCode::MOVED_PERMANENTLY;
             return Ok(resp);
         }

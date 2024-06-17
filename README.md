@@ -11,9 +11,10 @@ It is to provide a static web http server with cache and hot reload.
 - Hot reload support(Mac and Linux).
 - CORS support.
 - Http auto redirect to https.
-- Docker support(compressed size: 32M)
+- Docker support(compressed size: ~26M)
 - Provide command line/npm package to deploy spa.
 - Multiple configs for different domain.
+- support Let's Encrypt 
 
 ## Document
 There is a nice [document](https://fornetcode.github.io/spa-server/) powered by VitePress and GitHub Pages,

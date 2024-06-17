@@ -52,6 +52,7 @@ pub async fn upload_files(
 
     let mut byte_buffer = vec![0u8; 1024 * 1024];
     let uploading_files = WalkDir::new(path)
+        .min_depth(1)
         .into_iter()
         .filter_map(|entity| {
             if_chain! {
