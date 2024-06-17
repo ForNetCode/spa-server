@@ -3,23 +3,27 @@
 name: spa-client release
 
 on:
-  #  push:
-  #    tags:
-  #      - 'v*'
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
-    inputs:
-      tag:
-        required: true
-        description: "git tag to release"
 
 jobs:
   release:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest, macos-latest, windows-latest ]
-    runs-on: ${{ matrix.os }}
-
+        settings:
+          - os: ubuntu-latest
+            name: linux-spa-client
+            bash: make release-linux-client-musl
+          - os: macos-latest
+            name: mac-spa-client
+            bash: make release-client-mac
+          - os:  windows-latest
+            name: windows-spa-client
+            bash: make release-client-win
+    runs-on: ${{ matrix.settings.os }}
     steps:
       - name: Get version
         uses: actions/checkout@v3
@@ -34,32 +38,25 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ~/.cargo/registry
-          key: ${{ matrix.os }}-cargo-registry-trimmed-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ matrix.settings.os }}-cargo-registry-trimmed-${{ hashFiles('**/Cargo.lock') }}
       - name: Cache cargo index
         uses: actions/cache@v2
         with:
           path: ~/.cargo/git
-          key: ${{ matrix.os }}-cargo-index-trimmed-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ matrix.settings.os }}-cargo-index-trimmed-${{ hashFiles('**/Cargo.lock') }}
       - name: Setup MUSL
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.settings.os == 'ubuntu-latest'
         run: |
           rustup target add x86_64-unknown-linux-musl
           sudo apt-get -qq install musl-tools
 
-      - name: Build Release Mac
-        if: matrix.os == 'macos-latest'
-        run: make release-client-mac
+      - name: Build Release
+        run: ${{ matrix.settings.bash }}
 
-      - name: Build Release Linux
-        if: matrix.os == 'ubuntu-latest'
-        run: make release-linux-client-musl
-
-      - name: Build Release Win
-        if: matrix.os == 'windows-latest'
-        run: make release-client-win
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           path: ./release/*
+          name: ${{matrix.settings.name}}
           if-no-files-found: error
