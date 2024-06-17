@@ -1,9 +1,9 @@
-name: spa-server-docker test
+name: spa-server ci
 
 on:
   push:
     branches:
-      - 'main'
+      - 'master'
 env:
   REGISTRY: ghcr.io
 
