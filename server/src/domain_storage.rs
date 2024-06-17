@@ -540,12 +540,8 @@ impl DomainStorage {
                 .ok_or_else(|| anyhow!("parent path of:{:?} does not exists", &file_path))?;
             if !parent_path.exists() {
                 fs::create_dir_all(parent_path)?;
-            }
-            let mut file = if !file_path.exists() {
-                File::create(file_path)?
-            } else {
-                File::open(file_path)?
             };
+            let mut file = File::create(file_path)?;
             file.write_all(&data)?;
             Ok(())
         } else {

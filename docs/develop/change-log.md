@@ -1,5 +1,13 @@
 # Change Log
+
+### Version 2.2.1
+
+- [x] fix: command client upload interrupt, get error file key.
+- [x] fix: admin server report os:9 error when upload existed file.
+- [x] ci: add ci for spa-server
+
 ### Version 2.2.0
+
 - [x] fix: admin can handle http/https init/hot reload error.
 - [x] fix: http redirect https, now only support 443 port.
 - [x] config: (break change) `port, addr` => `http.port, http.addr`

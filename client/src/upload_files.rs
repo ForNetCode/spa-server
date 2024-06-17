@@ -1,4 +1,4 @@
-use crate::API;
+use crate::{success, API};
 use anyhow::anyhow;
 use console::style;
 use futures::future::Either;
@@ -25,9 +25,7 @@ pub async fn upload_files(
     path: PathBuf,
     parallel: u32,
 ) -> anyhow::Result<()> {
-    //println!("now is {:?}", fs::canonicalize("./")?);
     let path = fs::canonicalize(path)?;
-    //println!("the upload path is {:?}", &path);
     println!("the upload path is {:?}", &path);
     if !path.is_dir() {
         return Err(anyhow!("{:?} is not a directory", path));
@@ -61,11 +59,13 @@ pub async fn upload_files(
                 if metadata.is_file();
                 if let Some(path) = entity.path().to_str().map(|x|x.to_string());
                 then {
-                    let key = path.replace(&prefix_path,"");
-                    if server_metadata.get(&key).filter(|x|
+                    let prefix = format!("{prefix_path}/");
+                    let key = path.replace(&prefix,"");
+                    if server_metadata.get(&key).filter(|x|{
+                        let md5 = md5_file(entity.path(), &mut byte_buffer);
                         x.length == metadata.len() &&
-                        md5_file(entity.path(), &mut byte_buffer).filter(|md5|md5 == &x.md5).is_some()
-                    ).is_none() {
+                        md5.filter(|md5|md5 == &x.md5).is_some()
+                    }).is_none() {
                         Some((key, entity.path().to_path_buf()))
                     } else {
                         None
@@ -76,8 +76,18 @@ pub async fn upload_files(
             }
         })
         .collect::<Vec<(String, PathBuf)>>();
-    if uploading_files.is_empty() {
+    if server_metadata.is_empty() && uploading_files.is_empty() {
         return Err(anyhow!("There is no file to uploading"));
+    }
+    if uploading_files.is_empty() {
+        success("all files already upload");
+        api.change_uploading_status(UpdateUploadingStatusOption {
+            domain: domain.clone().to_string(),
+            version,
+            status: UploadingStatus::Finish,
+        })
+        .await?;
+        return Ok(());
     }
     let uploading_file_count = uploading_files.len();
     println!(
@@ -104,15 +114,6 @@ pub async fn upload_files(
         .green()
     );
 
-    // let rt = tokio::runtime::Builder::new_multi_thread()
-    //     .worker_threads(parallel as usize)
-    //     .enable_all()
-    //     .build()?;
-
-    // println!(
-    //     "{}",
-    //     style(format!("Tokio init {} workers", parallel)).green()
-    // );
     let api = Arc::new(api);
     let domain: Cow<'static, str> = domain.into();
     let str_version: Cow<'static, str> = version.to_string().into();
@@ -181,7 +182,7 @@ async fn retry_upload<T: Into<Cow<'static, str>> + Clone>(
             }
             Err(e) => {
                 warn!("key:{} upload fail at {}:\n{}", &key_string, retry + 1, e);
-                tokio::time::sleep(Duration::from_secs(1<<(retry+1))).await;
+                tokio::time::sleep(Duration::from_secs(1 << (retry + 1))).await;
             }
         }
     }

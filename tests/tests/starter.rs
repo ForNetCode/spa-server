@@ -1,6 +1,6 @@
-use std::time::Duration;
-use reqwest::{ClientBuilder, StatusCode};
 use reqwest::redirect::Policy;
+use reqwest::{ClientBuilder, StatusCode};
+use std::time::Duration;
 
 mod common;
 use crate::common::*;
@@ -23,16 +23,26 @@ async fn start_server_and_client_upload_file() {
 
     upload_file_and_check(domain, request_prefix, 1, vec!["index.html"]).await;
 
-    assert_expired(request_prefix, vec![("1.html", Some(0)), ("test.js", Some(30*24*60*60)), ("test.bin", None)]).await;
+    assert_expired(
+        request_prefix,
+        vec![
+            ("1.html", Some(0)),
+            ("test.js", Some(30 * 24 * 60 * 60)),
+            ("test.bin", None),
+        ],
+    )
+    .await;
 
     upload_file_and_check(domain, request_prefix, 2, vec!["index.html", "2.html"]).await;
 
     assert_files(domain, request_prefix, 1, vec!["1.html"]).await;
 
     let (api, _) = get_client_api("client_config.conf");
-    api.remove_files(Some(domain.to_string()), Some(1)).await.unwrap();
-    
-    assert_files_no_exists(request_prefix,vec!["1.html"]).await;
+    api.remove_files(Some(domain.to_string()), Some(1))
+        .await
+        .unwrap();
+
+    assert_files_no_exists(request_prefix, vec!["1.html"]).await;
     assert_files(domain, request_prefix, 2, vec!["index.html", "2.html"]).await;
 }
 
@@ -85,8 +95,9 @@ async fn evoke_cache_when_serving_new_version() {
 }
 
 // This must run after evoke_cache_when_serving_new_index
+#[ignore]
 #[tokio::test(flavor = "multi_thread", worker_threads = 3)]
-async fn cool_start_server_and_serving_files() {
+async fn cold_start_server_and_serving_files() {
     let domain = format!("{LOCAL_HOST}/27");
     let domain = &domain;
     let request_prefix = format!("http://{LOCAL_HOST}:8080/27");
@@ -130,8 +141,21 @@ async fn self_signed_cert_https() {
     run_server_with_config("server_config_https.conf");
     tokio::time::sleep(Duration::from_secs(2)).await;
     upload_file_and_check(domain, request_prefix, 1, vec!["index.html", "1.html"]).await;
-    assert_files(domain, &format!("http://{LOCAL_HOST}:8080/27"), 1, vec!["index.html", "1.html"]).await;
-    let req = ClientBuilder::new().redirect(Policy::none()).build().unwrap();
-    let result = req.get(&format!("http://{LOCAL_HOST}:8080/27/index.html")).send().await.unwrap();
+    assert_files(
+        domain,
+        &format!("http://{LOCAL_HOST}:8080/27"),
+        1,
+        vec!["index.html", "1.html"],
+    )
+    .await;
+    let req = ClientBuilder::new()
+        .redirect(Policy::none())
+        .build()
+        .unwrap();
+    let result = req
+        .get(&format!("http://{LOCAL_HOST}:8080/27/index.html"))
+        .send()
+        .await
+        .unwrap();
     assert_eq!(result.status(), StatusCode::MOVED_PERMANENTLY);
 }

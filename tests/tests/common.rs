@@ -1,16 +1,15 @@
 use reqwest::header::CACHE_CONTROL;
+use reqwest::redirect::Policy;
 use reqwest::{ClientBuilder, StatusCode};
+use spa_client::api::API;
 use std::path::{Path, PathBuf};
 use std::{env, fs, io};
-use reqwest::redirect::Policy;
 use tokio::task::JoinHandle;
 use tracing::{error, Level};
 use tracing_subscriber::EnvFilter;
-use spa_client::api::API;
-
 
 pub fn get_test_dir() -> PathBuf {
-    env::current_dir().unwrap().join("data")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("data")
 }
 pub fn get_template_version(domain: &str, version: u32) -> PathBuf {
     get_test_dir()
@@ -30,21 +29,19 @@ pub fn get_server_data_path(domain: &str, version: u32) -> PathBuf {
         .join(version.to_string())
 }
 
-pub fn run_server_with_config(config_file_name: &str) -> JoinHandle<()>{
+pub fn run_server_with_config(config_file_name: &str) -> JoinHandle<()> {
     env::set_var(
         "SPA_CONFIG",
-        get_test_dir()
-            .join(config_file_name)
-            .display()
-            .to_string(),
+        get_test_dir().join(config_file_name).display().to_string(),
     );
-    tracing_subscriber::fmt()
+    let _ = tracing_subscriber::fmt()
         .with_env_filter(
             EnvFilter::builder()
                 .with_default_directive(Level::DEBUG.into())
                 .from_env_lossy(),
         )
-        .init();
+        .with_test_writer()
+        .try_init();
 
     return tokio::spawn(async {
         let result = spa_server::run_server().await;
@@ -64,8 +61,7 @@ pub async fn reload_server() {
     client_api.reload_spa_server().await.unwrap()
 }
 
-
-pub fn get_client_api(config_file_name:&str) -> (API, spa_client::config::Config) {
+pub fn get_client_api(config_file_name: &str) -> (API, spa_client::config::Config) {
     let client_config =
         spa_client::config::Config::load(Some(get_test_dir().join(config_file_name))).unwrap();
     (API::new(&client_config).unwrap(), client_config)
@@ -105,12 +101,16 @@ pub async fn assert_files(
     version: u32,
     check_path: Vec<&'static str>,
 ) {
-    let client = ClientBuilder::new().danger_accept_invalid_certs(true)
+    let client = ClientBuilder::new()
+        .danger_accept_invalid_certs(true)
         .redirect(Policy::default())
-        .build().unwrap();
+        .build()
+        .unwrap();
     for file in check_path {
         println!("begin to check: {request_prefix}/{file}, version:{version}");
-        let result = client.get(format!("{request_prefix}/{file}")).send()
+        let result = client
+            .get(format!("{request_prefix}/{file}"))
+            .send()
             .await
             .unwrap();
         assert_eq!(result.status(), StatusCode::OK);
@@ -142,7 +142,7 @@ pub async fn assert_expired(request_prefix: &str, check_path: Vec<(&'static str,
 
         let cache_option = result.headers().get(CACHE_CONTROL);
 
-        match expired  {
+        match expired {
             Some(expired) => {
                 let mut expect = "no-cache".to_string();
                 if expired > 0 {
@@ -151,7 +151,7 @@ pub async fn assert_expired(request_prefix: &str, check_path: Vec<(&'static str,
                 }
                 assert_eq!(cache_option.unwrap().to_str().unwrap(), &expect);
             }
-            None => assert_eq!(cache_option, None)
+            None => assert_eq!(cache_option, None),
         }
     }
 }

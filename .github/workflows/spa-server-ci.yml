@@ -1,0 +1,35 @@
+name: spa-server-docker test
+
+on:
+  push:
+    branches:
+      - 'main'
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  check_server:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - name: Cache cargo registry
+        uses: actions/cache@v2
+        with:
+          path: ~/.cargo/registry
+          key: cargo-registry-trimmed-${{ hashFiles('**/Cargo.lock') }}
+      - name: Cache cargo index
+        uses: actions/cache@v2
+        with:
+          path: ~/.cargo/git
+          key: cargo-index-trimmed-${{ hashFiles('**/Cargo.lock') }}
+      - name: build all
+        run: cargo build
+      - name: run server ci
+        # --show-output
+        run: cargo test -p tests --test starter -j 1 -- --test-threads 1
