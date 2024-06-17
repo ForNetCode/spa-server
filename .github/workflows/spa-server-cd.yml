@@ -1,11 +1,9 @@
 name: spa-server-docker release
 
 on:
-  workflow_dispatch:
-    inputs:
-      version:
-        required: true
-        description: "version to release"
+  push:
+    tags:
+      - 'v*'
 env:
   REGISTRY: ghcr.io
 
@@ -32,7 +30,7 @@ jobs:
           push: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          tags: ${{ env.REGISTRY }}/fornetcode/spa-server:${{github.event.inputs.version}}, ${{ env.REGISTRY }}/fornetcode/spa-server:latest
+          tags: ${{ env.REGISTRY }}/fornetcode/spa-server:${{github.ref_name}}, ${{ env.REGISTRY }}/fornetcode/spa-server:latest
 
   #      - name: build and push spa-server with S3
   #        uses: docker/build-push-action@v2

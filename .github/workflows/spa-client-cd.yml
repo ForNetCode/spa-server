@@ -58,5 +58,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           path: ./release/*
-          name: ${{matrix.settings.name}}
+          name: ${{ matrix.settings.name }}
           if-no-files-found: error
