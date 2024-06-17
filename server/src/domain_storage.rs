@@ -215,7 +215,7 @@ impl DomainStorage {
             }
         }
         if max_version > 0 {
-            tracing::info!("serve: {},version: {}", domain_dir_name, max_version);
+            info!("serve: {},version: {}", domain_dir_name, max_version);
             return Ok((uploading_version, Some(max_version)));
         }
         return Ok((uploading_version, None));
@@ -283,9 +283,15 @@ impl DomainStorage {
                             let multiple_file =
                                 self.prefix.join(&host).join(MULTIPLE_WEB_FILE_NAME);
                             if multiple_file.exists() {
-                                let mut file =
-                                    OpenOptions::new().append(true).open(multiple_file)?;
-                                writeln!(file, "{}", path.to_string())?;
+                                let mut file = OpenOptions::new()
+                                    .append(true)
+                                    .read(true)
+                                    .open(multiple_file)?;
+                                let mut multiple_path = String::new();
+                                file.read_to_string(&mut multiple_path)?;
+                                if !multiple_path.lines().any(|x| x == path) {
+                                    writeln!(file, "{}", path)?;
+                                }
                             }
                             map.insert(path.to_string(), (new_path.clone(), version));
                         }
@@ -293,7 +299,7 @@ impl DomainStorage {
                 }
                 None => {
                     //TODO: check if MULTIPLE_WEB_FILE_NAME exists
-                    if path == "" {
+                    if path.is_empty() {
                         self.meta.insert(
                             host.to_string(),
                             DomainMeta::OneWeb(new_path.clone(), version),
@@ -303,10 +309,16 @@ impl DomainStorage {
                         let mut file = OpenOptions::new()
                             .create(true)
                             .append(true)
+                            .read(true)
                             .open(&multiple_file)?;
 
+                        let mut multiple_path = String::new();
+                        file.read_to_string(&mut multiple_path)?;
+                        if !multiple_path.lines().any(|x| x == path) {
+                            writeln!(file, "{}", path)?;
+                        }
                         let map = DashMap::new();
-                        writeln!(file, "{}", path.to_string())?;
+
                         info!("create multiple_file {multiple_file:?}, append {path}");
                         map.insert(path.to_string(), (new_path.clone(), version));
 
@@ -597,7 +609,7 @@ impl DomainStorage {
                 None => (domain.as_str(), ""),
             };
             let multiple = self.prefix.join(host).join(MULTIPLE_WEB_FILE_NAME);
-            if path != "" {
+            if !path.is_empty() {
                 if !multiple.exists() {
                     let parent = self.prefix.join(host);
                     if !parent.exists() && fs::create_dir_all(&parent).is_err() {
@@ -721,9 +733,15 @@ pub struct UploadDomainPosition {
 
 #[cfg(test)]
 mod test {
+    use crate::config::Config;
     use crate::domain_storage::{DomainStorage, URI_REGEX_STR};
+    use crate::file_cache::FileCache;
     use hyper::Uri;
     use regex::Regex;
+    use std::env;
+    use std::fs::OpenOptions;
+    use std::io::Read;
+    use std::io::Write;
     use std::ops::RangeInclusive;
     use std::path::PathBuf;
     use std::str::FromStr;
@@ -789,9 +807,33 @@ mod test {
     //     println!("{:?}", path.join("usr/lib/pam/").to_str());
     // }
 
-    // would crea
-    // #[test]
-    // fn test_create_file() {
-    //     File::create_new(PathBuf::from("/tmp/bccskwef")).unwrap();
-    // }
+    #[test]
+    fn test_domain_storage_get_domain_info() {
+        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../test/config.test.conf");
+        env::set_var("SPA_CONFIG", path.display().to_string());
+        let mut config = Config::load().unwrap();
+        config.file_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../test/data")
+            .display()
+            .to_string();
+        let file_cache = FileCache::new(&config);
+        let storage = DomainStorage::init(&config.file_dir, file_cache).unwrap();
+        let result = storage.get_domain_info().unwrap();
+
+        println!("{:?}", result);
+    }
+    #[test]
+    fn test_file_read() {
+        let mut file = OpenOptions::new()
+            .read(true)
+            .create(true)
+            .append(true)
+            .write(true)
+            .open("/tmp/cde.txt")
+            .unwrap();
+        let mut text = String::new();
+        file.read_to_string(&mut text).unwrap();
+        assert_eq!(&text, "");
+        //writeln!(file, "{}", "abc").unwrap();
+    }
 }

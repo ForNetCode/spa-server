@@ -12,13 +12,19 @@ pub struct CliCommand {
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
-    Info { domain: Option<String> },
+    Info {
+        domain: Option<String>,
+    },
     Upload(UploadArg),
     Release {
         domain: String,
-        version: Option<u32> },
+        version: Option<u32>,
+    },
     Reload,
-    Delete {domain: Option<String>, max_reserve:Option<u32>}
+    Delete {
+        domain: Option<String>,
+        max_reserve: Option<u32>,
+    },
 }
 
 #[derive(Args, Debug)]
@@ -55,6 +61,12 @@ mod test {
         let c = CliCommand::parse_from(&["spa-client", "--config-dir=abc.conf", "info"]);
         //println!("{:?}", &c);
         assert_eq!(c.config_dir, Some(PathBuf::from("abc.conf")));
+        let c = CliCommand::parse_from(&["spa-client", "info", "www.example.com"]);
+        if let Commands::Info { domain } = c.commands {
+            assert_eq!(domain.unwrap(), "www.example.com")
+        } else {
+            unreachable!()
+        }
     }
 
     #[test]

@@ -3,7 +3,8 @@ use anyhow::anyhow;
 use reqwest::{header, multipart, StatusCode};
 use serde_json::Value;
 use spa_server::admin_server::request::{
-    DeleteDomainVersionOption, DomainWithOptVersionOption, UpdateUploadingStatusOption,
+    DeleteDomainVersionOption, DomainWithOptVersionOption, GetDomainOption,
+    UpdateUploadingStatusOption,
 };
 use spa_server::domain_storage::{ShortMetaData, UploadDomainPosition};
 use std::borrow::Cow;
@@ -74,10 +75,8 @@ impl API {
     }
 
     pub async fn get_domain_info(&self, domain: Option<String>) -> anyhow::Result<Value> {
-        let mut q = self.async_client.get(self.url("status"));
-        if let Some(domain) = domain {
-            q = q.query(&["domain", &domain])
-        }
+        let param = GetDomainOption { domain };
+        let mut q = self.async_client.get(self.url("status")).query(&param);
         let resp = q.send().await?;
         json_resp!(resp)
     }

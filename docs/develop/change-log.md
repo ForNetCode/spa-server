@@ -4,7 +4,9 @@
 
 - [x] fix: command client upload interrupt, get error file key.
 - [x] fix: admin server report os:9 error when upload existed file.
-- [x] ci: add ci for spa-server
+- [x] ci: add ci for spa-server, and GitHub action could run it
+- [x] fix: command client info incorrect handle domain query string
+- [x] fix: fix .SPA-Multiple would write sub dir more than once
 
 ### Version 2.2.0
 
