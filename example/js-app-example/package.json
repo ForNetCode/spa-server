@@ -22,7 +22,7 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "info": "dotenv spa-client info",
-    "upload": "dotenv -- spa-client upload ./build %DOMAIN%",
+    "upload": "dotenv cross-var spa-client upload ./build %DOMAIN%",
     "release": "dotenv spa-client release local.fornetcode.com",
     "upload:m1": "dotenv spa-client upload ./build local.fornetcode.com/a",
     "release:m1": "dotenv spa-client release local.fornetcode.com/a",
@@ -48,6 +48,7 @@
     ]
   },
   "devDependencies": {
+    "cross-var": "^1.1.0",
     "dotenv-cli": "^7.4.1",
     "spa-client": "file:../../jsclient"
   }
