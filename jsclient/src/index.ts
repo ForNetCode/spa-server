@@ -55,9 +55,9 @@ export default class SPAClient {
                 "Authorization": `Bearer ${config.authToken}`
             }
         })
-        // this.http.interceptors.response.use((resp) => resp,(error) => {
-        //     return Promise.reject( error.response.data)
-        // })
+        this.http.interceptors.response.use((resp) => resp,(error) => {
+            return Promise.reject( error.cause)
+        })
     }
 
     static init(config: SPAClientConfig) {

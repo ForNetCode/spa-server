@@ -1,4 +1,4 @@
-import SPAClient, {GetDomainPositionStatus} from "./index";
+import SPAClient from "./index";
 //@ts-ignore
 import parse from '@pushcorn/hocon-parser'
 import {
