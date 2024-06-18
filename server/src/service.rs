@@ -35,7 +35,6 @@ pub async fn create_service(
     domain_storage: Arc<DomainStorage>,
     is_https: bool,
 ) -> Result<Response<Body>, Infallible> {
-    
     let from_uri = req.uri().authority().cloned();
     // trick, need more check
     let authority_opt = from_uri.or_else(|| {
@@ -63,8 +62,10 @@ pub async fn create_service(
         if !is_https {
             if let Some(port) = service_config.http_redirect_to_https {
                 let mut resp = Response::default();
-                let port = if port == 443 {"".to_string()} else {
-                    format!(":{}",port)
+                let port = if port == 443 {
+                    "".to_string()
+                } else {
+                    format!(":{}", port)
                 };
                 let redirect_path = format!("https://{host}{port}{}", req.uri());
                 resp.headers_mut()
@@ -73,53 +74,6 @@ pub async fn create_service(
                 return Ok(resp);
             }
         }
-        // get version
-        /*
-        let uri = req.uri();
-        let path = uri.path();
-        if path.ends_with("/_api") {
-            //TODO: add switch: if exposed _api to public.
-            if let Some((domain_with_sub, _)) = path.rsplit_once("/_version/_api") {
-                let path = if domain_with_sub == "" {
-                    host.to_string()
-                } else {
-                    format!("{host}/{domain_with_sub}")
-                };
-                let version = domain_storage
-                    .get_domain_info_by_domain(&path)
-                    .map(|info| info.current_version)
-                    .flatten()
-                    .unwrap_or(0)
-                    .to_string();
-                let resp = Body::from(version);
-                let resp = Response::new(resp);
-                return Ok(resp);
-            } else if let Some((domain_with_sub, _)) = path.rsplit_once("/_files/_api") {
-                let path = if domain_with_sub == "" {
-                    host.to_string()
-                } else {
-                    format!("{host}/{domain_with_sub}")
-                };
-                let version = domain_storage
-                    .get_domain_info_by_domain(&path)
-                    .map(|info| info.current_version)
-                    .flatten()
-                    .unwrap_or(0);
-
-                return match domain_storage.get_files_metadata(path, version) {
-                    Ok(data) => Ok(warp::reply::json(&data).into_response()),
-                    Err(e) => {
-                        let mut resp = Response::new(Body::from(format!("error:{}", e)));
-                        *resp.status_mut() = StatusCode::BAD_REQUEST;
-                        Ok(resp)
-                    }
-                };
-            }
-            let mut resp = Response::default();
-            *resp.status_mut() = StatusCode::NOT_FOUND;
-            return Ok(resp);
-        }
-         */
         // static file
         let mut resp = match get_cache_file(req.uri().path(), host, domain_storage).await {
             Ok(item) => {
@@ -132,8 +86,7 @@ pub async fn create_service(
                 };
                 let accept_encoding = headers
                     .get("accept-encoding")
-                    .map(|x| x.to_str().map(|x| x.to_string()).ok())
-                    .flatten();
+                    .and_then(|x| x.to_str().map(|x| x.to_string()).ok());
                 cache_or_file_reply(item, conditionals, accept_encoding).await
             }
             Err(resp) => Ok(resp),
@@ -170,3 +123,51 @@ mod test {
         println!("{:?}", "/_version/_api".rsplit_once(z));
     }
 }
+
+// get version
+/*
+let uri = req.uri();
+let path = uri.path();
+if path.ends_with("/_api") {
+    //TODO: add switch: if exposed _api to public.
+    if let Some((domain_with_sub, _)) = path.rsplit_once("/_version/_api") {
+        let path = if domain_with_sub == "" {
+            host.to_string()
+        } else {
+            format!("{host}/{domain_with_sub}")
+        };
+        let version = domain_storage
+            .get_domain_info_by_domain(&path)
+            .map(|info| info.current_version)
+            .flatten()
+            .unwrap_or(0)
+            .to_string();
+        let resp = Body::from(version);
+        let resp = Response::new(resp);
+        return Ok(resp);
+    } else if let Some((domain_with_sub, _)) = path.rsplit_once("/_files/_api") {
+        let path = if domain_with_sub == "" {
+            host.to_string()
+        } else {
+            format!("{host}/{domain_with_sub}")
+        };
+        let version = domain_storage
+            .get_domain_info_by_domain(&path)
+            .map(|info| info.current_version)
+            .flatten()
+            .unwrap_or(0);
+
+        return match domain_storage.get_files_metadata(path, version) {
+            Ok(data) => Ok(warp::reply::json(&data).into_response()),
+            Err(e) => {
+                let mut resp = Response::new(Body::from(format!("error:{}", e)));
+                *resp.status_mut() = StatusCode::BAD_REQUEST;
+                Ok(resp)
+            }
+        };
+    }
+    let mut resp = Response::default();
+    *resp.status_mut() = StatusCode::NOT_FOUND;
+    return Ok(resp);
+}
+ */

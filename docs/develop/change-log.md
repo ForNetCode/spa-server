@@ -1,8 +1,10 @@
 # Change Log
+
 ### Version 2.2.2
 
 - [x] config: (break change) `http_redirect_to_https` convert from bool to u32.
 - [x] chore: change api domain response type.
+- [x] fix: fix cors check for normal http request.
 
 ### Version 2.2.1
 
