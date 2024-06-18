@@ -1,5 +1,7 @@
 # Break Changes
-## V2.2.0
+## V2.2.2(2024-06-18)
+* spa-server: `http_redirect_to_https` convert from bool to u32.
+## V2.2.0(2024-06-15)
 * spa-server: `port, addr` => `http.port, http.addr`
 ## v2.0.0(2024-04-02)
 * spa-server: `file/upload` param change for easy write. 

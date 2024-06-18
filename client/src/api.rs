@@ -1,12 +1,11 @@
 use crate::Config;
 use anyhow::anyhow;
 use reqwest::{header, multipart, StatusCode};
-use serde_json::Value;
 use spa_server::admin_server::request::{
     DeleteDomainVersionOption, DomainWithOptVersionOption, GetDomainOption,
     UpdateUploadingStatusOption,
 };
-use spa_server::domain_storage::{ShortMetaData, UploadDomainPosition};
+use spa_server::domain_storage::{DomainInfo, ShortMetaData, UploadDomainPosition};
 use std::borrow::Cow;
 use std::path::PathBuf;
 
@@ -74,11 +73,16 @@ impl API {
         format!("{}/{}", self.address, uri)
     }
 
-    pub async fn get_domain_info(&self, domain: Option<String>) -> anyhow::Result<Value> {
+    pub async fn get_domain_info(&self, domain: Option<String>) -> anyhow::Result<Vec<DomainInfo>> {
         let param = GetDomainOption { domain };
-        let mut q = self.async_client.get(self.url("status")).query(&param);
-        let resp = q.send().await?;
-        json_resp!(resp)
+        let req = self.async_client.get(self.url("status")).query(&param);
+        let resp = req.send().await?;
+        println!("{:?}",resp.text().await);
+        
+        
+        let req = self.async_client.get(self.url("status")).query(&param);
+        let resp = req.send().await?;
+        json_resp!(resp, Vec<DomainInfo>)
     }
 
     pub async fn change_uploading_status(

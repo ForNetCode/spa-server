@@ -51,7 +51,7 @@ pub fn run_server_with_config(config_file_name: &str) -> JoinHandle<()> {
     });
 }
 pub fn run_server() -> JoinHandle<()> {
-    return run_server_with_config("server_config.conf");
+    run_server_with_config("server_config.conf")
 }
 
 pub async fn reload_server() {

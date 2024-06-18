@@ -7,7 +7,6 @@ use crate::common::*;
 use common::run_server;
 use spa_server::LOCAL_HOST;
 
-// cargo test --package tests
 #[tokio::test(flavor = "multi_thread", worker_threads = 3)]
 async fn start_server_and_client_upload_file() {
     let domain = LOCAL_HOST.to_owned() + "/27";
@@ -66,7 +65,9 @@ async fn multiple_domain_check() {
     upload_file_and_check(domain, request_prefix, 1, vec!["index.html"]).await;
 
     upload_file_and_check(domain2, request_prefix2, 1, vec!["index.html"]).await;
-    println!("finish");
+    let (api, _ ) = get_client_api("client_config.conf");
+    let result = api.get_domain_info(None).await.unwrap();
+    assert_eq!(result.len(), 2);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 3)]
@@ -92,6 +93,9 @@ async fn evoke_cache_when_serving_new_version() {
     .await;
     assert_files(domain, request_prefix, 2, vec!["2.html"]).await;
     assert_files_no_exists(request_prefix, vec!["1.html"]).await;
+    let (api, _ ) = get_client_api("client_config.conf");
+    let result = api.get_domain_info(None).await.unwrap();
+    assert_eq!(result.len(), 1);
 }
 
 // This must run after evoke_cache_when_serving_new_index
@@ -142,13 +146,13 @@ async fn self_signed_cert_https() {
     tokio::time::sleep(Duration::from_secs(2)).await;
     upload_file_and_check(domain, request_prefix, 1, vec!["index.html", "1.html"]).await;
     // TODO: only support 443 port now.
-    // assert_files(
-    //     domain,
-    //     &format!("http://{LOCAL_HOST}:8080/27"),
-    //     1,
-    //     vec!["index.html", "1.html"],
-    // )
-    // .await;
+    assert_files(
+        domain,
+        &format!("http://{LOCAL_HOST}:8080/27"),
+        1,
+        vec!["index.html", "1.html"],
+    )
+    .await;
     let req = ClientBuilder::new()
         .redirect(Policy::none())
         .build()

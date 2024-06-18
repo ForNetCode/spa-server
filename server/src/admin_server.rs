@@ -209,10 +209,10 @@ pub mod service {
         match storage.get_domain_info() {
             Ok(domain_info) => match option.domain {
                 Some(domain) => {
-                    if let Some(data) = domain_info.iter().find(|x| x.domain == domain) {
-                        return Ok(warp::reply::json(data).into_response());
+                    return if let Some(data) = domain_info.iter().find(|x| x.domain == domain) {
+                        Ok(warp::reply::json(&[data]).into_response())
                     } else {
-                        return Ok(StatusCode::NOT_FOUND.into_response());
+                        Ok(StatusCode::NOT_FOUND.into_response())
                     }
                 }
                 _ => Ok(warp::reply::json(&domain_info).into_response()),

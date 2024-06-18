@@ -20,7 +20,7 @@ pub struct ServiceConfig {
 
 pub struct DomainServiceConfig {
     pub cors: bool,
-    pub http_redirect_to_https: bool,
+    pub http_redirect_to_https: Option<u32>,
 }
 
 impl ServiceConfig {
@@ -60,13 +60,18 @@ pub async fn create_service(
             Either::Right(v) => return Ok(v),
         };
         // redirect to https
-        if !is_https && service_config.http_redirect_to_https {
-            let mut resp = Response::default();
-            let redirect_path = format!("https://{host}{}",req.uri());
-            resp.headers_mut()
-                .insert(LOCATION, redirect_path.parse().unwrap());
-            *resp.status_mut() = StatusCode::MOVED_PERMANENTLY;
-            return Ok(resp);
+        if !is_https {
+            if let Some(port) = service_config.http_redirect_to_https {
+                let mut resp = Response::default();
+                let port = if port == 443 {"".to_string()} else {
+                    format!(":{}",port)
+                };
+                let redirect_path = format!("https://{host}{port}{}", req.uri());
+                resp.headers_mut()
+                    .insert(LOCATION, redirect_path.parse().unwrap());
+                *resp.status_mut() = StatusCode::MOVED_PERMANENTLY;
+                return Ok(resp);
+            }
         }
         // get version
         /*

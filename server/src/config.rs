@@ -59,7 +59,7 @@ pub struct DomainConfig {
 #[derive(Deserialize, Debug, Clone)]
 pub struct DomainHttpsConfig {
     pub ssl: Option<SSL>,
-    pub http_redirect_to_https: Option<bool>,
+    pub http_redirect_to_https: Option<u32>,
     #[serde(default)]
     pub disable_acme: bool,
 }
@@ -91,7 +91,7 @@ pub struct HttpsConfig {
     pub port: u32,
     pub addr: String,
     #[serde(default)]
-    pub http_redirect_to_https: bool,
+    pub http_redirect_to_https: u32,
 }
 // should write Deserialize by hand.
 #[derive(Deserialize, Debug, Clone)]

@@ -40,7 +40,8 @@ async fn run_with_commands(commands: CliCommand) -> anyhow::Result<()> {
 
     match commands.commands {
         Commands::Info { domain } => {
-            println!("{}", api.get_domain_info(domain).await?);
+            let domain_info = api.get_domain_info(domain).await?;
+            println!("{}", serde_json::to_string(&domain_info)?);
         }
         Commands::Upload(arg) => {
             let parallel = arg.parallel.unwrap_or(config.upload.parallel);

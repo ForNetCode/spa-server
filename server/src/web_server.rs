@@ -58,8 +58,7 @@ impl Server {
         let default_http_redirect_to_https = conf
             .https
             .as_ref()
-            .map(|x| x.http_redirect_to_https)
-            .unwrap_or(false);
+            .map(|x| x.http_redirect_to_https);
         let default = DomainServiceConfig {
             cors: conf.cors,
             http_redirect_to_https: default_http_redirect_to_https,
@@ -75,7 +74,7 @@ impl Server {
                         .as_ref()
                         .map(|x| x.http_redirect_to_https)
                         .flatten()
-                        .unwrap_or(default_http_redirect_to_https),
+                        .or(default_http_redirect_to_https),
                 };
 
                 (domain.domain.clone(), domain_service_config)
