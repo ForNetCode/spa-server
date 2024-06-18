@@ -35,7 +35,7 @@ cargo run --bin spa-server
 
 ### 通过镜像
 ```shell
-docker run -d -p 80 -p 443 -v $HOST_VOLUME:/data -v $CONFIG:/config.conf fornetcode/spa-server:latest
+docker run -d -p 80  -v $HOST_VOLUME:/data -v $CONFIG:/config.conf ghcr.io/fornetcode/spa-server:latest
 ```
 
 ## 如何部署静态文件
