@@ -199,8 +199,7 @@ impl DomainStorage {
             if let Some(version_dir) = version_dir_entry
                 .file_name()
                 .to_str()
-                .map(|file_name| file_name.parse::<u32>().ok())
-                .flatten()
+                .and_then(|file_name| file_name.parse::<u32>().ok())
             {
                 let mut path = version_dir_entry.path();
                 path.push(UPLOADING_FILE_NAME);
@@ -218,7 +217,7 @@ impl DomainStorage {
             info!("serve: {},version: {}", domain_dir_name, max_version);
             return Ok((uploading_version, Some(max_version)));
         }
-        return Ok((uploading_version, None));
+        Ok((uploading_version, None))
     }
     pub fn get_file(&self, host: &str, key: &str) -> Option<Arc<CacheItem>> {
         self.cache.get_item(host, key)
@@ -236,7 +235,7 @@ impl DomainStorage {
             let max_version_opt = self
                 .get_domain_info_by_domain(&domain)
                 .map(|x| x.versions)
-                .unwrap_or(Vec::new())
+                .unwrap_or_default()
                 .into_iter()
                 .max();
             if let Some(max_version) = max_version_opt {
@@ -269,19 +268,20 @@ impl DomainStorage {
                 Some(v) => v,
                 None => (domain.as_str(), ""),
             };
-            match self.meta.get_mut(host) {
-                Some(ref mut domain_meta) => {
+            match self.meta.get(host) {
+                Some(domain_meta) => {
                     //TODO: check path and DomainMeta if is pattern
-                    match domain_meta.value_mut() {
+                    match domain_meta.value() {
                         DomainMeta::OneWeb(..) => {
+                            //must keep this drop, otherwise, deadlock.
+                            drop(domain_meta);
                             self.meta.insert(
                                 host.to_string(),
                                 DomainMeta::OneWeb(new_path.clone(), version),
                             );
                         }
-                        DomainMeta::MultipleWeb(ref mut map) => {
-                            let multiple_file =
-                                self.prefix.join(&host).join(MULTIPLE_WEB_FILE_NAME);
+                        DomainMeta::MultipleWeb(map) => {
+                            let multiple_file = self.prefix.join(host).join(MULTIPLE_WEB_FILE_NAME);
                             if multiple_file.exists() {
                                 let mut file = OpenOptions::new()
                                     .append(true)
@@ -327,7 +327,7 @@ impl DomainStorage {
                     }
                 }
             };
-            let path = if path == "" { None } else { Some(path) };
+            let path = if path.is_empty() { None } else { Some(path) };
             let data = self.cache.cache_dir(host, path, version, &new_path)?;
             self.cache.update(host.to_string(), path, version, data);
             debug!(
@@ -532,7 +532,6 @@ impl DomainStorage {
                 .collect::<Vec<ShortMetaData>>();
             Ok(ret)
         } else {
-            //Err(anyhow!("the path does not exists"))
             Ok(Vec::new())
         }
     }

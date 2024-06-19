@@ -20,7 +20,45 @@ async fn start_server_and_client_upload_file() {
 
     tokio::time::sleep(Duration::from_secs(2)).await;
 
-    upload_file_and_check(domain, request_prefix, 1, vec!["index.html"]).await;
+    upload_file_and_check(domain, request_prefix, 1, vec!["", "index.html"]).await;
+
+    assert_expired(
+        request_prefix,
+        vec![
+            ("1.html", Some(0)),
+            ("test.js", Some(30 * 24 * 60 * 60)),
+            ("test.bin", None),
+        ],
+    )
+    .await;
+
+    upload_file_and_check(domain, request_prefix, 2, vec!["index.html", "2.html"]).await;
+
+    assert_files(domain, request_prefix, 1, vec!["1.html"]).await;
+
+    let (api, _) = get_client_api("client_config.conf");
+    api.remove_files(Some(domain.to_string()), Some(1))
+        .await
+        .unwrap();
+
+    assert_files_no_exists(request_prefix, vec!["1.html"]).await;
+    assert_files(domain, request_prefix, 2, vec!["index.html", "2.html"]).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 3)]
+async fn start_server_with_single_domain() {
+    let domain = LOCAL_HOST.to_owned();
+    let domain = &domain;
+    let request_prefix = format!("http://{LOCAL_HOST}:8080");
+    let request_prefix = &request_prefix;
+
+    clean_test_dir(LOCAL_HOST);
+
+    run_server();
+
+    tokio::time::sleep(Duration::from_secs(2)).await;
+
+    upload_file_and_check(domain, request_prefix, 1, vec!["", "index.html"]).await;
 
     assert_expired(
         request_prefix,
@@ -65,7 +103,7 @@ async fn multiple_domain_check() {
     upload_file_and_check(domain, request_prefix, 1, vec!["index.html"]).await;
 
     upload_file_and_check(domain2, request_prefix2, 1, vec!["index.html"]).await;
-    let (api, _ ) = get_client_api("client_config.conf");
+    let (api, _) = get_client_api("client_config.conf");
     let result = api.get_domain_info(None).await.unwrap();
     assert_eq!(result.len(), 2);
 }
@@ -93,7 +131,7 @@ async fn evoke_cache_when_serving_new_version() {
     .await;
     assert_files(domain, request_prefix, 2, vec!["2.html"]).await;
     assert_files_no_exists(request_prefix, vec!["1.html"]).await;
-    let (api, _ ) = get_client_api("client_config.conf");
+    let (api, _) = get_client_api("client_config.conf");
     let result = api.get_domain_info(None).await.unwrap();
     assert_eq!(result.len(), 1);
 }

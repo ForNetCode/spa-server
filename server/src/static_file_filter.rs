@@ -1,6 +1,6 @@
-use std::convert::Infallible;
 use crate::domain_storage::DomainStorage;
 use crate::file_cache::{CacheItem, DataBlock};
+use crate::service::not_found;
 use headers::{
     AcceptRanges, CacheControl, ContentEncoding, ContentLength, ContentRange, ContentType,
     HeaderMapExt, LastModified, Range,
@@ -8,6 +8,7 @@ use headers::{
 use hyper::body::Bytes;
 use hyper::Body;
 use percent_encoding::percent_decode_str;
+use std::convert::Infallible;
 use std::ops::Bound;
 use std::path::Path;
 use std::sync::Arc;
@@ -15,15 +16,12 @@ use tokio::fs::File;
 use tokio::io;
 use warp::fs::{file_stream, optimal_buf_size, Cond, Conditionals};
 use warp::http::{Response, StatusCode};
-use crate::service::not_found;
 
 //from warp::fs
 fn sanitize_path(tail: &str) -> Result<String, Response<Body>> {
     if let Ok(p) = percent_decode_str(tail).decode_utf8() {
         for seg in p.split('/') {
-            if seg.starts_with("..") {
-                return Err(not_found());
-            } else if seg.contains('\\') {
+            if seg.starts_with("..") || seg.contains('\\') {
                 return Err(not_found());
             }
         }
@@ -83,7 +81,7 @@ async fn file_reply(
     path: &Path,
     range: Option<Range>,
     modified: Option<LastModified>,
-) -> Response<Body>{
+) -> Response<Body> {
     let len = item.meta.len();
     match File::open(path).await {
         Ok(file) => {
@@ -185,7 +183,7 @@ pub async fn cache_or_file_reply(
         Cond::NoBody(resp) => {
             tracing::debug!("{} hit client cache", key);
             Ok(resp)
-        },
+        }
         Cond::WithBody(range) => match &item.data {
             DataBlock::CacheBlock {
                 bytes,
@@ -210,7 +208,7 @@ pub async fn cache_or_file_reply(
                     if client_accept_gzip && compressed {
                         tracing::debug!("{} hit cache, compressed", key);
                         resp.headers_mut().typed_insert(ContentEncoding::gzip());
-                    }else {
+                    } else {
                         tracing::debug!("{} hit cache", key);
                     }
                     Ok(resp)
@@ -219,7 +217,7 @@ pub async fn cache_or_file_reply(
             DataBlock::FileBlock(path) => {
                 tracing::debug!("{} hit disk", key);
                 Ok(file_reply(&item, path.as_ref(), range, modified).await)
-            },
+            }
         },
     }
 }
@@ -249,16 +247,13 @@ fn cache_item_to_response_header(
     }
 }
 
-pub async fn get_cache_file(tail:&str, host:&str, domain_storage:Arc<DomainStorage>) -> Result<(String, Arc<CacheItem>), Response<Body>> {
-    let key = sanitize_path(tail).map(|s| {
-        if s == "/" || s.is_empty() {
-            "index.html".to_owned()
-        } else {
-            let len = s.len();
-            s[1..len].to_owned()
-        }
-    })?;
-
+pub async fn get_cache_file(
+    tail: &str,
+    host: &str,
+    domain_storage: Arc<DomainStorage>,
+) -> Result<(String, Arc<CacheItem>), Response<Body>> {
+    let key = sanitize_path(tail)?;
+    let key = key[1..].to_owned();
     if let Some(cache_item) = domain_storage.get_file(host, &key) {
         Ok((key, cache_item))
     } else {

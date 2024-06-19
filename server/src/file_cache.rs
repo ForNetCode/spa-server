@@ -35,17 +35,12 @@ impl DomainCacheConfig {
             .iter()
             .map(|domain| {
                 let cache = domain.cache.as_ref();
-                let max_size = cache
-                    .map(|x| x.max_size)
-                    .flatten()
-                    .unwrap_or(default.max_size);
+                let max_size = cache.and_then(|x| x.max_size).unwrap_or(default.max_size);
                 let compression = cache
-                    .map(|x| x.compression)
-                    .flatten()
+                    .and_then(|x| x.compression)
                     .unwrap_or(default.compression);
                 let client_cache = cache
-                    .map(|x| x.client_cache.as_ref())
-                    .flatten()
+                    .and_then(|x| x.client_cache.as_ref())
                     .unwrap_or(&default.client_cache)
                     .clone();
                 (
@@ -69,13 +64,12 @@ impl DomainCacheConfig {
         let ret: HashMap<String, Duration> = conf
             .client_cache
             .iter()
-            .map(|item| {
+            .flat_map(|item| {
                 item.extension_names
                     .iter()
-                    .map(|extension_name| (extension_name.clone(), item.expire.clone()))
+                    .map(|extension_name| (extension_name.clone(), item.expire))
                     .collect::<Vec<(String, Duration)>>()
             })
-            .flatten()
             .collect();
         ret
     }
@@ -157,7 +151,7 @@ impl FileCache {
         tracing::info!("prepare to cache_dir: {}", &prefix);
         let conf = self.conf.get_domain_cache_config(domain);
         let expire_config = self.conf.get_domain_expire_config(domain);
-        let result: HashMap<String, Arc<CacheItem>> = WalkDir::new(path)
+        let mut result: HashMap<String, Arc<CacheItem>> = WalkDir::new(path)
             .min_depth(1)
             .into_iter()
             .filter_map(|x| x.ok())
@@ -230,16 +224,37 @@ impl FileCache {
                 None
             })
             .collect();
+
+        match sub_path {
+            Some(key_prefix) => {
+                let index_opt = result
+                    .get(&format!("{key_prefix}/index.html"))
+                    .or_else(|| result.get(&format!("{key_prefix}/index.htm")))
+                    .cloned();
+                if let Some(v) = index_opt {
+                    result.insert(format!("{key_prefix}/"), v.clone());
+                    result.insert(key_prefix.to_string(), v);
+                }
+            }
+            None => {
+                let index_opt = result
+                    .get("index.html")
+                    .or_else(|| result.get("index.htm"))
+                    .cloned();
+                if let Some(v) = index_opt {
+                    result.insert("".to_string(), v.clone());
+                    result.insert("/".to_string(), v);
+                }
+            }
+        }
+
         Ok(result)
     }
 
     pub fn get_item(&self, host: &str, path: &str) -> Option<Arc<CacheItem>> {
-        self.data
-            .get(host)
-            .map(|x| {
-                return x.get(path).map(Arc::clone);
-            })
-            .flatten()
+        self.data.get(host).and_then(|x| {
+            return x.get(path).cloned();
+        })
     }
     pub fn get_all_keys(&self, host: &str) -> Vec<String> {
         self.data
@@ -248,24 +263,32 @@ impl FileCache {
                 let keys = x.value().keys();
                 keys.map(|x| x.to_string()).collect()
             })
-            .unwrap_or_else(|| vec![])
+            .unwrap_or_default()
     }
-    pub fn delete_by_host(&self, host:&str, sub_dir:Option<String>, version:Option<u32>) {
+    pub fn delete_by_host(&self, host: &str, sub_dir: Option<String>, version: Option<u32>) {
         match (sub_dir, version) {
-            (None,None) => {
+            (None, None) => {
                 self.data.remove(host);
             }
             (sub_dir, version) => {
                 let map = self.data.get(host).map(|x| {
-                   x.iter().filter_map(|(key, value)| {
-                       if sub_dir.as_ref().map(|sub_dir| key.starts_with(sub_dir)).unwrap_or(true) &&
-                           version.as_ref().map(|version| value.version == *version).unwrap_or(true)
-                           {
-                           None
-                       }else {
-                           Some((key.clone(), value.clone()))
-                       }
-                   }).collect::<HashMap<String, Arc<CacheItem>>>()
+                    x.iter()
+                        .filter_map(|(key, value)| {
+                            if sub_dir
+                                .as_ref()
+                                .map(|sub_dir| key.starts_with(sub_dir))
+                                .unwrap_or(true)
+                                && version
+                                    .as_ref()
+                                    .map(|version| value.version == *version)
+                                    .unwrap_or(true)
+                            {
+                                None
+                            } else {
+                                Some((key.clone(), value.clone()))
+                            }
+                        })
+                        .collect::<HashMap<String, Arc<CacheItem>>>()
                 });
                 if let Some(keys) = map {
                     self.data.insert(host.to_string(), keys);

@@ -18,6 +18,11 @@ pub fn get_template_version(domain: &str, version: u32) -> PathBuf {
         .join(version.to_string())
 }
 pub fn get_file_text(domain: &str, version: u32, path: &str) -> io::Result<String> {
+    let path = if path.is_empty() || path == "/" {
+        "index.html"
+    } else {
+        path
+    };
     let path = get_template_version(domain, version).join(path);
     fs::read_to_string(path)
 }
@@ -118,6 +123,15 @@ pub async fn assert_files(
             result.text().await.unwrap(),
             get_file_text(domain, version, file).unwrap()
         );
+        if file.is_empty() {
+            println!("begin to check: {request_prefix}, version:{version}");
+            let result = client.get(request_prefix).send().await.unwrap();
+            assert_eq!(result.status(), StatusCode::OK);
+            assert_eq!(
+                result.text().await.unwrap(),
+                get_file_text(domain, version, file).unwrap()
+            );
+        }
     }
 }
 pub async fn assert_files_no_exists(request_prefix: &str, check_path: Vec<&'static str>) {
