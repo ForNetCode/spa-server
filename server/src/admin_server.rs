@@ -188,7 +188,7 @@ pub mod service {
         GetDomainOption, GetDomainPositionFormat, GetDomainPositionOption,
         UpdateUploadingStatusOption, UploadFileOption,
     };
-    use crate::domain_storage::{DomainStorage, URI_REGEX};
+    use crate::domain_storage::{DomainInfo, DomainStorage, URI_REGEX};
     use crate::{AdminConfig, HotReloadManager};
     use anyhow::{anyhow, Context};
     use bytes::Buf;
@@ -212,7 +212,7 @@ pub mod service {
                     return if let Some(data) = domain_info.iter().find(|x| x.domain == domain) {
                         Ok(warp::reply::json(&[data]).into_response())
                     } else {
-                        Ok(StatusCode::NOT_FOUND.into_response())
+                        Ok(warp::reply::json::<[&DomainInfo; 0]>(&[]).into_response())
                     }
                 }
                 _ => Ok(warp::reply::json(&domain_info).into_response()),

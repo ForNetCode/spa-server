@@ -77,11 +77,6 @@ impl API {
         let param = GetDomainOption { domain };
         let req = self.async_client.get(self.url("status")).query(&param);
         let resp = req.send().await?;
-        println!("{:?}",resp.text().await);
-        
-        
-        let req = self.async_client.get(self.url("status")).query(&param);
-        let resp = req.send().await?;
         json_resp!(resp, Vec<DomainInfo>)
     }
 
