@@ -5,6 +5,9 @@
 - [x] config: (break change) `http_redirect_to_https` convert from bool to u32.
 - [x] chore: change api domain response type.
 - [x] fix: fix cors check for normal http request.
+- [x] fix: update version of one SPA one domain would cause deadlock.
+- [x] feat: support index.html alias "","/" for multiple SPA one domain.
+- [x] improve: more integration tests.
 
 ### Version 2.2.1
 
