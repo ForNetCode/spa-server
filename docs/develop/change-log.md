@@ -7,6 +7,7 @@
 - [x] fix: fix cors check for normal http request.
 - [x] fix: update version of one SPA one domain would cause deadlock.
 - [x] feat: support index.html alias "","/" for multiple SPA one domain.
+- [x] improve: JS SDK keep same logic with command line, and improve error information. release JS SDK 2.2.2
 - [x] improve: more integration tests.
 
 ### Version 2.2.1

@@ -55,8 +55,8 @@ export default class SPAClient {
                 "Authorization": `Bearer ${config.authToken}`
             }
         })
-        this.http.interceptors.response.use((resp) => resp,(error) => {
-            return Promise.reject( error.cause)
+        this.http.interceptors.response.use((resp) => resp, (error) => {
+            return Promise.reject(error.cause)
         })
     }
 
@@ -117,6 +117,10 @@ export default class SPAClient {
         if (!(fs.existsSync(absolutePath) && fs.statSync(absolutePath).isDirectory())) {
             throw `path:${path} is not directory or does not exists`
         }
+        const files = await walkdir.async(absolutePath, {return_object: true})
+        if (Object.keys(files).length == 0) {
+            throw `path:${path} has no files`
+        }
         let realVersion: number;
         if (!version) {
             const positionResp = await this.getUploadPosition(domain)
@@ -136,7 +140,6 @@ export default class SPAClient {
             result[item.path] = item
             return result
         }, {} as { [key: string]: ShortMetaData })
-        const files = await walkdir.async(absolutePath, {return_object: true})
         const uploadingFiles = Object.keys(files).reduce((result, filePath) => {
             const fileStat = files[filePath]
             if (fileStat.isFile()) {
@@ -151,7 +154,9 @@ export default class SPAClient {
 
         }, [] as { key: string, filePath: string }[])
         if (!uploadingFiles.length) {
-            throw "There is no file to uploading"
+            console.log(chalk.green("all files already upload"))
+            await this.changeUploadingStatus(domain, realVersion, UploadingStatus.Finish)
+            return
         }
         console.log(chalk.green(`there are ${uploadingFiles.length} files to upload`))
         await this.changeUploadingStatus(domain, realVersion, UploadingStatus.Uploading)

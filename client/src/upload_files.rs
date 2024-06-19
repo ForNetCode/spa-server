@@ -195,11 +195,8 @@ async fn get_upload_version(api: &API, domain: &str, version: Option<u32>) -> an
         Ok(version)
     } else {
         let resp = api.get_upload_position(domain).await?;
-        match resp.status {
-            GetDomainPositionStatus::NewDomain => {
-                println!("domain:{} is new in server!", domain);
-            }
-            _ => {}
+        if resp.status == GetDomainPositionStatus::NewDomain {
+            println!("domain:{} is new in server!", domain);
         };
         Ok(resp.version)
     }
