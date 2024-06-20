@@ -35,7 +35,8 @@ pub async fn create_service(
     domain_storage: Arc<DomainStorage>,
     is_https: bool,
 ) -> Result<Response<Body>, Infallible> {
-    let from_uri = req.uri().authority().cloned();
+    let uri = req.uri();
+    let from_uri = uri.authority().cloned();
     // trick, need more check
     let authority_opt = from_uri.or_else(|| {
         req.headers()
@@ -52,6 +53,7 @@ pub async fn create_service(
 
     if let Some(authority) = authority_opt {
         let host = authority.host();
+
         let service_config = service_config.get_domain_service_config(host);
         // cors
         let origin_opt = match resp_cors_request(req.method(), req.headers(), service_config.cors) {
@@ -67,15 +69,24 @@ pub async fn create_service(
                 } else {
                     format!(":{}", port)
                 };
-                let redirect_path = format!("https://{host}{port}{}", req.uri());
+                let redirect_path = format!("https://{host}{port}{}", uri);
                 resp.headers_mut()
                     .insert(LOCATION, redirect_path.parse().unwrap());
                 *resp.status_mut() = StatusCode::MOVED_PERMANENTLY;
                 return Ok(resp);
             }
         }
+        // path: "" => "/"
+        let path = uri.path();
+        if domain_storage.check_if_empty_index(host, path) {
+            let mut resp = Response::default();
+            resp.headers_mut()
+                .insert(LOCATION, format!("{path}/").parse().unwrap());
+            *resp.status_mut() = StatusCode::MOVED_PERMANENTLY;
+            return Ok(resp);
+        }
         // static file
-        let mut resp = match get_cache_file(req.uri().path(), host, domain_storage).await {
+        let mut resp = match get_cache_file(path, host, domain_storage).await {
             Ok(item) => {
                 let headers = req.headers();
                 let conditionals = Conditionals {

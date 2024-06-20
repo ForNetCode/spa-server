@@ -407,7 +407,7 @@ impl DomainStorage {
             .filter_map(|version_entity| {
                 let version_entity = version_entity.ok()?;
                 let version = version_entity.file_name().to_str()?.parse::<u32>();
-                Some(version.ok()?)
+                version.ok()
             })
             .collect();
         if versions.is_empty() {
@@ -534,6 +534,21 @@ impl DomainStorage {
         } else {
             Ok(Vec::new())
         }
+    }
+    pub fn check_if_empty_index(&self, host:&str, path:&str) -> bool {
+        self.meta.get(host).map(|v| {
+            match v.value() {
+                DomainMeta::OneWeb{..} => path.is_empty(),
+                DomainMeta::MultipleWeb(map) => {
+                    if path.len() > 1 {
+                        map.contains_key(&path[1..])
+                    } else {
+                        map.contains_key(path)
+                    }
+                    
+                }
+            }
+        }).unwrap_or(false)
     }
 
     pub fn save_file(

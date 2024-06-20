@@ -72,8 +72,7 @@ impl Server {
                     http_redirect_to_https: domain
                         .https
                         .as_ref()
-                        .map(|x| x.http_redirect_to_https)
-                        .flatten()
+                        .and_then(|x| x.http_redirect_to_https)
                         .or(default_http_redirect_to_https),
                 };
 

@@ -146,7 +146,7 @@ impl FileCache {
     ) -> anyhow::Result<HashMap<String, Arc<CacheItem>>> {
         let prefix = path
             .to_str()
-            .map(|x| Ok(format!("{}/", x.to_string())))
+            .map(|x| Ok(format!("{x}/")))
             .unwrap_or(Err(anyhow!("can not parse path")))?;
         tracing::info!("prepare to cache_dir: {}", &prefix);
         let conf = self.conf.get_domain_cache_config(domain);
@@ -233,7 +233,7 @@ impl FileCache {
                     .cloned();
                 if let Some(v) = index_opt {
                     result.insert(format!("{key_prefix}/"), v.clone());
-                    result.insert(key_prefix.to_string(), v);
+                    // result.insert(key_prefix.to_string(), v);
                 }
             }
             None => {
@@ -242,7 +242,7 @@ impl FileCache {
                     .or_else(|| result.get("index.htm"))
                     .cloned();
                 if let Some(v) = index_opt {
-                    result.insert("".to_string(), v.clone());
+                    // result.insert("".to_string(), v.clone());
                     result.insert("/".to_string(), v);
                 }
             }

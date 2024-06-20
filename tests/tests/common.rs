@@ -124,8 +124,15 @@ pub async fn assert_files(
             get_file_text(domain, version, file).unwrap()
         );
         if file.is_empty() {
-            println!("begin to check: {request_prefix}, version:{version}");
+            println!("begin to check: {request_prefix}/, version:{version}");
             let result = client.get(request_prefix).send().await.unwrap();
+            assert_eq!(result.status(), StatusCode::OK);
+            assert_eq!(
+                result.text().await.unwrap(),
+                get_file_text(domain, version, file).unwrap()
+            );
+            println!("begin to check: {request_prefix}/, version:{version}");
+            let result = client.get(format!("{request_prefix}/")).send().await.unwrap();
             assert_eq!(result.status(), StatusCode::OK);
             assert_eq!(
                 result.text().await.unwrap(),
