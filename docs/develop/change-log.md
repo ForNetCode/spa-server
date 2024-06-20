@@ -1,4 +1,6 @@
 # Change Log
+### Version 2.2.3
+- fix: sub_path '' => '/', like GitHub pages
 
 ### Version 2.2.2
 

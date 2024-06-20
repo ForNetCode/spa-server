@@ -1,6 +1,6 @@
 use reqwest::header::CACHE_CONTROL;
 use reqwest::redirect::Policy;
-use reqwest::{ClientBuilder, StatusCode};
+use reqwest::{ClientBuilder, StatusCode, Url};
 use spa_client::api::API;
 use std::path::{Path, PathBuf};
 use std::{env, fs, io};
@@ -140,6 +140,29 @@ pub async fn assert_files(
             );
         }
     }
+}
+pub async fn assert_index_redirect_correct(request_prefix: &str) {
+    let client = ClientBuilder::new()
+        .danger_accept_invalid_certs(true)
+        .redirect(Policy::none())
+        .build()
+        .unwrap();
+    let query = [("lang", "rust"), ("browser", "servo"), ("zh", "转义字符")];
+    let url = Url::parse_with_params(request_prefix,
+                           &query).unwrap();
+    println!("{}", url);
+    let path = url.path();
+    let query = url.query().unwrap();
+    let response= client.get(url.clone()).send().await.unwrap();
+    assert_eq!(response.status(),StatusCode::MOVED_PERMANENTLY);
+    assert_eq!(response.headers().get("location").unwrap().to_str().unwrap(),
+               format!("{path}/?{query}")
+    );
+    
+    
+    
+    
+    
 }
 pub async fn assert_files_no_exists(request_prefix: &str, check_path: Vec<&'static str>) {
     for file in check_path {

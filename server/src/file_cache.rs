@@ -242,8 +242,8 @@ impl FileCache {
                     .or_else(|| result.get("index.htm"))
                     .cloned();
                 if let Some(v) = index_opt {
-                    // result.insert("".to_string(), v.clone());
-                    result.insert("/".to_string(), v);
+                    result.insert("".to_string(), v.clone());
+                    //result.insert("/".to_string(), v);
                 }
             }
         }

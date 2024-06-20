@@ -18,9 +18,10 @@ async fn start_server_and_client_upload_file() {
 
     run_server();
 
-    tokio::time::sleep(Duration::from_secs(2)).await;
+    tokio::time::sleep(Duration::from_secs(1)).await;
 
     upload_file_and_check(domain, request_prefix, 1, vec!["", "index.html"]).await;
+    assert_index_redirect_correct(request_prefix).await;
 
     assert_expired(
         request_prefix,
@@ -58,6 +59,7 @@ async fn start_server_with_single_domain() {
 
     tokio::time::sleep(Duration::from_secs(2)).await;
 
+    // assert_index_redirect_correct(request_prefix).await;  // http client would auto patch / to http://www.example.com => http://www.example.com/
     upload_file_and_check(domain, request_prefix, 1, vec!["", "index.html"]).await;
 
     assert_expired(
