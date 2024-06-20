@@ -64,9 +64,8 @@ pub async fn create_service(
         if !is_https {
             if let Some(port) = service_config.http_redirect_to_https {
                 let mut resp = Response::default();
-                
                 let redirect_path = if port != 443 {
-                    format!("https://{host}{port}{uri}")
+                    format!("https://{host}:{port}{uri}")
                 } else {
                     format!("https://{host}{uri}")
                 };
@@ -81,13 +80,12 @@ pub async fn create_service(
         if domain_storage.check_if_empty_index(host, path) {
             let mut resp = Response::default();
             let mut path = format!("{path}/");
-            if let Some(query) =  uri.query() {
+            if let Some(query) = uri.query() {
                 path.push('?');
                 path.push_str(query);
             }
             let path = path.parse().unwrap();
-            resp.headers_mut()
-                .insert(LOCATION, path);
+            resp.headers_mut().insert(LOCATION, path);
             *resp.status_mut() = StatusCode::MOVED_PERMANENTLY;
             return Ok(resp);
         }

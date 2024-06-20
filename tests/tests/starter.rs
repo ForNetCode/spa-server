@@ -185,8 +185,8 @@ async fn self_signed_cert_https() {
 
     run_server_with_config("server_config_https.conf");
     tokio::time::sleep(Duration::from_secs(2)).await;
-    upload_file_and_check(domain, request_prefix, 1, vec!["index.html", "1.html"]).await;
-    // TODO: only support 443 port now.
+    upload_file_and_check(domain, request_prefix, 1, vec!["", "index.html", "1.html"]).await;
+    assert_index_redirect_correct(request_prefix).await;
     assert_files(
         domain,
         &format!("http://{LOCAL_HOST}:8080/27"),
