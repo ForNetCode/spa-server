@@ -132,15 +132,6 @@ pub fn resp(code: StatusCode, str: &'static str) -> Response<Body> {
     resp
 }
 
-#[cfg(test)]
-mod test {
-    #[test]
-    fn test_r_split() {
-        let z = "/_version/_api";
-        println!("{:?}", "/_version/_api".rsplit_once(z));
-    }
-}
-
 // get version
 /*
 let uri = req.uri();

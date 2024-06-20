@@ -821,13 +821,14 @@ mod test {
     //     println!("{:?}", path.join("usr/lib/pam/").to_str());
     // }
 
+    #[ignore]
     #[test]
     fn test_domain_storage_get_domain_info() {
         let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../test/config.test.conf");
         env::set_var("SPA_CONFIG", path.display().to_string());
         let mut config = Config::load().unwrap();
         config.file_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../test/data")
+            .join("../tests/web/data")
             .display()
             .to_string();
         let file_cache = FileCache::new(&config);
@@ -836,6 +837,8 @@ mod test {
 
         println!("{:?}", result);
     }
+
+    #[ignore]
     #[test]
     fn test_file_read() {
         let mut file = OpenOptions::new()

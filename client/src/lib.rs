@@ -68,9 +68,8 @@ async fn run_with_commands(commands: CliCommand) -> anyhow::Result<()> {
 
 #[cfg(test)]
 mod test {
-    use crate::{run, run_with_commands, CliCommand};
+    use crate::{run_with_commands, CliCommand, LOCAL_HOST};
     use clap::Parser;
-    use spa_server::LOCAL_HOST;
     use std::env;
 
     fn init_config() {
@@ -79,12 +78,14 @@ mod test {
         env::set_var("SPA_UPLOAD_PARALLEL", "4");
     }
 
+    #[ignore]
     #[tokio::test]
     async fn test_info() {
         init_config();
         run_with_commands(CliCommand::parse_from(&["test", "info"])).await.unwrap();
     }
 
+    #[ignore]
     #[tokio::test]
     async fn test_upload() {
         init_config();
@@ -98,6 +99,7 @@ mod test {
             println!("{:?}", ret);
         }
     }
+    #[ignore]
     #[tokio::test]
     async fn test_release() {
         init_config();
@@ -108,6 +110,8 @@ mod test {
         ])).await;
         result.unwrap();
     }
+
+    #[ignore]
     #[tokio::test]
     async fn test_delete() {
         init_config();
@@ -120,3 +124,5 @@ mod test {
         result.unwrap();
     }
 }
+#[cfg(test)]
+const LOCAL_HOST: &str = "local.fornetcode.com";

@@ -30,7 +30,7 @@ use std::convert::Infallible;
 use std::sync::Arc;
 use std::time::Duration;
 use futures_util::TryFutureExt;
-use tracing::{error, warn};
+use tracing::error;
 use warp::Filter;
 use crate::tls::load_ssl_server_config;
 
@@ -104,18 +104,10 @@ pub async fn reload_server(
 pub async fn run_server() -> anyhow::Result<()> {
     let config = Config::load()?;
     tracing::debug!("config load:{:?}", &config);
+    run_server_with_config(config).await
+}
 
-    if config.http.is_none() && config.https.is_none() {
-        panic!("should set http or https server config");
-    }
-    if let Some(http_config) = &config.https {
-        if http_config.acme.is_some() && http_config.ssl.is_some() {
-            panic!("spa-server don't support ssl and acme config in the meantime");
-        }
-        if http_config.acme.is_some() && config.http.as_ref().filter(|v|v.port != 80).is_none() {
-            warn!("acme needs http port:80 to signed https certificate");
-        }
-    }
+pub async fn run_server_with_config(config:Config) -> anyhow::Result<()> {
     let cache = FileCache::new(&config);
     let domain_storage = Arc::new(DomainStorage::init(&config.file_dir, cache)?);
     let server = Server::new(config.clone(), domain_storage.clone());
@@ -164,8 +156,6 @@ pub async fn run_server() -> anyhow::Result<()> {
                 panic!("admin server error: {error}")
             })
         );
-
-
     } else {
         tracing::info!("admin server disabled");
 
@@ -192,9 +182,8 @@ pub async fn run_server() -> anyhow::Result<()> {
             }),
         );
     }
-
     Ok(())
 }
 
-//#[cfg(test)]
+#[cfg(test)]
 pub const LOCAL_HOST: &str = "local.fornetcode.com";

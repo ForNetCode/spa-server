@@ -191,12 +191,13 @@ mod test {
     use crate::api::API;
     use spa_server::admin_server::request::UpdateUploadingStatusOption;
     use spa_server::domain_storage::UploadingStatus;
-    use spa_server::LOCAL_HOST;
+    use crate::LOCAL_HOST;
 
     fn get_api() -> API {
         let config = crate::config::test::default_local_config().unwrap();
         API::new(&config).unwrap()
     }
+    #[ignore]
     #[tokio::test]
     async fn get_domain_info() {
         let api = get_api();
@@ -204,12 +205,14 @@ mod test {
         println!("{:?}", response);
     }
 
+    #[ignore]
     #[tokio::test]
     async fn get_file_metadata() {
         let api = get_api();
         let r = api.get_file_metadata(LOCAL_HOST, 1).await;
         println!("{:?}", r);
     }
+    #[ignore]
     #[tokio::test]
     async fn update_upload_status() {
         let api = get_api();

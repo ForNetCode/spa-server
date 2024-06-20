@@ -30,6 +30,10 @@ jobs:
           key: cargo-index-trimmed-${{ hashFiles('**/Cargo.lock') }}
       - name: build all
         run: cargo build
-      - name: run server ci
+      - name: run spa-client test
+        run: cargo test -p spa-client
+      - name: run spa-client test
+        run: cargo test -p spa-server
+      - name: run integration test
         # --show-output
         run: cargo test -p tests --test starter -j 1 -- --test-threads 1

@@ -262,10 +262,3 @@ impl Accept for TlsAcceptor {
         }
     }
 }
-
-#[cfg(test)]
-mod test {
-
-    #[test]
-    fn test_acme() {}
-}

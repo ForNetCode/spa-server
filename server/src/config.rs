@@ -1,8 +1,9 @@
-use anyhow::Context;
+use anyhow::{bail, Context};
 use hocon::de::wrappers::Serde;
 use serde::Deserialize;
 use std::env;
 use std::time::Duration;
+use tracing::warn;
 
 const CONFIG_PATH: &str = "/config/config.conf";
 
@@ -29,9 +30,22 @@ impl Config {
             .load_file(&config_path)
             .with_context(|| format!("can not read config file: {config_path}"))?;
 
-        load_file
+        let config = load_file
             .resolve::<Config>()
-            .with_context(|| "parse config file error")
+            .with_context(|| "parse config file error")?;
+        if config.http.is_none() && config.https.is_none() {
+            bail!("should set http or https server config")
+        }
+        if let Some(http_config) = &config.https {
+            if http_config.acme.is_some() && http_config.ssl.is_some() {
+                bail!("spa-server don't support ssl and acme config in the meantime");
+            }
+            if http_config.acme.is_some() && config.http.as_ref().filter(|v|v.port != 80).is_none() {
+                warn!("acme needs http port:80 to signed https certificate");
+            }
+        }
+        Ok(config)
+        
     }
 }
 #[derive(Deserialize, Debug, Clone, Eq, PartialEq)]
@@ -141,5 +155,5 @@ pub fn default_cron() -> String {
     String::from("0 0 3 * * *")
 }
 pub fn default_max_reserve() -> u32 {
-    return 2;
+    2
 }

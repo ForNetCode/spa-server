@@ -5,7 +5,8 @@ use std::time::Duration;
 mod common;
 use crate::common::*;
 use common::run_server;
-use spa_server::LOCAL_HOST;
+
+const LOCAL_HOST: &str = "local.fornetcode.com";
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 3)]
 async fn start_server_and_client_upload_file() {
