@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - 'master'
+  workflow_dispatch:
 
 jobs:
   check_server:
@@ -37,6 +38,6 @@ jobs:
         run: cargo test -p tests --test starter -j 1 -- --test-threads 1
       - name: run pebble
         run: ./run_pebble.sh
-        working-directory: ./tests/data/pebble
+        working-directory: ./tests/bash/
       - name: run acme integration test
         run: cargo test -p tests --test acme_test -j 1 -- --test-threads 1

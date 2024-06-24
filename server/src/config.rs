@@ -60,6 +60,9 @@ impl Config {
                 warn!("acme needs http port:80 to signed https certificate");
             }
         }
+        if config.domains.iter().any(|x| !get_host_path_from_domain(&x.domain).1.is_empty()) {
+            bail!("domains.domain do not support sub path like 'www.example.com/abc' now")
+        } 
         Ok(config)
     }
 }
