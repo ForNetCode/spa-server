@@ -597,7 +597,7 @@ mod test {
         println!("{:?}", z.validity);
     }
 
-    //#[ignore]
+    #[ignore]
     #[test]
     fn test_load_ci_file() {
         let certified_key = load_ssl_file(
