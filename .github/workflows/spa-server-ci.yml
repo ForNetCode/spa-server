@@ -1,11 +1,9 @@
-name: spa-server ci
+name: CI
 
 on:
   push:
     branches:
       - 'master'
-env:
-  REGISTRY: ghcr.io
 
 jobs:
   check_server:
@@ -37,3 +35,8 @@ jobs:
       - name: run integration test
         # --show-output
         run: cargo test -p tests --test starter -j 1 -- --test-threads 1
+      - name: run pebble
+        run: ./run_pebble.sh
+        working-directory: ./tests/data/pebble
+      - name: run acme integration test
+        run: cargo test -p tests --test acme_test -j 1 -- --test-threads 1

@@ -1,3 +1,4 @@
+use crate::config::get_host_path_from_domain;
 use crate::file_cache::{CacheItem, FileCache};
 use anyhow::{anyhow, bail, Context};
 use dashmap::DashMap;
@@ -15,6 +16,7 @@ use std::sync::Arc;
 use tracing::{debug, info};
 use walkdir::{DirEntry, WalkDir};
 use warp::fs::sanitize_path;
+use crate::acme::ACMEManager;
 
 pub(crate) const URI_REGEX_STR: &str =
     "[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+\\.?";
@@ -188,12 +190,15 @@ impl DomainStorage {
         Ok(sub_dirs)
     }
 
-    fn get_meta_info<'a>(
+    fn get_meta_info(
         domain_dir: &PathBuf,
-        domain_dir_name: &'a str,
+        domain_dir_name: &str,
     ) -> anyhow::Result<(Option<u32>, Option<u32>)> {
         let mut max_version = 0;
         let mut uploading_version = None;
+        if !domain_dir.exists() {
+            return Ok((None, None))
+        }
         for version_dir_entry in fs::read_dir(domain_dir)? {
             let version_dir_entry = version_dir_entry?;
             if let Some(version_dir) = version_dir_entry
@@ -264,10 +269,7 @@ impl DomainStorage {
                 "begin to update domain:{}, version:{}, putting files to cache",
                 &domain, version
             );
-            let (host, path) = match domain.split_once('/') {
-                Some(v) => v,
-                None => (domain.as_str(), ""),
-            };
+            let (host, path) = get_host_path_from_domain(&domain);
             match self.meta.get(host) {
                 Some(domain_meta) => {
                     //TODO: check path and DomainMeta if is pattern
@@ -382,10 +384,7 @@ impl DomainStorage {
     }
 
     pub fn get_domain_serving_version(&self, domain: &str) -> Option<u32> {
-        let (host, path) = match domain.split_once('/') {
-            Some(v) => v,
-            None => (domain, ""),
-        };
+        let (host, path) = get_host_path_from_domain(&domain);
         let domain_meta = self.meta.get(host)?;
         match domain_meta.value() {
             DomainMeta::OneWeb(_, version) if path == "" => Some(version.clone()),
@@ -535,20 +534,20 @@ impl DomainStorage {
             Ok(Vec::new())
         }
     }
-    pub fn check_if_empty_index(&self, host:&str, path:&str) -> bool {
-        self.meta.get(host).map(|v| {
-            match v.value() {
-                DomainMeta::OneWeb{..} => path.is_empty(),
+    pub fn check_if_empty_index(&self, host: &str, path: &str) -> bool {
+        self.meta
+            .get(host)
+            .map(|v| match v.value() {
+                DomainMeta::OneWeb { .. } => path.is_empty(),
                 DomainMeta::MultipleWeb(map) => {
                     if path.len() > 1 {
                         map.contains_key(&path[1..])
                     } else {
                         map.contains_key(path)
                     }
-                    
                 }
-            }
-        }).unwrap_or(false)
+            })
+            .unwrap_or(false)
     }
 
     pub fn save_file(
@@ -579,11 +578,12 @@ impl DomainStorage {
         }
     }
 
-    pub fn update_uploading_status(
+    pub async fn update_uploading_status(
         &self,
         domain: String,
         version: u32,
         uploading_status: UploadingStatus,
+        acme_manager: &ACMEManager,
     ) -> anyhow::Result<()> {
         // TODO: check if multiple and domain match
         if let Some(uploading_version) = self.uploading_status.get(&domain).map(|v| *v.value()) {
@@ -604,6 +604,7 @@ impl DomainStorage {
                     "domain:{}, version:{} change to upload status:finish",
                     domain, version
                 );
+                acme_manager.add_new_domain(get_host_path_from_domain(&domain).0).await;
             }
         } else if uploading_status == UploadingStatus::Uploading {
             if self
@@ -618,10 +619,7 @@ impl DomainStorage {
                 ));
             }
             let mut p = self.get_version_path(&domain, version);
-            let (host, path) = match domain.split_once('/') {
-                Some(v) => v,
-                None => (domain.as_str(), ""),
-            };
+            let (host, path) = get_host_path_from_domain(&domain);
             let multiple = self.prefix.join(host).join(MULTIPLE_WEB_FILE_NAME);
             if !path.is_empty() {
                 if !multiple.exists() {
@@ -755,7 +753,6 @@ mod test {
     use std::env;
     use std::fs::OpenOptions;
     use std::io::Read;
-    use std::io::Write;
     use std::ops::RangeInclusive;
     use std::path::PathBuf;
     use std::str::FromStr;

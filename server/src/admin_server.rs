@@ -129,14 +129,15 @@ impl AdminServer {
 
     fn change_upload_status(
         &self,
-    ) -> impl Filter<Extract = (Response,), Error = Rejection> + Clone {
+    ) -> impl Filter<Extract = (impl warp::Reply,), Error = Rejection> + Clone  {
         warp::path!("files" / "upload_status")
             .and(with(self.domain_storage.clone()))
+            .and(with(self.acme_manager.clone()))
             .and(
                 warp::body::content_length_limit(1024 * 16)
                     .and(warp::body::json::<UpdateUploadingStatusOption>()),
             )
-            .map(service::change_upload_status)
+            .and_then(service::change_upload_status)
     }
 
     fn upload_file(&self) -> impl Filter<Extract = (impl warp::Reply,), Error = Rejection> + Clone {
@@ -282,18 +283,20 @@ pub mod service {
         Ok(resp)
     }
 
-    pub(super) fn change_upload_status(
+    pub(super) async fn change_upload_status(
         storage: Arc<DomainStorage>,
+        acme_manager: Arc<ACMEManager>,
         param: UpdateUploadingStatusOption,
-    ) -> Response {
-        match storage.update_uploading_status(param.domain, param.version, param.status) {
+    ) -> Result<Response, Infallible> {
+        let resp = match storage.update_uploading_status(param.domain, param.version, param.status, &acme_manager).await {
             Ok(_) => Response::default(),
             Err(e) => {
                 let mut resp = Response::new(Body::from(e.to_string()));
                 *resp.status_mut() = StatusCode::BAD_REQUEST;
                 resp
             }
-        }
+        };
+        Ok(resp)
     }
 
     pub(super) async fn update_file(

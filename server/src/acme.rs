@@ -1,8 +1,8 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::fs;
 use std::fs::File;
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -17,22 +17,25 @@ use rcgen::{Certificate, CertificateParams, DistinguishedName};
 use regex::Regex;
 use rustls::sign::CertifiedKey;
 use small_acme::{
-    Account, AccountCredentials, AuthorizationStatus, ChallengeType, Identifier, KeyAuthorization,
-    LetsEncrypt, NewAccount, NewOrder, OrderStatus,
+    Account, AccountCredentials, AuthorizationStatus, ChallengeType, Identifier, NewAccount,
+    NewOrder, OrderStatus,
 };
 use tokio::sync::mpsc::{Receiver, Sender};
-use tokio::sync::Mutex;
+use tokio::sync::RwLock;
 use tokio::time::sleep;
 use tracing::{debug, error, info, warn};
 use walkdir::WalkDir;
 
-use crate::config::{ACMEConfig, Config};
+use crate::config::{get_host_path_from_domain, ACMEConfig, ACMEType, Config};
 use crate::domain_storage::DomainStorage;
 use crate::tls::load_ssl_file;
 
 const ACME_DIR: &str = "acme";
+const CHALLENGE_DIR: &str = "challenge";
+pub const ACME_CHALLENGE: &str = "/.well-known/acme-challenge/";
 
-const CERTIFICATE_PRIVATE_KEY_REGEX_STR: &str = "^certificate_(stage|prod)_(?P<domain>.*)\\.key$";
+const CERTIFICATE_PRIVATE_KEY_REGEX_STR: &str =
+    "^certificate_(stage|prod|ci)_(?P<domain>.*)\\.key$";
 //"[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+$";
 
 lazy_static! {
@@ -40,24 +43,17 @@ lazy_static! {
         Regex::new(CERTIFICATE_PRIVATE_KEY_REGEX_STR).unwrap();
 }
 
-type AuthSenderMessage = (String, String, KeyAuthorization);
-
-type AuthSender = Sender<AuthSenderMessage>;
+pub type ChallengePath = Arc<RwLock<Option<PathBuf>>>;
 
 #[derive(Clone)]
 struct ACMEProvider {
     path: Arc<PathBuf>,
-    stage: bool,
+    acme_type: ACMEType,
     account: Account,
-    auth_sender: AuthSender,
 }
 
 impl ACMEProvider {
-    fn init(
-        acme_config: ACMEConfig,
-        default_file_dir: &PathBuf,
-        auth_sender: AuthSender,
-    ) -> anyhow::Result<Self> {
+    fn init(acme_config: ACMEConfig, default_file_dir: &Path) -> anyhow::Result<Self> {
         let path = match acme_config.dir {
             Some(path) => {
                 let path = PathBuf::from(path);
@@ -77,56 +73,86 @@ impl ACMEProvider {
         };
         let emails = acme_config.emails;
 
-        let stage = acme_config.stage;
-        let account_file_path = Self::get_account_file_path(&emails, stage, &path);
-        let account = Self::init_or_get_account(&account_file_path)?;
+        //let stage = true;//acme_config.stage;
+        let acme_type = acme_config.acme_type;
+        let account_file_path = Self::get_account_file_path(&emails, &acme_type, &path);
+        let emails: Vec<&str> = emails.iter().map(std::ops::Deref::deref).collect();
+        let account = Self::init_or_get_account(
+            &account_file_path,
+            &acme_type,
+            &emails,
+            acme_config.ci_ca_path.as_ref(),
+        )?;
+        let challenge_path = path.join(CHALLENGE_DIR);
+        if !challenge_path.exists() {
+            fs::create_dir(&challenge_path)?
+        }
 
         Ok(Self {
             path: Arc::new(path),
-            stage: acme_config.stage,
-            auth_sender,
+            acme_type, //acme_config.stage,
             account,
         })
     }
 
-    fn get_account_file_path(emails: &[String], stage: bool, dir: &PathBuf) -> PathBuf {
-        let url = if stage {
-            LetsEncrypt::Staging
-        } else {
-            LetsEncrypt::Production
-        }
-        .url();
+    fn get_account_file_path(emails: &[String], acme_type: &ACMEType, dir: &PathBuf) -> PathBuf {
+        let url = acme_type.url();
         let email = format!("{}_{}", url, emails.join(","));
         let file_name = BASE64_URL_SAFE_NO_PAD.encode(email);
-        let file_name = format!("account_{file_name}");
+        let file_name = format!("account_{}_{file_name}", acme_type.as_str());
         dir.join(file_name)
     }
-    fn init_or_get_account(path: &PathBuf) -> anyhow::Result<Account> {
+    fn init_or_get_account(
+        path: &PathBuf,
+        acme_type: &ACMEType,
+        emails: &[&str],
+        ci_ca_path: Option<&String>,
+    ) -> anyhow::Result<Account> {
+        let agent = if matches!(acme_type, ACMEType::CI) {
+            let mut roots = rustls::RootCertStore::empty();
+            let mut reader = std::io::BufReader::new(File::open(ci_ca_path.unwrap())?);
+            let cert = rustls_pemfile::certs(&mut reader).map(|v| v.unwrap());
+            roots.add_parsable_certificates(cert);
+            let tls_config = rustls::ClientConfig::builder()
+                .with_root_certificates(roots)
+                .with_no_client_auth();
+            ureq::builder()
+                .https_only(true)
+                .tls_config(Arc::new(tls_config))
+                .build()
+        } else {
+            ureq::builder().https_only(true).build()
+        };
+
         let account = if path.exists() {
-            let file = fs::File::open(&path)?;
+            let file = File::open(path)?;
             let credentials: AccountCredentials = serde_json::from_reader(file)?;
             info!("get acme account from file: {path:?}");
-            Account::from_credentials(credentials)?
+            Account::from_credentials_with_agent(credentials, agent)?
         } else {
-            let (account, credentials) = Account::create(
+            let (account, credentials) = Account::create_with_agent(
                 &NewAccount {
-                    contact: &[],
+                    contact: emails,
                     terms_of_service_agreed: true,
                     only_return_existing: false,
                 },
-                LetsEncrypt::Staging.url(),
+                acme_type.url(),
                 None,
+                agent,
             )?;
-            let file = File::create(&path)?;
+            let file = File::create(path)?;
             serde_json::to_writer_pretty(file, &credentials)?;
-
             info!("create acme account file: {path:?} and write credentials");
             account
         };
         Ok(account)
     }
 
-    async fn create_order_and_auth(&self, domain: String) -> anyhow::Result<(PathBuf, PathBuf)> {
+    async fn create_order_and_auth(
+        &self,
+        domain: String,
+        challenge_path: Arc<PathBuf>,
+    ) -> anyhow::Result<(PathBuf, PathBuf)> {
         //
         let identifier = Identifier::Dns(domain.clone());
         let mut order = self.account.new_order(&NewOrder {
@@ -137,7 +163,7 @@ impl ACMEProvider {
         assert!(matches!(state.status, OrderStatus::Pending));
         let authorizations = order.authorizations()?;
         assert_eq!(authorizations.len(), 1);
-        let authz = authorizations.get(0).unwrap();
+        let authz = authorizations.first().unwrap();
         //for authz in &authorizations {
         // get authorization
         match authz.status {
@@ -152,13 +178,11 @@ impl ACMEProvider {
             .ok_or_else(|| anyhow!("no http01 challenge found for domain:{domain}"))?;
         let Identifier::Dns(identifier) = &authz.identifier;
         let token = challenge.token.clone();
-        let key_authorization = order.key_authorization(challenge);
-        // this is for release lock as quickly as possible.
 
-        let _ = self
-            .auth_sender
-            .send((identifier.to_string(), token, key_authorization))
-            .await;
+        let key_authorization = order.key_authorization(challenge);
+        //TODO: save to
+        let challenge_domain_token_path = get_challenge_path(&challenge_path, &domain, &token);
+        fs::write(challenge_domain_token_path, key_authorization.as_str())?;
         order.set_challenge_ready(&challenge.url)?;
 
         // get token
@@ -225,8 +249,8 @@ impl ACMEProvider {
     }
 
     fn get_certificate_file_names(&self, domain: &str) -> (PathBuf, PathBuf) {
-        let env = if self.stage { "stage" } else { "prod" };
-        // regex use this
+        //let env = self.acme
+        let env = self.acme_type.as_str();
         (
             self.path.join(format!("certificate_{env}_{domain}.pem")),
             self.path.join(format!("certificate_{env}_{domain}.key")),
@@ -235,22 +259,21 @@ impl ACMEProvider {
 }
 
 //#[derive(Debug)]
-pub struct RefreshDomainMessage(Vec<String>);
+pub struct RefreshDomainMessage(pub Vec<String>);
 pub struct ReloadACMEState {
     provider: Arc<ACMEProvider>,
-    disabled_domains: Arc<HashSet<String>>,
-    domains: Arc<HashSet<String>>,
+    disabled_hosts: Arc<HashSet<String>>,
+    hosts: Arc<HashSet<String>>,
+    pub challenge_path: Arc<PathBuf>,
 }
 
 pub struct ReloadACMEStateMessage(pub Option<ReloadACMEState>);
 
 #[derive(Clone)]
 pub struct ACMEManager {
-    sender: Sender<RefreshDomainMessage>,
+    pub sender: Sender<RefreshDomainMessage>,
     pub certificate_map: Arc<DashMap<String, Arc<CertifiedKey>>>,
-    pub auth_sender: Sender<AuthSenderMessage>,
-    // this is for auth, TODO: when to delete item.
-    pub auth_map: Arc<Mutex<HashMap<String, (String, KeyAuthorization)>>>,
+    pub challenge_dir: Arc<RwLock<Option<PathBuf>>>,
 }
 
 impl ACMEManager {
@@ -260,8 +283,7 @@ impl ACMEManager {
         reload_rx: Option<Receiver<ReloadACMEStateMessage>>,
         delay_timer: &DelayTimer,
     ) -> anyhow::Result<Self> {
-        let (auth_sender, mut auth_receiver) = tokio::sync::mpsc::channel::<AuthSenderMessage>(5);
-        let (sender, mut receiver) = tokio::sync::mpsc::channel::<RefreshDomainMessage>(5);
+        let (sender, mut receiver) = tokio::sync::mpsc::channel::<RefreshDomainMessage>(2);
 
         let certificate_map = Arc::new(DashMap::new());
         let acme_config = config.https.as_ref().and_then(|x| x.acme.clone());
@@ -270,15 +292,15 @@ impl ACMEManager {
                 config,
                 acme_config,
                 domain_storage,
-                auth_sender.clone(),
                 certificate_map.clone(),
             )?)
         } else {
             None
         };
 
-        let auth_map = Arc::new(Mutex::new(HashMap::new()));
-        let _auth_map = auth_map.clone();
+        let challenge_path = reload_acme_state
+            .as_ref()
+            .map(|r| r.challenge_path.as_ref().clone());
 
         let _certificate_map = certificate_map.clone();
         tokio::spawn(async move {
@@ -290,19 +312,20 @@ impl ACMEManager {
             ) {
                 if let Some(ReloadACMEState {
                     provider,
-                    disabled_domains,
-                    domains,
+                    disabled_hosts,
+                    hosts,
+                    challenge_path,
                 }) = reload_acme_state
                 {
                     let refresh_domains = if refresh_domains.is_empty() {
-                        domains.iter().map(|v| v.to_string()).collect()
+                        hosts.iter().map(|v| v.to_string()).collect()
                     } else {
                         refresh_domains
                     };
                     let refresh_domains: HashSet<String> = refresh_domains
                         .into_iter()
                         .filter_map(|domain| {
-                            if disabled_domains.contains(&domain) {
+                            if disabled_hosts.contains(&domain) {
                                 return None;
                             }
                             match _certificate_map.get(&domain) {
@@ -327,6 +350,7 @@ impl ACMEManager {
                         provider.clone(),
                         _certificate_map.clone(),
                         refresh_domains,
+                        challenge_path.clone(),
                     )
                     .await;
                 }
@@ -354,23 +378,20 @@ impl ACMEManager {
             }
         });
 
-        tokio::spawn(async move {
-            let auth_map = _auth_map.clone();
-            while let Some((domain, token, key_authorization)) = auth_receiver.recv().await {
-                let mut map = auth_map.lock().await;
-                map.insert(domain, (token, key_authorization));
-            }
-        });
-
         delay_timer
             .add_task(Self::create_daily_trigger_task(sender.clone())?)
             .with_context(|| "add daily check cert job fail")?;
 
+        let _sender = sender.clone();
+        // trigger
+        tokio::spawn(async move {
+            sleep(Duration::from_secs(3)).await;
+            let _ = _sender.send(RefreshDomainMessage(vec![])).await;
+        });
         Ok(Self {
             sender,
             certificate_map,
-            auth_map,
-            auth_sender,
+            challenge_dir: Arc::new(RwLock::new(challenge_path)),
         })
     }
 
@@ -378,13 +399,15 @@ impl ACMEManager {
         config: &Config,
         acme_config: ACMEConfig,
         domain_storage: Arc<DomainStorage>,
-        auth_sender: AuthSender,
         certificate_map: Arc<DashMap<String, Arc<CertifiedKey>>>,
     ) -> anyhow::Result<ReloadACMEState> {
-        let provider =
-            ACMEProvider::init(acme_config, &PathBuf::from(&config.file_dir), auth_sender)?;
+        let provider = ACMEProvider::init(acme_config, &PathBuf::from(&config.file_dir))?;
 
-        let disable_https_domains: HashSet<String> = config
+        let challenge_path = provider.path.join(CHALLENGE_DIR);
+        if !challenge_path.exists() {
+            fs::create_dir(&challenge_path)?;
+        }
+        let disable_https_hosts: HashSet<String> = config
             .domains
             .iter()
             .filter_map(|v| {
@@ -393,41 +416,43 @@ impl ACMEManager {
                     .map(|v| v.disable_acme)
                     .unwrap_or_else(|| false)
                 {
-                    Some(v.domain.clone())
+                    Some(get_host_path_from_domain(&v.domain).0.to_string())
                 } else {
                     None
                 }
             })
             .collect();
 
-        let mut domains: HashSet<String> = domain_storage
+        let mut hosts: HashSet<String> = domain_storage
             .get_domain_info()?
             .into_iter()
             .filter_map(|info| {
                 let domain = info.domain;
-                if disable_https_domains.contains(&domain) {
+                let host = get_host_path_from_domain(&domain).0;
+                if disable_https_hosts.contains(host) {
                     None
                 } else {
-                    Some(domain.to_string())
+                    Some(host.to_string())
                 }
             })
             .collect();
 
-        let certificates = get_certificates_files(provider.stage, &provider.path);
+        let certificates = get_certificates_files(&provider.acme_type, &provider.path);
 
         for (domain, cert) in certificates {
-            if !disable_https_domains.contains(&domain) {
+            if !disable_https_hosts.contains(&domain) {
                 // prevent certificates get dirty file when reload
                 if !certificate_map.contains_key(&domain) {
                     certificate_map.insert(domain.clone(), Arc::new(cert));
                 }
-                domains.insert(domain);
+                hosts.insert(domain);
             }
         }
         Ok(ReloadACMEState {
             provider: Arc::new(provider),
-            domains: Arc::new(domains),
-            disabled_domains: Arc::new(disable_https_domains),
+            hosts: Arc::new(hosts),
+            disabled_hosts: Arc::new(disable_https_hosts),
+            challenge_path: Arc::new(challenge_path),
         })
     }
 
@@ -435,10 +460,14 @@ impl ACMEManager {
         provider: Arc<ACMEProvider>,
         certificate_map: Arc<DashMap<String, Arc<CertifiedKey>>>,
         renewal_domains: HashSet<String>,
+        challenge_path: Arc<PathBuf>,
     ) {
         for domain in renewal_domains {
             debug!("{domain} begin to get cert");
-            match provider.create_order_and_auth(domain.clone()).await {
+            match provider
+                .create_order_and_auth(domain.clone(), challenge_path.clone())
+                .await
+            {
                 Ok((public_cert, private_key)) => {
                     certificate_map.insert(
                         domain.clone(),
@@ -465,10 +494,11 @@ impl ACMEManager {
             .set_maximum_parallel_runnable_num(1)
             .spawn_routine(task)?)
     }
-    pub async fn add_new_domain(&self, domain: &str) {
+    //TODO: add it.
+    pub async fn add_new_domain(&self, host: &str) {
         let _ = self
             .sender
-            .send(RefreshDomainMessage(vec![domain.to_string()]))
+            .send(RefreshDomainMessage(vec![host.to_string()]))
             .await;
     }
 }
@@ -477,18 +507,14 @@ fn cert_need_refresh(certified_key: &CertifiedKey) -> anyhow::Result<bool> {
     let cert = certified_key.end_entity_cert()?;
     let (_, cert) = x509_parser::parse_x509_certificate(cert.as_ref())?;
     let validity = cert.validity();
-    let [begin, end] =
-        [validity.not_before, validity.not_after].map(|t| Utc.timestamp(t.timestamp(), 0));
+    let [begin, end] = [validity.not_before, validity.not_after]
+        .map(|t| Utc.timestamp_opt(t.timestamp(), 0).unwrap());
     let now = Utc::now();
     Ok(now < begin || now > end || end - now < chrono::Duration::days(9))
 }
 
-fn get_certificates_files(stage: bool, path: &PathBuf) -> Vec<(String, CertifiedKey)> {
-    let env = if stage {
-        "certificate_stage_"
-    } else {
-        "certificate_prod_"
-    };
+fn get_certificates_files(acme_type: &ACMEType, path: &PathBuf) -> Vec<(String, CertifiedKey)> {
+    let env = format!("certificate_{}_", acme_type.as_str());
     WalkDir::new(path)
         .min_depth(1)
         .max_depth(1)
@@ -499,7 +525,7 @@ fn get_certificates_files(stage: bool, path: &PathBuf) -> Vec<(String, Certified
                 if let Some(metadata) = entity.metadata().ok();
                 if metadata.is_file();
                 if let Some(file_name) = entity.file_name().to_str();
-                if file_name.starts_with(env);// must keep this to filter different env
+                if file_name.starts_with(&env);// must keep this to filter different env
                 if let Some(r) = PRIVATE_KEY_NAME_REGEX.captures(file_name);
                 if let Some(domain) = r.name("domain").map(|v|v.as_str());
                 let cert_path = path.join(format!("{env}{domain}.pem"));
@@ -523,6 +549,10 @@ fn get_certificates_files(stage: bool, path: &PathBuf) -> Vec<(String, Certified
         .collect()
 }
 
+pub fn get_challenge_path(prefix: &Path, host: &str, token: &str) -> PathBuf {
+    prefix.join(format!("{host}_{token}.token"))
+}
+
 #[cfg(test)]
 mod test {
     use base64::prelude::*;
@@ -530,6 +560,7 @@ mod test {
     use x509_parser::nom::AsBytes;
 
     use crate::acme::PRIVATE_KEY_NAME_REGEX;
+    use crate::config::ACMEType;
     use crate::tls::load_ssl_file;
     use crate::LOCAL_HOST;
 
@@ -564,5 +595,31 @@ mod test {
 
         let (_, z) = x509_parser::parse_x509_certificate(z).unwrap();
         println!("{:?}", z.validity);
+    }
+
+    //#[ignore]
+    #[test]
+    fn test_load_ci_file() {
+        let certified_key = load_ssl_file(
+            &PathBuf::from(format!(
+                "../tests/data/web/acme/certificate_ci_{LOCAL_HOST}.pem"
+            )),
+            &PathBuf::from(format!(
+                "../tests/data/web/acme/certificate_ci_{LOCAL_HOST}.key"
+            )),
+        )
+        .unwrap();
+
+        let z = certified_key.end_entity_cert().unwrap().as_bytes();
+
+        let (_, z) = x509_parser::parse_x509_certificate(z).unwrap();
+        println!("{:?}", z.validity);
+    }
+
+    #[test]
+    fn test_matches() {
+        let r = &ACMEType::CI;
+        let r = matches!(r, ACMEType::CI);
+        assert!(r);
     }
 }

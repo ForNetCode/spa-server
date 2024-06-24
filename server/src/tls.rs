@@ -7,7 +7,7 @@ use dashmap::DashMap;
 use futures_util::ready;
 use hyper::server::accept::Accept;
 use hyper::server::conn::{AddrIncoming, AddrStream};
-use rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs1KeyDer};
+use rustls::pki_types::CertificateDer;
 use rustls::server::{ClientHello, ResolvesServerCert, ResolvesServerCertUsingSni};
 use rustls::sign::CertifiedKey;
 use rustls::Error;
@@ -118,7 +118,7 @@ pub fn load_ssl_server_config(
             })
         }
     } else {
-        return Ok(None)
+        return Ok(None);
     };
     let mut cfg = ServerConfig::builder()
         .with_no_client_auth()
@@ -145,14 +145,9 @@ pub(crate) fn load_ssl_file(
     let key_file = File::open(key_path)
         .with_context(|| format!("fail to load private key:{:?}", cert_path))?;
     let mut reader = io::BufReader::new(key_file);
-    let keys = rustls_pemfile::rsa_private_keys(&mut reader)
-        .collect::<Result<Vec<PrivatePkcs1KeyDer<'static>>, _>>()
-        .with_context(|| format!("fail to parse private key:{:?}", cert_path))?;
-    if keys.len() != 1 {
-        return Err(anyhow!("expected a single private key"));
-    }
 
-    let private_key = PrivateKeyDer::from(keys.into_iter().nth(0).unwrap());
+    let private_key = rustls_pemfile::private_key(&mut reader)?
+        .ok_or_else(|| anyhow!("there's no private key"))?;
     let key = rustls::crypto::ring::sign::any_supported_type(&private_key)
         .map_err(|_| Error::General("invalid private key".into()))?;
     Ok(CertifiedKey::new(certs, key))

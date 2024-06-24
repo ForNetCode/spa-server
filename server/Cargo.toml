@@ -20,11 +20,11 @@ path = "src/bin/main.rs"
 [dependencies]
 # web
 hyper = { version = "0.14", features = ["stream", "server", "http1", "http2", "tcp"] } # sync with warp
-tokio = { version = "1", features = ["macros", "rt-multi-thread", "io-std", "sync", "time", "tokio-macros"] } # sync with warp
+tokio = { version = "1.0", features = ["macros", "rt-multi-thread", "io-std", "sync", "time", "tokio-macros"] } # sync with warp
 #tokio-util = "0.6.9" # sync with warp -> hyper -> h2
 futures = "0.3"# sync with warp
 warp = { path = "../warp", features = ["tls"] }
-socket2 = "0.4.4"
+socket2 = "0.5.7"
 
 # warp inner
 percent-encoding = "2.1"
@@ -61,9 +61,12 @@ dashmap = "5.5"
 
 #s3
 #rust-s3 = {version="0.31", features = ["blocking", "tokio-rustls-tls"], default-features = false}
-small-acme = "0.2"
+small-acme = { path = "../small-acme" }
+ureq = { version = "2", default-features = false, features = ["json", "tls"] } # from small-acme
 rcgen = "0.12" # sync with small-acme
-pem = "3.0"# sync with pem
+#pem = "3.0"# sync with rcgen
+#webpki-roots = "0.26.3"
+#instant-acme = {path = "../instant-acme"} has
 #tokio-rustls-acme = "0.3"
 
 # util

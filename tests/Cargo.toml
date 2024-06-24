@@ -6,6 +6,9 @@ publish = false
 
 [[test]]
 name = "starter"
+[[test]]
+name = "acme_test"
+
 
 [dependencies]
 spa-client = { path = "../client" }

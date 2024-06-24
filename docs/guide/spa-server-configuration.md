@@ -1,15 +1,20 @@
 # Configuration
+
 ## Overview
-The config format is [HOCON(Human-Optimized Config Object Notation)](https://github.com/lightbend/config/blob/main/HOCON.md).
+
+The config format
+is [HOCON(Human-Optimized Config Object Notation)](https://github.com/lightbend/config/blob/main/HOCON.md).
 
 The config default path is './config.conf', you can change it by environment `SPA_CONFIG`.
+
 ## Config Reference
 
-
 ```hocon
-# http bind, if set port <= 0, will disable http server(need set https config)
-port = 80
-addr = "0.0.0.0"
+# http bind, if set port <= 0 or remove http, will disable http server(need set https config)
+http {
+  port = 80
+  addr = "0.0.0.0"
+}
 
 # directory to store static web files. if you use docker, please mount a persistence volume for it.
 file_dir = "/data"
@@ -19,7 +24,6 @@ file_dir = "/data"
 # Access-Control-Allow-Methods: OPTION,GET,HEAD
 # Access-Control-Max-Age: 3600
 // cors = true
-
 # https config, optional
 //https {
 //  # default value for https ssl
@@ -29,15 +33,15 @@ file_dir = "/data"
 //    # public ssl cert
 //    public = "public.cert path"
 //  }
-
-//  # acme config, it doest not support run with https.ssl config.  
+//  # acme config, it doest not support run with https.ssl config.
 //  acme {
+//    # emails to Let's Encrypt needs to interact.
 //    emails = ["email@example.com"]
 //    # directory to store account and certificate
-//    # optional, default is ${file_dir}/acme 
+//    # optional, default is ${file_dir}/acme
 //    // dir = "/data/acme"
-//    # optional ,default is false
-//    //stage = false
+//    # ci / stage / prod, default is prod
+//    //type = prod
 //  }
 
 //  # https bind address
@@ -54,9 +58,8 @@ file_dir = "/data"
 
 # default cache config
 //cache {
-//  # if file size > max_size, it will not be cached. default is 10485760 (10MB).
+//  # if file size > max_size, it will not be cached. default is (10MB).
 //  max_size = 10MB
-
 //  # http header Cache-Control config,
 //  # optional, if not set, won't sender this header to client
 //  client_cache = [{
@@ -67,7 +70,6 @@ file_dir = "/data"
 //    expire = 0
 //    extension_names = [html]
 //  }]
-
 //  # gzip compression for js/json/icon/json, default is false,
 //  # only support gzip algo, and only compress cached files,
 //  # be careful to set it true
@@ -83,15 +85,12 @@ file_dir = "/data"
 //# bind host
 //  port = 9000
 //  addr = "127.0.0.1"
-
 //  # this is used to check client request
 //  # put it in http header,  Authorization: Bearer $token
 //  token = "token"
-
 //  # max file size allowed to be uploaded,
 //  # default is 30MB(30*1024*1024)
 //  max_upload_size = 31457280
-
 //  # delete deprecated version by cron
 //  deprecated_version_delete {
 //    # default value: every day at 3am.

@@ -1,3 +1,6 @@
 [submodule "warp"]
 	path = warp
 	url = git@github.com:timzaak/warp.git
+[submodule "small-acme"]
+	path = small-acme
+	url = git@github.com:timzaak/small-acme.git

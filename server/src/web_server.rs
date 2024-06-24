@@ -11,6 +11,7 @@ use std::sync::Arc;
 use rustls::ServerConfig;
 use tokio::net::TcpListener as TKTcpListener;
 use tokio::sync::oneshot::Receiver;
+use crate::acme::ChallengePath;
 
 use crate::config::Config;
 use crate::domain_storage::DomainStorage;
@@ -59,9 +60,11 @@ impl Server {
             .https
             .as_ref()
             .map(|x| x.http_redirect_to_https);
+        
         let default = DomainServiceConfig {
             cors: conf.cors,
             http_redirect_to_https: default_http_redirect_to_https,
+            enable_acme: conf.https.as_ref().and_then(|x|x.acme.as_ref()).is_some(),
         };
         let service_config: HashMap<String, DomainServiceConfig> = conf
             .domains
@@ -74,6 +77,7 @@ impl Server {
                         .as_ref()
                         .and_then(|x| x.http_redirect_to_https)
                         .or(default_http_redirect_to_https),
+                    enable_acme: domain.https.as_ref().map(|x|x.disable_acme).unwrap_or(default.enable_acme),
                 };
 
                 (domain.domain.clone(), domain_service_config)
@@ -95,6 +99,7 @@ impl Server {
         &self,
         rx: Option<Receiver<()>>,
         tls_server_config: Option<Arc<ServerConfig>>,
+        challenge_path: ChallengePath,
     ) -> anyhow::Result<()> {
         if let Some(config) = &self.conf.https {
             // This has checked by load_ssl_server_config
@@ -105,9 +110,10 @@ impl Server {
             let make_svc = hyper::service::make_service_fn(|_| {
                 let service_config = self.service_config.clone();
                 let storage = self.storage.clone();
+                let challenge_path = challenge_path.clone();
                 async move {
                     Ok::<_, Infallible>(service_fn(move |req| {
-                        create_service(req, service_config.clone(), storage.clone(), true)
+                        create_service(req, service_config.clone(), storage.clone(), challenge_path.clone(),true)
                     }))
                 }
             });
@@ -122,17 +128,17 @@ impl Server {
         Ok(())
     }
 
-    pub async fn init_http_server(&self, rx: Option<Receiver<()>>) -> anyhow::Result<()> {
+    pub async fn init_http_server(&self, rx: Option<Receiver<()>>, challenge_path: ChallengePath) -> anyhow::Result<()> {
         if let Some(http_config) = &self.conf.http {
             let bind_address =
                 SocketAddr::from_str(&format!("{}:{}", &http_config.addr, &http_config.port)).unwrap();
             let make_svc = hyper::service::make_service_fn(|_| {
                 let service_config = self.service_config.clone();
                 let storage = self.storage.clone();
-
+                let challenge_path = challenge_path.clone();
                 async move {
                     Ok::<_, Infallible>(service_fn(move |req| {
-                        create_service(req, service_config.clone(), storage.clone(), false)
+                        create_service(req, service_config.clone(), storage.clone(),challenge_path.clone(),false)
                     }))
                 }
             });

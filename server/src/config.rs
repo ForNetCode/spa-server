@@ -1,6 +1,7 @@
 use anyhow::{bail, Context};
 use hocon::de::wrappers::Serde;
 use serde::Deserialize;
+use small_acme::LetsEncrypt;
 use std::env;
 use std::time::Duration;
 use tracing::warn;
@@ -40,12 +41,26 @@ impl Config {
             if http_config.acme.is_some() && http_config.ssl.is_some() {
                 bail!("spa-server don't support ssl and acme config in the meantime");
             }
-            if http_config.acme.is_some() && config.http.as_ref().filter(|v|v.port != 80).is_none() {
+            if http_config
+                .acme
+                .as_ref()
+                .is_some_and(|c| c.emails.is_empty())
+            {
+                bail!("acme emails must be set")
+            }
+            if http_config
+                .acme
+                .as_ref()
+                .is_some_and(|c| matches!(c.acme_type, ACMEType::CI) && c.ci_ca_path.is_none())
+            {
+                bail!("acme CI must set ca path")
+            }
+            if http_config.acme.is_some() && config.http.as_ref().filter(|v| v.port != 80).is_none()
+            {
                 warn!("acme needs http port:80 to signed https certificate");
             }
         }
         Ok(config)
-        
     }
 }
 #[derive(Deserialize, Debug, Clone, Eq, PartialEq)]
@@ -84,12 +99,40 @@ pub struct SSL {
     pub public: String,
 }
 
+#[derive(Clone, Debug, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum ACMEType {
+    CI,
+    #[default]
+    Prod,
+    Stage,
+}
+
+impl ACMEType {
+    pub fn url(&self) -> &'static str {
+        match self {
+            ACMEType::Stage => LetsEncrypt::Staging.url(),
+            ACMEType::Prod => LetsEncrypt::Production.url(),
+            ACMEType::CI => "https://localhost:14000/dir",
+        }
+    }
+    //acme_async regex use this.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            ACMEType::Stage => "stage",
+            ACMEType::Prod => "prod",
+            ACMEType::CI => "ci",
+        }
+    }
+}
+
 #[derive(Deserialize, Debug, Clone, Default)]
 pub struct ACMEConfig {
     pub emails: Vec<String>,
     pub dir: Option<String>,
-    #[serde(default)]
-    pub stage: bool,
+    #[serde(default, rename = "type")]
+    pub acme_type: ACMEType,
+    pub ci_ca_path: Option<String>, // this is for CI
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -156,4 +199,11 @@ pub fn default_cron() -> String {
 }
 pub fn default_max_reserve() -> u32 {
     2
+}
+
+pub fn get_host_path_from_domain(domain: &str) -> (&str, &str) {
+    match domain.split_once('/') {
+        None => (domain, ""),
+        Some(v) => v,
+    }
 }

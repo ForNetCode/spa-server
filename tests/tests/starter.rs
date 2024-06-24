@@ -6,7 +6,6 @@ mod common;
 use crate::common::*;
 use common::run_server;
 
-const LOCAL_HOST: &str = "local.fornetcode.com";
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 3)]
 async fn start_server_and_client_upload_file() {
@@ -15,7 +14,7 @@ async fn start_server_and_client_upload_file() {
     let request_prefix = format!("http://{LOCAL_HOST}:8080/27");
     let request_prefix = &request_prefix;
 
-    clean_test_dir(LOCAL_HOST);
+    clean_web_domain_dir(LOCAL_HOST);
 
     run_server();
 
@@ -54,7 +53,7 @@ async fn start_server_with_single_domain() {
     let request_prefix = format!("http://{LOCAL_HOST}:8080");
     let request_prefix = &request_prefix;
 
-    clean_test_dir(LOCAL_HOST);
+    clean_web_domain_dir(LOCAL_HOST);
 
     run_server();
 
@@ -88,7 +87,7 @@ async fn start_server_with_single_domain() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 3)]
 async fn multiple_domain_check() {
-    clean_test_dir(LOCAL_HOST);
+    clean_web_domain_dir(LOCAL_HOST);
     let domain = format!("{LOCAL_HOST}/27");
     let domain = &domain;
     let request_prefix = format!("http://{LOCAL_HOST}:8080/27");
@@ -113,7 +112,7 @@ async fn multiple_domain_check() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 3)]
 async fn evoke_cache_when_serving_new_version() {
-    clean_test_dir(LOCAL_HOST);
+    clean_web_domain_dir(LOCAL_HOST);
     let domain = format!("{LOCAL_HOST}/27");
     let domain = &domain;
     let request_prefix = format!("http://{LOCAL_HOST}:8080/27");
@@ -157,7 +156,7 @@ async fn cold_start_server_and_serving_files() {
 
 #[tokio::test]
 async fn simple_hot_reload() {
-    clean_test_dir(LOCAL_HOST);
+    clean_web_domain_dir(LOCAL_HOST);
     let domain = format!("{LOCAL_HOST}/27");
     let domain = &domain;
     let request_prefix = format!("http://{LOCAL_HOST}:8080/27");
@@ -177,7 +176,7 @@ async fn simple_hot_reload() {
 
 #[tokio::test]
 async fn self_signed_cert_https() {
-    clean_test_dir(LOCAL_HOST);
+    clean_web_domain_dir(LOCAL_HOST);
     let domain = format!("{LOCAL_HOST}/27");
     let domain = &domain;
     let request_prefix = format!("https://{LOCAL_HOST}:8443/27");

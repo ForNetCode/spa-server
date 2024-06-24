@@ -1,3 +1,4 @@
+use crate::acme::{get_challenge_path, ChallengePath, ACME_CHALLENGE};
 use crate::cors::{cors_resp, resp_cors_request, Validated};
 use crate::DomainStorage;
 use futures_util::future::Either;
@@ -9,7 +10,9 @@ use std::collections::HashMap;
 use std::convert::Infallible;
 use std::str::FromStr;
 use std::sync::Arc;
-use warp::fs::Conditionals;
+use tracing::warn;
+use warp::fs::{ArcPath, Conditionals};
+use warp::Reply;
 
 use crate::static_file_filter::{cache_or_file_reply, get_cache_file};
 
@@ -21,6 +24,7 @@ pub struct ServiceConfig {
 pub struct DomainServiceConfig {
     pub cors: bool,
     pub http_redirect_to_https: Option<u32>,
+    pub enable_acme: bool,
 }
 
 impl ServiceConfig {
@@ -33,22 +37,19 @@ pub async fn create_service(
     req: Request<Body>,
     service_config: Arc<ServiceConfig>,
     domain_storage: Arc<DomainStorage>,
+    challenge_path: ChallengePath,
     is_https: bool,
-) -> Result<Response<Body>, Infallible> {
+) -> Result<warp::reply::Response, Infallible> {
     let uri = req.uri();
     let from_uri = uri.authority().cloned();
     // trick, need more check
     let authority_opt = from_uri.or_else(|| {
-        req.headers()
-            .get("host")
-            .map(|value| {
-                value
-                    .to_str()
-                    .ok()
-                    .map(|x| Authority::from_str(x).ok())
-                    .flatten()
-            })
-            .flatten()
+        req.headers().get("host").and_then(|value| {
+            value
+                .to_str()
+                .ok()
+                .and_then(|x| Authority::from_str(x).ok())
+        })
     });
 
     if let Some(authority) = authority_opt {
@@ -60,8 +61,35 @@ pub async fn create_service(
             Either::Left(x) => Some(x),
             Either::Right(v) => return Ok(v),
         };
+        let path = uri.path();
         // redirect to https
         if !is_https {
+            // check if acme challenge
+            if service_config.enable_acme && path.starts_with(ACME_CHALLENGE) {
+                let token = &path[ACME_CHALLENGE.len()..];
+                {
+                    if let Some(path) = challenge_path.read().await.as_ref() {
+                        let path = get_challenge_path(path, host, token);
+                        let headers = req.headers();
+                        let conditionals = Conditionals {
+                            if_modified_since: headers.typed_get(),
+                            if_unmodified_since: headers.typed_get(),
+                            if_range: headers.typed_get(),
+                            range: headers.typed_get(),
+                        };
+                        return match warp::fs::file_reply(ArcPath(Arc::new(path)), conditionals)
+                            .await
+                        {
+                            Ok(resp) => Ok(resp.into_response()),
+                            Err(_err) => {
+                                warn!("known challenge error:{_err:?}");
+                                Ok(not_found())
+                            }
+                        };
+                    }
+                }
+                return Ok(not_found());
+            }
             if let Some(port) = service_config.http_redirect_to_https {
                 let mut resp = Response::default();
                 let redirect_path = if port != 443 {
@@ -76,7 +104,6 @@ pub async fn create_service(
             }
         }
         // path: "" => "/"
-        let path = uri.path();
         if domain_storage.check_if_empty_index(host, path) {
             let mut resp = Response::default();
             let mut path = format!("{path}/");

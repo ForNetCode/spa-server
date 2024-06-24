@@ -8,6 +8,8 @@ use tokio::task::JoinHandle;
 use tracing::{error, Level};
 use tracing_subscriber::EnvFilter;
 
+pub const LOCAL_HOST: &str = "local.fornetcode.com";
+
 pub fn get_test_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("data")
 }
@@ -200,7 +202,7 @@ pub async fn assert_expired(request_prefix: &str, check_path: Vec<(&'static str,
     }
 }
 
-pub fn clean_test_dir(domain: &str) {
+pub fn clean_web_domain_dir(domain: &str) {
     let path = get_test_dir().join("web").join(domain);
     if path.exists() {
         fs::remove_dir_all(path).unwrap();

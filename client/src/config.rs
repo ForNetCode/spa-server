@@ -63,8 +63,7 @@ impl Config {
             parallel: hocon["upload"]["parallel"]
                 .as_string()
                 .or(env_opt("SPA_UPLOAD_PARALLEL"))
-                .map(|x| x.parse::<u32>().ok())
-                .flatten()
+                .and_then(|x| x.parse::<u32>().ok())
                 .unwrap_or(3),
         };
         let config: Config = Config {
