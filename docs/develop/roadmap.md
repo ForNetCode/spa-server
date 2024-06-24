@@ -4,7 +4,7 @@
 
 - bench: add benchmark
 - [x] integration check of files list
-- **big break change**: config format change from honcon to yaml (honcon lib is archived)
-- [x] support Let's Encrypt with [acme-lib](https://crates.io/crates/acme-lib)
+- **big break change**: config format change from hocon to yaml (hocon lib is archived)
+- [x] support Let's Encrypt
 - admin server support HTTPS
-- use it in production environment
+- [x] use it in production environment

@@ -1,6 +1,9 @@
 # Change Log
 ### Version 2.2.3
 - fix: sub_path '' => '/', like GitHub pages
+- fix: redirect with no querystring
+- feat: support ACME Pebble integration test, and change config
+- deps: update server deps
 
 ### Version 2.2.2
 
