@@ -1,5 +1,9 @@
 # Change Log
 
+### Version 2.3.0
+
+- feat: support toml config format, deprecated hocon config format.
+
 ### Version 2.2.4
 
 - feat: add cert query API (no doc, no client SDK support)
@@ -8,6 +12,7 @@
 - feat: add revoke version API (release JS SDK 2.2.4)
 
 ### Version 2.2.3
+
 - fix: sub_path '' => '/', like GitHub pages
 - fix: redirect with no querystring
 - ci: support ACME pebble integration test

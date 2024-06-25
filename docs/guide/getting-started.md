@@ -8,20 +8,19 @@ This section will help you bring spa-server up, and upload your static web files
 
 ```bash
 $ echo '
-http {
-  port = 8080
-  addr = "0.0.0.0"
-}
 file_dir = "/data"
 
-admin_config {
-  port = 9000
-  addr = "0.0.0.0"  
-  token = "token"
-}
-' > config.conf
+[http]
+port = 8080
+addr = "0.0.0.0"
 
-$ docker run -it -p 8080 -p 9000 -v $(pwd)/config.conf:/config.conf \
+[admin_config]
+port = 9000
+addr = "0.0.0.0"  
+token = "token"
+' > config.toml
+
+$ docker run -it -p 8080 -p 9000 -v $(pwd)/config.toml:/config.toml \
 ghcr.io/fornetcode/spa-server:latest
 ```
 

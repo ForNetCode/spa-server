@@ -1,6 +1,6 @@
 [package]
 name = "spa-client"
-version = "2.2.4"
+version = "2.3.0"
 edition = "2021"
 authors = ["timzaak"]
 license = "MIT"
@@ -36,6 +36,8 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 #config
 hocon = "0.9"
+toml = "0.8.14"
+toml_edit = "0.22.14"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 

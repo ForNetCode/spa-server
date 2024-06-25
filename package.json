@@ -1,6 +1,6 @@
 {
   "name": "spa-server-doc",
-  "version": "2.2.4",
+  "version": "2.3.0",
   "description": "This is for docs powered by VitePress",
   "private": true,
   "type": "module",

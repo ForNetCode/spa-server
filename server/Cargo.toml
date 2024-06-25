@@ -1,6 +1,6 @@
 [package]
 name = "spa-server"
-version = "2.2.4"
+version = "2.3.0"
 edition = "2021"
 authors = ["timzaak"]
 license = "MIT"
@@ -50,7 +50,7 @@ delay_timer = "0.11.6" # dashmap is same
 
 #config
 hocon = "0.9"
-serde_yml = "0.0.10"
+toml = { version = "0.8.14" }
 serde = { version = "1.0", features = ["derive"] }
 serde_repr = "0.1"
 serde_json = "1"
