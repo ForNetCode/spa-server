@@ -108,9 +108,8 @@ impl FileCache {
                     .iter()
                     .filter_map(|(v, k)| match sub_path {
                         Some(sub_path) => {
-                            if v.starts_with(sub_path)
-                                && version > k.version
-                                && version - k.version > 2
+                            if v.starts_with(sub_path) &&
+                                (version > k.version && version - k.version > 2 || version < k.version)
                             {
                                 None
                             } else {
@@ -118,7 +117,7 @@ impl FileCache {
                             }
                         }
                         None => {
-                            if version > k.version && version - k.version > 2 {
+                            if version > k.version && version - k.version > 2 || version < k.version {
                                 None
                             } else {
                                 Some((v.clone(), k.clone()))
@@ -233,7 +232,7 @@ impl FileCache {
                     .cloned();
                 if let Some(v) = index_opt {
                     result.insert(format!("{key_prefix}/"), v.clone());
-                    // result.insert(key_prefix.to_string(), v);
+                    // result.insert(key_prefix.to_string(), v); //GitHub Action CI would trigger This, but I could not trigger this in my compute
                 }
             }
             None => {

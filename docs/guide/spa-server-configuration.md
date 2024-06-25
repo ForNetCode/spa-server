@@ -40,7 +40,7 @@ file_dir = "/data"
 //    # directory to store account and certificate
 //    # optional, default is ${file_dir}/acme
 //    // dir = "/data/acme"
-//    # ci / stage / prod, default is prod
+//    # ci / stage / prod, default is prod, ci is just for CI test with Pebble, don't use it.
 //    //type = prod
 //  }
 

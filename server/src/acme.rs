@@ -8,7 +8,7 @@ use std::time::Duration;
 
 use anyhow::{anyhow, bail, Context};
 use base64::prelude::*;
-use chrono::{TimeZone, Utc};
+use chrono::{DateTime, TimeZone, Utc};
 use dashmap::DashMap;
 use delay_timer::prelude::{DelayTimer, Task, TaskBuilder};
 use if_chain::if_chain;
@@ -27,7 +27,7 @@ use tracing::{debug, error, info, warn};
 use walkdir::WalkDir;
 
 use crate::config::{get_host_path_from_domain, ACMEConfig, ACMEType, Config};
-use crate::domain_storage::DomainStorage;
+use crate::domain_storage::{CertInfo, DomainStorage};
 use crate::tls::load_ssl_file;
 
 const ACME_DIR: &str = "acme";
@@ -220,11 +220,11 @@ impl ACMEProvider {
         let cert_chain_pem = loop {
             match order.certificate() {
                 Ok(Some(cert_chain_pem)) => break cert_chain_pem,
-                _ => sleep(Duration::from_secs((1 << (retries + 1)).min(10))).await,
+                _ => sleep(Duration::from_secs(1)).await,
             }
             retries += 1;
             warn!("domain: {domain} order certificate failure at {retries}");
-            if retries > 10 {
+            if retries > 20 {
                 bail!("domain {domain} cert not received")
             }
         };
@@ -494,21 +494,58 @@ impl ACMEManager {
             .set_maximum_parallel_runnable_num(1)
             .spawn_routine(task)?)
     }
-    //TODO: add it.
     pub async fn add_new_domain(&self, host: &str) {
         let _ = self
             .sender
             .send(RefreshDomainMessage(vec![host.to_string()]))
             .await;
     }
+
+    pub async fn get_cert_data(&self, host:Option<&String>) ->anyhow::Result<Vec<CertInfo>>{
+        let result = match host {
+            Some(host) => {
+                match self.certificate_map.get(host) {
+                    Some(value) => {
+                        let [begin, end] = get_cert_validate_time(&value)?;
+                        vec![CertInfo {
+                            begin,
+                            end,
+                            host: host.to_owned(),
+                        }]
+
+                    },
+                    None => vec![]
+                }
+            }
+            None => {
+                self.certificate_map.iter().filter_map(|item| {
+                    match get_cert_validate_time(&item)  {
+                        Ok([begin, end]) => Some(CertInfo {
+                            begin, end, host:item.key().to_string()
+                        }),
+                        Err(error) => {
+                            warn!("get {} cert fail:{error}", item.key());
+                            None
+                        }
+                    }
+                }).collect()
+            }
+        };
+        Ok(result)
+    }
+
 }
 
-fn cert_need_refresh(certified_key: &CertifiedKey) -> anyhow::Result<bool> {
+fn get_cert_validate_time(certified_key: &CertifiedKey) -> anyhow::Result<[DateTime<Utc>;2]> {
     let cert = certified_key.end_entity_cert()?;
     let (_, cert) = x509_parser::parse_x509_certificate(cert.as_ref())?;
     let validity = cert.validity();
-    let [begin, end] = [validity.not_before, validity.not_after]
-        .map(|t| Utc.timestamp_opt(t.timestamp(), 0).unwrap());
+    Ok([validity.not_before, validity.not_after]
+        .map(|t| Utc.timestamp_opt(t.timestamp(), 0).unwrap()))
+}
+
+fn cert_need_refresh(certified_key: &CertifiedKey) -> anyhow::Result<bool> {
+    let [begin, end] = get_cert_validate_time(certified_key)?;
     let now = Utc::now();
     Ok(now < begin || now > end || end - now < chrono::Duration::days(9))
 }

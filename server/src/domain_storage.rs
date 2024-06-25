@@ -1,6 +1,8 @@
+use crate::acme::ACMEManager;
 use crate::config::get_host_path_from_domain;
 use crate::file_cache::{CacheItem, FileCache};
 use anyhow::{anyhow, bail, Context};
+use chrono::{DateTime, Utc};
 use dashmap::DashMap;
 use lazy_static::lazy_static;
 use md5::{Digest, Md5};
@@ -16,7 +18,6 @@ use std::sync::Arc;
 use tracing::{debug, info};
 use walkdir::{DirEntry, WalkDir};
 use warp::fs::sanitize_path;
-use crate::acme::ACMEManager;
 
 pub(crate) const URI_REGEX_STR: &str =
     "[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+\\.?";
@@ -28,6 +29,7 @@ lazy_static! {
 
 pub(crate) const UPLOADING_FILE_NAME: &str = ".SPA-Processing";
 pub(crate) const MULTIPLE_WEB_FILE_NAME: &str = ".SPA-Multiple";
+// pub(crate) const SINGLE_WEB_FILE_NAME: &str = ".SPA-Single";
 
 #[derive(Debug)]
 pub enum DomainMeta {
@@ -197,7 +199,7 @@ impl DomainStorage {
         let mut max_version = 0;
         let mut uploading_version = None;
         if !domain_dir.exists() {
-            return Ok((None, None))
+            return Ok((None, None));
         }
         for version_dir_entry in fs::read_dir(domain_dir)? {
             let version_dir_entry = version_dir_entry?;
@@ -346,15 +348,16 @@ impl DomainStorage {
         }
     }
 
-    fn get_version_path(&self, host: &str, version: u32) -> PathBuf {
+    pub fn get_version_path(&self, host: &str, version: u32) -> PathBuf {
         let mut prefix = self.prefix.clone();
         prefix.push(host);
         prefix.push(version.to_string());
         prefix
     }
 
-    pub fn get_upload_position(&self, domain: &str) -> UploadDomainPosition {
-        if let Some(version) = self.uploading_status.get(domain).map(|x| *x.value()) {
+    pub fn get_upload_position(&self, domain: &str) -> anyhow::Result<UploadDomainPosition> {
+        self.check_if_can_upload(domain)?;
+        let result = if let Some(version) = self.uploading_status.get(domain).map(|x| *x.value()) {
             UploadDomainPosition {
                 path: self.get_version_path(domain, version),
                 version,
@@ -380,7 +383,8 @@ impl DomainStorage {
                     }
                 }
             }
-        }
+        };
+        Ok(result)
     }
 
     pub fn get_domain_serving_version(&self, domain: &str) -> Option<u32> {
@@ -535,19 +539,23 @@ impl DomainStorage {
         }
     }
     pub fn check_if_empty_index(&self, host: &str, path: &str) -> bool {
-        self.meta
-            .get(host)
-            .map(|v| match v.value() {
+        match self.meta.get(host) {
+            Some(v) => match v.value() {
                 DomainMeta::OneWeb { .. } => path.is_empty(),
                 DomainMeta::MultipleWeb(map) => {
                     if path.len() > 1 {
-                        map.contains_key(&path[1..])
+                        let path = &path[1..];
+                        map.contains_key(path)
                     } else {
                         map.contains_key(path)
                     }
                 }
-            })
-            .unwrap_or(false)
+            },
+            None => {
+                debug!("{host} {path} does not exists in meta");
+                false
+            }
+        }
     }
 
     pub fn save_file(
@@ -604,7 +612,9 @@ impl DomainStorage {
                     "domain:{}, version:{} change to upload status:finish",
                     domain, version
                 );
-                acme_manager.add_new_domain(get_host_path_from_domain(&domain).0).await;
+                acme_manager
+                    .add_new_domain(get_host_path_from_domain(&domain).0)
+                    .await;
             }
         } else if uploading_status == UploadingStatus::Uploading {
             if self
@@ -683,6 +693,22 @@ impl DomainStorage {
         self.cache.delete_by_host(host, path, version);
         Ok(false)
     }
+
+    pub fn check_if_can_upload(&self, domain:&str) -> anyhow::Result<()> {
+        match get_host_path_from_domain(domain)  {
+            (host, "") => {// single
+                if self.meta.get(host).is_some_and(|x| matches!(x.value(), DomainMeta::MultipleWeb(..))) {
+                    bail!("this domain already has multiple SPA!")
+                }
+            },
+            (host, _) => {
+                if self.meta.get(host).is_some_and(|x| matches!(x.value(), DomainMeta::OneWeb(..))) {
+                    bail!("this domain already has single SPA!")
+                }
+            }
+        };
+        Ok(())
+    }
 }
 
 pub fn md5_file(path: impl AsRef<Path>, byte_buffer: &mut Vec<u8>) -> Option<String> {
@@ -741,6 +767,13 @@ pub struct UploadDomainPosition {
     pub path: PathBuf,
     pub version: u32,
     pub status: GetDomainPositionStatus,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct CertInfo {
+    pub begin: DateTime<Utc>,
+    pub end: DateTime<Utc>,
+    pub host: String,
 }
 
 #[cfg(test)]

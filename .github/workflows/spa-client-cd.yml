@@ -20,7 +20,7 @@ jobs:
           - os: macos-latest
             name: mac-spa-client
             bash: make release-client-mac
-          - os:  windows-latest
+          - os: windows-latest
             name: windows-spa-client
             bash: make release-client-win
     runs-on: ${{ matrix.settings.os }}
@@ -29,21 +29,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           submodules: true
-
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-      - name: Cache cargo registry
-        uses: actions/cache@v2
-        with:
-          path: ~/.cargo/registry
-          key: ${{ matrix.settings.os }}-cargo-registry-trimmed-${{ hashFiles('**/Cargo.lock') }}
-      - name: Cache cargo index
-        uses: actions/cache@v2
-        with:
-          path: ~/.cargo/git
-          key: ${{ matrix.settings.os }}-cargo-index-trimmed-${{ hashFiles('**/Cargo.lock') }}
+      - uses: Swatinem/rust-cache@v2
       - name: Setup MUSL
         if: matrix.settings.os == 'ubuntu-latest'
         run: |
@@ -52,7 +38,6 @@ jobs:
 
       - name: Build Release
         run: ${{ matrix.settings.bash }}
-
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

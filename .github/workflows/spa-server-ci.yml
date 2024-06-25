@@ -14,26 +14,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: true
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-      - name: Cache cargo registry
-        uses: actions/cache@v2
-        with:
-          path: ~/.cargo/registry
-          key: cargo-registry-trimmed-${{ hashFiles('**/Cargo.lock') }}
-      - name: Cache cargo index
-        uses: actions/cache@v2
-        with:
-          path: ~/.cargo/git
-          key: cargo-index-trimmed-${{ hashFiles('**/Cargo.lock') }}
-      - name: build all
-        run: cargo build
-      - name: run spa-client test
-        run: cargo test -p spa-client
-      - name: run spa-client test
-        run: cargo test -p spa-server
+      - uses: Swatinem/rust-cache@v2
       - name: run integration test
         # --show-output
         run: cargo test -p tests --test starter -j 1 -- --test-threads 1
@@ -42,3 +23,7 @@ jobs:
         working-directory: ./tests/bash/
       - name: run acme integration test
         run: cargo test -p tests --test acme_test -j 1 -- --test-threads 1
+      - name: run spa-client test
+        run: cargo test -p spa-client
+      - name: run spa-client test
+        run: cargo test -p spa-server

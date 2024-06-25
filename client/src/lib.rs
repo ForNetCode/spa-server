@@ -62,6 +62,10 @@ async fn run_with_commands(commands: CliCommand) -> anyhow::Result<()> {
             api.remove_files(domain, max_reserve).await?;
             success("delete success!");
         }
+        Commands::Revoke {domain, version} => {
+            api.revoke_version(domain, version).await?;
+            success("revoke success!");
+        }
     };
     Ok(())
 }

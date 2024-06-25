@@ -14,20 +14,21 @@ use std::path::Path;
 use std::sync::Arc;
 use tokio::fs::File;
 use tokio::io;
+use tracing::debug;
 use warp::fs::{file_stream, optimal_buf_size, Cond, Conditionals};
 use warp::http::{Response, StatusCode};
 
 //from warp::fs
-fn sanitize_path(tail: &str) -> Result<String, Response<Body>> {
+fn sanitize_path(tail: &str) -> Option<String> {
     if let Ok(p) = percent_decode_str(tail).decode_utf8() {
         for seg in p.split('/') {
             if seg.starts_with("..") || seg.contains('\\') {
-                return Err(not_found());
+                return None
             }
         }
-        Ok(p.into_owned())
+        Some(p.into_owned())
     } else {
-        Err(not_found())
+        None
     }
 }
 #[derive(Debug)]
@@ -117,7 +118,7 @@ async fn file_reply(
         Err(err) => {
             match err.kind() {
                 io::ErrorKind::NotFound => {
-                    tracing::debug!("file not found: {:?}", path.display());
+                    debug!("file not found: {:?}", path.display());
                 }
                 io::ErrorKind::PermissionDenied => {
                     tracing::warn!("file permission denied: {:?}", path.display());
@@ -181,7 +182,7 @@ pub async fn cache_or_file_reply(
     let modified = item.meta.modified().map(LastModified::from).ok();
     match conditionals.check(modified) {
         Cond::NoBody(resp) => {
-            tracing::debug!("{} hit client cache", key);
+            debug!("{} hit client cache", key);
             Ok(resp)
         }
         Cond::WithBody(range) => match &item.data {
@@ -201,21 +202,21 @@ pub async fn cache_or_file_reply(
                 //false,false => cache without content-encoding
                 //false, true => file
                 if !client_accept_gzip && compressed {
-                    tracing::debug!("{} hit disk", key);
+                    debug!("{} hit disk", key);
                     Ok(file_reply(&item, path.as_ref(), range, modified).await)
                 } else {
                     let mut resp = cache_reply(item.as_ref(), bytes, range, modified);
                     if client_accept_gzip && compressed {
-                        tracing::debug!("{} hit cache, compressed", key);
+                        debug!("{} hit cache, compressed", key);
                         resp.headers_mut().typed_insert(ContentEncoding::gzip());
                     } else {
-                        tracing::debug!("{} hit cache", key);
+                        debug!("{} hit cache", key);
                     }
                     Ok(resp)
                 }
             }
             DataBlock::FileBlock(path) => {
-                tracing::debug!("{} hit disk", key);
+                debug!("{} hit disk", key);
                 Ok(file_reply(&item, path.as_ref(), range, modified).await)
             }
         },
@@ -251,13 +252,14 @@ pub async fn get_cache_file(
     tail: &str,
     host: &str,
     domain_storage: Arc<DomainStorage>,
-) -> Result<(String, Arc<CacheItem>), Response<Body>> {
-    let key = sanitize_path(tail)?;
-    let key = key[1..].to_owned();
-    if let Some(cache_item) = domain_storage.get_file(host, &key) {
-        Ok((key, cache_item))
+) -> Option<(String, Arc<CacheItem>)> {
+    let _key = sanitize_path(tail)?;
+    let key = _key[1..].to_owned();
+    debug!("get file: {host}, tail:{_key}, fixed: {key}");
+    if let Some(cache_item) = domain_storage.get_file(host, &key) { 
+        Some((key, cache_item))
     } else {
-        tracing::debug!("no file for: {}/{}", &host, &key);
-        Err(not_found())
+        debug!("no file for: {}/{}", &host, &key);
+        None
     }
 }

@@ -135,13 +135,28 @@ const deleteCmd = command({
         })
     }
 })
+const revokeVersionCmd = command({
+    name: 'revoke',
+    args: {
+        domain,
+        version,
+        config: configDirOption
+    },
+    handler({domain, version, config}) {
+        writeResult(async() => {
+            const client = await getClient(config)
+            await client.revokeVersion(domain, version)
+            return "revoke successful"
+        })
+    }
+})
 
 
 export const cmd = subcommands({
     name: 'spa-client',
     description: 'js command line for spa-server',
     version: Version,
-    cmds: {info, upload, release, reload, delete: deleteCmd}
+    cmds: {info, upload, release, reload, delete: deleteCmd, revoke: revokeVersionCmd}
 })
 export default function runCommand() {
     run(binary(cmd), process.argv)

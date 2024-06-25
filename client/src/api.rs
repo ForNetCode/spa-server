@@ -1,11 +1,8 @@
 use crate::Config;
 use anyhow::anyhow;
 use reqwest::{header, multipart, StatusCode};
-use spa_server::admin_server::request::{
-    DeleteDomainVersionOption, DomainWithOptVersionOption, GetDomainOption,
-    UpdateUploadingStatusOption,
-};
-use spa_server::domain_storage::{DomainInfo, ShortMetaData, UploadDomainPosition};
+use spa_server::admin_server::request::{DeleteDomainVersionOption, DomainWithOptVersionOption, DomainWithVersionOption, GetDomainOption, UpdateUploadingStatusOption};
+use spa_server::domain_storage::{CertInfo, DomainInfo, ShortMetaData, UploadDomainPosition};
 use std::borrow::Cow;
 use std::path::PathBuf;
 
@@ -129,6 +126,19 @@ impl API {
         handle!(resp)
     }
 
+    pub async fn revoke_version(&self, domain:String, version:u32) -> anyhow::Result<()> {
+        let resp = self
+            .async_client
+            .post(self.url("files/revoke_version"))
+            .json(&DomainWithVersionOption {
+                domain,
+                version,
+            })
+            .send()
+            .await?;
+        handle!(resp)
+    }
+
     //TODO: use thiserror instead of anyhow
     pub async fn upload_file<T: Into<Cow<'static, str>>>(
         &self,
@@ -184,6 +194,12 @@ impl API {
             .send()
             .await?;
         json_resp!(resp, UploadDomainPosition)
+    }
+    
+    pub async fn get_acme_cert_info(&self, domain: Option<String>) -> anyhow::Result<Vec<CertInfo>> {
+        let resp = self.async_client.get(self.url("cert/acme"))
+            .query(&GetDomainOption{domain}).send().await?;
+        json_resp!(resp, Vec<CertInfo>)         
     }
 }
 #[cfg(test)]

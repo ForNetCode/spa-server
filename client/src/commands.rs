@@ -25,6 +25,10 @@ pub enum Commands {
         domain: Option<String>,
         max_reserve: Option<u32>,
     },
+    Revoke {
+        domain: String,
+        version: u32,
+    }
 }
 
 #[derive(Args, Debug)]
@@ -112,6 +116,17 @@ mod test {
         if let Commands::Release { domain, version } = c.commands {
             assert_eq!(domain, "www.example.com".to_string());
             assert_eq!(version, None);
+        } else {
+            unreachable!()
+        }
+    }
+
+    #[test]
+    fn revoke_version() {
+        let c = CliCommand::parse_from(&["test", "revoke", "www.example.com", "1"]);
+        if let Commands::Revoke {domain, version} = c.commands {
+            assert_eq!(domain, "www.example.com".to_string());
+            assert_eq!(version, 1);
         } else {
             unreachable!()
         }

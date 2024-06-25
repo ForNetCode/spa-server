@@ -59,13 +59,11 @@ pub fn resp_cors_request(
             Either::Right(res)
         }
         (Some(origin), _) => {
-            //TODO: add other check of CORS or just ignore it.
-            // if !allow_cors {
-            //     Either::Right(resp(StatusCode::FORBIDDEN, "origin not allowed"))
-            // } else {
-            //     Either::Left(Validated::Simple(origin.clone()))
-            // }
-            Either::Left(Validated::Simple(origin.clone()))
+            if !allow_cors {
+                Either::Right(resp(StatusCode::FORBIDDEN, "origin not allowed"))
+            } else {
+                Either::Left(Validated::Simple(origin.clone()))
+            }
         }
         (None, _) => Either::Left(Validated::NotCors),
     }

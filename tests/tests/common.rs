@@ -1,11 +1,12 @@
-use reqwest::header::CACHE_CONTROL;
+use reqwest::header::{CACHE_CONTROL, LOCATION};
 use reqwest::redirect::Policy;
 use reqwest::{ClientBuilder, StatusCode, Url};
 use spa_client::api::API;
 use std::path::{Path, PathBuf};
 use std::{env, fs, io};
+//use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
-use tracing::{error, Level};
+use tracing::{debug, error, Level};
 use tracing_subscriber::EnvFilter;
 
 pub const LOCAL_HOST: &str = "local.fornetcode.com";
@@ -49,13 +50,26 @@ pub fn run_server_with_config(config_file_name: &str) -> JoinHandle<()> {
         )
         .with_test_writer()
         .try_init();
-
-    return tokio::spawn(async {
+    //let (tx, rx) = oneshot::channel::<()>();
+    tokio::spawn(async move {
         let result = spa_server::run_server().await;
         if result.is_err() {
-            error!("spa server run error: {:?}", result.unwrap_err())
+            error!("spa server run error: {:?}", result.unwrap_err());
+        } else {
+            debug!("spa server finish");
         }
-    });
+        // tokio::select! {
+        //     _ = rx => {
+        //         debug!("stop server")
+        //     }
+        //     result = spa_server::run_server() => {
+        //         if result.is_err() {
+        //             error!("spa server run error: {:?}", result.unwrap_err());
+        //         }
+        //     }
+        // }
+    })
+    //tx
 }
 pub fn run_server() -> JoinHandle<()> {
     run_server_with_config("server_config.conf")
@@ -126,7 +140,7 @@ pub async fn assert_files(
             get_file_text(domain, version, file).unwrap()
         );
         if file.is_empty() {
-            println!("begin to check: {request_prefix}/, version:{version}");
+            println!("begin to check: {request_prefix}, version:{version}");
             let result = client.get(request_prefix).send().await.unwrap();
             assert_eq!(result.status(), StatusCode::OK);
             assert_eq!(
@@ -134,7 +148,11 @@ pub async fn assert_files(
                 get_file_text(domain, version, file).unwrap()
             );
             println!("begin to check: {request_prefix}/, version:{version}");
-            let result = client.get(format!("{request_prefix}/")).send().await.unwrap();
+            let result = client
+                .get(format!("{request_prefix}/"))
+                .send()
+                .await
+                .unwrap();
             assert_eq!(result.status(), StatusCode::OK);
             assert_eq!(
                 result.text().await.unwrap(),
@@ -143,28 +161,21 @@ pub async fn assert_files(
         }
     }
 }
-pub async fn assert_index_redirect_correct(request_prefix: &str) {
+pub async fn assert_redirect_correct(request_prefix: &str, target_prefix: &str) {
     let client = ClientBuilder::new()
         .danger_accept_invalid_certs(true)
         .redirect(Policy::none())
         .build()
         .unwrap();
     let query = [("lang", "rust"), ("browser", "servo"), ("zh", "转义字符")];
-    let url = Url::parse_with_params(request_prefix,
-                           &query).unwrap();
-    println!("{}", url);
-    let path = url.path();
+    let url = Url::parse_with_params(request_prefix, &query).unwrap();
     let query = url.query().unwrap();
-    let response= client.get(url.clone()).send().await.unwrap();
-    assert_eq!(response.status(),StatusCode::MOVED_PERMANENTLY);
-    assert_eq!(response.headers().get("location").unwrap().to_str().unwrap(),
-               format!("{path}/?{query}")
+    let response = client.get(url.clone()).send().await.unwrap();
+    assert_eq!(response.status(), StatusCode::MOVED_PERMANENTLY);
+    assert_eq!(
+        response.headers().get(LOCATION).unwrap().to_str().unwrap(),
+        format!("{target_prefix}?{query}") //format!("{path}/?{query}")
     );
-    
-    
-    
-    
-    
 }
 pub async fn assert_files_no_exists(request_prefix: &str, check_path: Vec<&'static str>) {
     for file in check_path {

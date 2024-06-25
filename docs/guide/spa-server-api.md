@@ -94,7 +94,7 @@ number of files.
 
 ```shell
 
-curl "http://$ADMIN_SERVER/files/metadata?domain=$DOMAIN&version=$VERSION" -H "Authorization: Bearer $TOKEN"
+curl "$ADMIN_SERVER/files/metadata?domain=$DOMAIN&version=$VERSION" -H "Authorization: Bearer $TOKEN"
 # return [{path:$path_string,md5:$md5_string, length: $file_length_integer}]
 ```
 
@@ -105,7 +105,7 @@ curl "http://$ADMIN_SERVER/files/metadata?domain=$DOMAIN&version=$VERSION" -H "A
 ```shell 
 UPLOADING_STATUS=0 # Uploading:0, Finish:1
 
-curl --location --request POST "http://$ADMIN_SERVER/files/upload_status" \
+curl --location --request POST "$ADMIN_SERVER/files/upload_status" \
 --header "Authorization: Bearer $TOKEN" \
 --header 'Content-Type: application/json' \
 --data-raw `{
@@ -122,7 +122,7 @@ The http body is `multipart/form-data` format.
 
 ```shell
 PATH="/upload/file/path"
-curl -X POST "http://$ADMIN_SERVER/file/upload?domain=$domain&version=$version&path=$PATH" \
+curl -X POST "$ADMIN_SERVER/file/upload?domain=$domain&version=$version&path=$PATH" \
 -F "file=@$PATH" -H "Authorization: Bearer $TOKEN"
 # return status code:200 if success 
 ```
@@ -131,11 +131,30 @@ curl -X POST "http://$ADMIN_SERVER/file/upload?domain=$domain&version=$version&p
 
 ```shell
 # keep 2 versions. 
-MAX_RESERVE = 1
+MAX_RESERVE_OPT = 1
 curl -X POST "http://$ADMIN_SERVER/files/delete" \
+ -H "Authorization: Bearer $TOKEN" \
 --data-raw `{
   "domain":$DOMAIN,
-  "max_reserve": $MAX_RESERVE
+  "max_reserve": $MAX_RESERVE_OPT
 }`
 # return status code:200 if success 
+```
+
+### Revoke version
+**Attention: revoke version now is temp, when you reload or restart server, then It would use the max version.**
+```shell
+TARGET_VERSION=1
+curl -X POST "$ADMIN_SERVER/files/revoke_version" \
+ -H "Authorization: Bearer $TOKEN" \
+--data-raw `{
+  "domain":$DOMAIN,
+  "version": $TARGET_VERSION
+}`
+```
+
+### Get Cert version
+```shell
+curl -X POST "$ADMIN_SERVER/cert?domain=$DOMAIN_OPT" \
+ - H "Authorization: Bearer $TOKEN"
 ```

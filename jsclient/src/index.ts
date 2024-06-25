@@ -31,6 +31,12 @@ export interface UploadDomainPositionResp {
     status: GetDomainPositionStatus
 }
 
+export interface CertInfoResp {
+    begin: string,
+    end: string,
+    host: string,
+}
+
 export interface ShortMetaData {
     path: string
     md5: string
@@ -201,6 +207,12 @@ export default class SPAClient {
         return this.http.get('/upload/position', {
             params: {domain, format: 'Json'}
         }).then(resp<UploadDomainPositionResp>)
+    }
+    public revokeVersion(domain:String, version: number) {
+        return this.http.post(`/files/revoke_version`, {domain, version}).then(emptyResp)
+    }
+    public getCertInfo(domain?:string) {
+        return this.http.get('/cert/acme', {params: {domain}}).then(resp<CertInfoResp[]>)
     }
 }
 

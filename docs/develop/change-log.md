@@ -1,4 +1,12 @@
 # Change Log
+
+### Version 2.2.4
+
+- feat: add cert query API (no doc, no client SDK support)
+- improve: add check when upload of multiple/single domain
+- ci: improve GitHub Action speed
+- feat: add revoke version API (release JS SDK 2.2.4)
+
 ### Version 2.2.3
 - fix: sub_path '' => '/', like GitHub pages
 - fix: redirect with no querystring

@@ -44,18 +44,21 @@ impl AdminServer {
 
     fn routes(&self) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         self.auth().and(
-            (warp::get().and(
-                self.get_domain_info()
-                    .or(self.get_domain_upload_path())
-                    .or(self.get_files_metadata()),
-            ))
-            .or(warp::post().and(
-                self.update_domain_version()
-                    .or(self.reload_server())
-                    .or(self.change_upload_status())
-                    .or(self.upload_file())
-                    .or(self.remove_domain_version()),
-            )),
+            warp::get()
+                .and(
+                    self.get_domain_info()
+                        .or(self.get_domain_upload_path())
+                        .or(self.get_files_metadata())
+                        .or(self.get_acme_cert_info()),
+                )
+                .or(warp::post().and(
+                    self.update_domain_version()
+                        .or(self.reload_server())
+                        .or(self.change_upload_status())
+                        .or(self.upload_file())
+                        .or(self.revoke_version())
+                        .or(self.remove_domain_version()),
+                )),
         )
     }
 
@@ -129,7 +132,7 @@ impl AdminServer {
 
     fn change_upload_status(
         &self,
-    ) -> impl Filter<Extract = (impl warp::Reply,), Error = Rejection> + Clone  {
+    ) -> impl Filter<Extract = (impl warp::Reply,), Error = Rejection> + Clone {
         warp::path!("files" / "upload_status")
             .and(with(self.domain_storage.clone()))
             .and(with(self.acme_manager.clone()))
@@ -180,6 +183,24 @@ impl AdminServer {
             .and(warp::query::<DeleteDomainVersionOption>())
             .map(service::remove_domain_version)
     }
+
+    fn get_acme_cert_info(
+        &self,
+    ) -> impl Filter<Extract = (impl warp::Reply,), Error = Rejection> + Clone {
+        warp::path!("cert" / "acme")
+            .and(with(self.acme_manager.clone()))
+            .and(warp::query::<GetDomainOption>())
+            .and_then(service::get_acme_cert_info)
+    }
+
+    fn revoke_version(
+        &self
+    ) -> impl Filter<Extract = (impl warp::Reply,), Error = Rejection> + Clone {
+        warp::path!("files" / "revoke_version")
+            .and(with(self.domain_storage.clone()))
+            .and(warp::body::json::<DomainWithVersionOption>())
+            .and_then(service::revoke_version)
+    }
 }
 
 pub mod service {
@@ -202,6 +223,7 @@ pub mod service {
     use warp::multipart::FormData;
     use warp::reply::Response;
     use warp::Reply;
+    use crate::service::not_found;
 
     pub(super) async fn get_domain_info(
         option: GetDomainOption,
@@ -254,11 +276,19 @@ pub mod service {
         storage: Arc<DomainStorage>,
     ) -> Response {
         if URI_REGEX.is_match(&option.domain) {
-            let ret = storage.get_upload_position(&option.domain);
-            if option.format == GetDomainPositionFormat::Json {
-                warp::reply::json(&ret).into_response()
-            } else {
-                ret.path.to_string_lossy().to_string().into_response()
+            match storage.get_upload_position(&option.domain) {
+                Ok(ret) => {
+                    if option.format == GetDomainPositionFormat::Json {
+                        warp::reply::json(&ret).into_response()
+                    } else {
+                        ret.path.to_string_lossy().to_string().into_response()
+                    }
+                }
+                Err(err)=>  {
+                    let mut resp = StatusCode::BAD_REQUEST.into_response();
+                    *resp.body_mut() = Body::from(err.to_string());
+                    resp
+                }
             }
         } else {
             StatusCode::BAD_REQUEST.into_response()
@@ -288,7 +318,10 @@ pub mod service {
         acme_manager: Arc<ACMEManager>,
         param: UpdateUploadingStatusOption,
     ) -> Result<Response, Infallible> {
-        let resp = match storage.update_uploading_status(param.domain, param.version, param.status, &acme_manager).await {
+        let resp = match storage
+            .update_uploading_status(param.domain, param.version, param.status, &acme_manager)
+            .await
+        {
             Ok(_) => Response::default(),
             Err(e) => {
                 let mut resp = Response::new(Body::from(e.to_string()));
@@ -304,6 +337,11 @@ pub mod service {
         form: FormData,
         storage: Arc<DomainStorage>,
     ) -> anyhow::Result<Response> {
+        if let Err(e) = storage.check_if_can_upload(&query.domain) {
+            let mut resp = StatusCode::BAD_REQUEST.into_response();
+            *resp.body_mut() = Body::from(e.to_string());
+            return Ok(resp)
+        }
         let mut parts = form.into_stream();
         if let Some(Ok(part)) = parts.next().await {
             // let name = part.name();
@@ -324,7 +362,7 @@ pub mod service {
             storage.save_file(query.domain, query.version, query.path, file)?;
             return Ok(Response::default());
         }
-        return Err(anyhow!("bad params, please check the api doc: https://github.com/fornetcode/spa-server/blob/master/docs/guide/sap-server-api.md"));
+        Err(anyhow!("bad params, please check the api doc: https://github.com/fornetcode/spa-server/blob/master/docs/guide/sap-server-api.md"))
     }
 
     pub(super) fn get_files_metadata(
@@ -351,7 +389,7 @@ pub mod service {
             storage
                 .get_domain_info_by_domain(&domain)
                 .map(|v| vec![v])
-                .unwrap_or(vec![])
+                .unwrap_or_default()
         } else {
             storage.get_domain_info().unwrap_or_else(|_| vec![])
         };
@@ -362,7 +400,7 @@ pub mod service {
                         .or(info.versions.iter().max().map(|x| *x))
                 {
                     //TODO: fix it, get reserve versions by array index compare, rather than -.
-                    max_version = max_version - max_reserve;
+                    max_version -= max_reserve;
                     info.versions
                         .into_iter()
                         .filter(|v| *v < max_version)
@@ -384,6 +422,55 @@ pub mod service {
         }
         Response::default()
     }
+    pub(super) async fn get_acme_cert_info(
+        acme_manager: Arc<ACMEManager>,
+        query: GetDomainOption,
+    ) -> Result<Response, Infallible> {
+        let resp = match acme_manager.get_cert_data(query.domain.as_ref()).await {
+            Ok(data) => warp::reply::json(&data).into_response(),
+            Err(err) => {
+                let mut resp = Response::new(Body::from(err.to_string()));
+                *resp.status_mut() = StatusCode::BAD_REQUEST;
+                resp
+            }
+        };
+        Ok(resp)
+    }
+
+    //TODO: when delete and revoke occur currently. would have problems.
+    pub(super) async fn revoke_version(
+        domain_storage: Arc<DomainStorage>,
+        query: DomainWithVersionOption,
+    ) -> Result<Response, Infallible>{
+        let DomainWithVersionOption {
+            domain, version
+        } = query;
+        let resp = match domain_storage.get_domain_info_by_domain(&domain) {
+            Some(info)=> {
+                if info.current_version.is_some_and(|current_version| current_version > version)
+                    &&
+                    info.versions.contains(&version)
+                {
+                    match domain_storage.upload_domain_with_version(domain, Some(version)).await {
+                        Ok(_) => {
+                            Response::default()
+                        },
+                        Err(e) =>  {
+                            let mut resp = StatusCode::BAD_REQUEST.into_response();
+                            *resp.body_mut() = Body::from(e.to_string());
+                            resp
+                        }
+                    }
+                } else {
+                    not_found()
+                }
+            }
+            None => {
+                not_found()
+            }
+        };
+        Ok(resp)
+    }
 }
 
 pub mod request {
@@ -395,15 +482,11 @@ pub mod request {
         pub domain: Option<String>,
     }
 
-    #[derive(Deserialize, Serialize, Debug, Eq, PartialEq)]
+    #[derive(Deserialize, Serialize, Debug, Eq, PartialEq, Default)]
     pub enum GetDomainPositionFormat {
+        #[default]
         Path,
         Json,
-    }
-    impl Default for GetDomainPositionFormat {
-        fn default() -> Self {
-            GetDomainPositionFormat::Path
-        }
     }
 
     #[derive(Deserialize, Serialize, Debug)]
@@ -492,7 +575,7 @@ mod test {
         assert!(task.is_valid());
         for _ in 0..10 {
             let time = task.get_next_exec_timestamp().unwrap() as i64;
-            let time = NaiveDateTime::from_timestamp(time, 0);
+            let time = NaiveDateTime::from_timestamp_opt(time, 0).unwrap();
             let time: DateTime<Utc> = DateTime::from_utc(time, Utc);
             println!("{}", time.format("%Y-%m-%d %H:%M:%S"));
         }

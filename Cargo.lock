@@ -515,6 +515,7 @@ dependencies = [
  "iana-time-zone",
  "js-sys",
  "num-traits",
+ "serde",
  "wasm-bindgen",
  "windows-targets 0.52.5",
 ]
@@ -2854,7 +2855,7 @@ dependencies = [
 
 [[package]]
 name = "spa-client"
-version = "2.2.3"
+version = "2.2.4"
 dependencies = [
  "anyhow",
  "clap 3.2.25",
@@ -2876,7 +2877,7 @@ dependencies = [
 
 [[package]]
 name = "spa-server"
-version = "2.2.3"
+version = "2.2.4"
 dependencies = [
  "anyhow",
  "base64 0.22.1",

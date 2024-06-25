@@ -103,22 +103,10 @@ pub async fn create_service(
                 return Ok(resp);
             }
         }
-        // path: "" => "/"
-        if domain_storage.check_if_empty_index(host, path) {
-            let mut resp = Response::default();
-            let mut path = format!("{path}/");
-            if let Some(query) = uri.query() {
-                path.push('?');
-                path.push_str(query);
-            }
-            let path = path.parse().unwrap();
-            resp.headers_mut().insert(LOCATION, path);
-            *resp.status_mut() = StatusCode::MOVED_PERMANENTLY;
-            return Ok(resp);
-        }
+        
         // static file
-        let mut resp = match get_cache_file(path, host, domain_storage).await {
-            Ok(item) => {
+        let mut resp = match get_cache_file(path, host, domain_storage.clone()).await {
+            Some(item) => {
                 let headers = req.headers();
                 let conditionals = Conditionals {
                     if_modified_since: headers.typed_get(),
@@ -131,7 +119,23 @@ pub async fn create_service(
                     .and_then(|x| x.to_str().map(|x| x.to_string()).ok());
                 cache_or_file_reply(item, conditionals, accept_encoding).await
             }
-            Err(resp) => Ok(resp),
+            None => {
+                // path: "" => "/"
+                if domain_storage.check_if_empty_index(host, path) {
+                    let mut resp = Response::default();
+                    let mut path = format!("{path}/");
+                    if let Some(query) = uri.query() {
+                        path.push('?');
+                        path.push_str(query);
+                    }
+                    let path = path.parse().unwrap();
+                    resp.headers_mut().insert(LOCATION, path);
+                    *resp.status_mut() = StatusCode::MOVED_PERMANENTLY;
+                    Ok(resp)
+                } else {
+                    Ok(not_found())
+                }
+            },
         };
 
         if let Some(Validated::Simple(origin)) = origin_opt {
