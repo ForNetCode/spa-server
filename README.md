@@ -26,6 +26,3 @@ It provides a static web http server with cache and hot reload.
 ## Document
 There is a nice [document](https://fornetcode.github.io/spa-server/) powered by VitePress and GitHub Pages,
 you can quickly start spa-server with this [guide](https://fornetcode.github.io/spa-server/guide/getting-started.html). 
-
-## Project Origin
-More details are described at [SPA 发布辅助工具](https://github.com/timzaak/blog/issues/80) in Chinese.
