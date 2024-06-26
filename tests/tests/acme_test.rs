@@ -26,7 +26,8 @@ async fn simple_acme_test() {
     let request_prefix = &request_prefix;
     clean_web_domain_dir(LOCAL_HOST);
     clean_cert();
-    let server = run_server_with_config("server_config_acme.conf");
+    // console_subscriber::init();
+    run_server_with_config("server_config_acme.conf");
     sleep(Duration::from_secs(2)).await;
     upload_file_and_check(domain, request_prefix, 1, vec![]).await;
 
@@ -63,6 +64,8 @@ async fn simple_acme_test() {
     )
     .await;
 
+    api.reload_spa_server().await.unwrap();
+
     /*
     // why it could not stop
     wait_count = 0;
@@ -70,7 +73,7 @@ async fn simple_acme_test() {
     println!("begin to loop server close");
     loop {
         assert!(wait_count < 10, "20 seconds server does not stop");
-        sleep(Duration::from_secs(2)).await;
+        sleep(Duration::from_secs(10)).await;
         let cert_info = api.get_domain_info(Some(get_host_path_from_domain(domain).0.to_string())).await;
         if cert_info.is_err() {
             break
@@ -79,9 +82,9 @@ async fn simple_acme_test() {
     }
     // sometimes it output error. don't know why
     run_server_with_config("server_config_acme.conf");
+    */
     sleep(Duration::from_secs(2)).await;
     assert_files(domain, request_prefix, 1, vec!["", "index.html"]).await;
-     */
 }
 #[ignore]
 #[tokio::test]

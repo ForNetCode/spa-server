@@ -44,9 +44,8 @@ pub fn run_server_with_config(config_file_name: &str) -> JoinHandle<()> {
     );
     let _ = tracing_subscriber::fmt()
         .with_env_filter(
-            EnvFilter::builder()
-                .with_default_directive(Level::DEBUG.into())
-                .from_env_lossy(),
+            EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "info,spa_server=debug".into())
         )
         .with_test_writer()
         .try_init();
