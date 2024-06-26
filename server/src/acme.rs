@@ -501,42 +501,40 @@ impl ACMEManager {
             .await;
     }
 
-    pub async fn get_cert_data(&self, host:Option<&String>) ->anyhow::Result<Vec<CertInfo>>{
+    pub async fn get_cert_data(&self, host: Option<&String>) -> anyhow::Result<Vec<CertInfo>> {
         let result = match host {
-            Some(host) => {
-                match self.certificate_map.get(host) {
-                    Some(value) => {
-                        let [begin, end] = get_cert_validate_time(&value)?;
-                        vec![CertInfo {
-                            begin,
-                            end,
-                            host: host.to_owned(),
-                        }]
-
-                    },
-                    None => vec![]
+            Some(host) => match self.certificate_map.get(host) {
+                Some(value) => {
+                    let [begin, end] = get_cert_validate_time(&value)?;
+                    vec![CertInfo {
+                        begin,
+                        end,
+                        host: host.to_owned(),
+                    }]
                 }
-            }
-            None => {
-                self.certificate_map.iter().filter_map(|item| {
-                    match get_cert_validate_time(&item)  {
-                        Ok([begin, end]) => Some(CertInfo {
-                            begin, end, host:item.key().to_string()
-                        }),
-                        Err(error) => {
-                            warn!("get {} cert fail:{error}", item.key());
-                            None
-                        }
+                None => vec![],
+            },
+            None => self
+                .certificate_map
+                .iter()
+                .filter_map(|item| match get_cert_validate_time(&item) {
+                    Ok([begin, end]) => Some(CertInfo {
+                        begin,
+                        end,
+                        host: item.key().to_string(),
+                    }),
+                    Err(error) => {
+                        warn!("get {} cert fail:{error}", item.key());
+                        None
                     }
-                }).collect()
-            }
+                })
+                .collect(),
         };
         Ok(result)
     }
-
 }
 
-fn get_cert_validate_time(certified_key: &CertifiedKey) -> anyhow::Result<[DateTime<Utc>;2]> {
+fn get_cert_validate_time(certified_key: &CertifiedKey) -> anyhow::Result<[DateTime<Utc>; 2]> {
     let cert = certified_key.end_entity_cert()?;
     let (_, cert) = x509_parser::parse_x509_certificate(cert.as_ref())?;
     let validity = cert.validity();
@@ -658,5 +656,13 @@ mod test {
         let r = &ACMEType::CI;
         let r = matches!(r, ACMEType::CI);
         assert!(r);
+    }
+
+    #[test]
+    fn get_challenge_path_safe_test() {
+        let root = PathBuf::from("/tmp");
+        let challenge_token_path = super::get_challenge_path(&root, "www.example.com", "/../");
+        println!("{}", challenge_token_path.display().to_string());
+        assert!(challenge_token_path.canonicalize().is_err());
     }
 }
