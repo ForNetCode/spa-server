@@ -27,7 +27,7 @@ impl Config {
     pub fn load() -> anyhow::Result<Self> {
         let config_path = env::var("SPA_CONFIG").unwrap_or(CONFIG_PATH.to_string());
 
-        let config = if config_path.ends_with("conf") {
+        let config = if config_path.ends_with(".conf") {
             Self::load_hocon(&config_path)
         } else {
             Self::load_toml(&config_path)

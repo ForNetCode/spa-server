@@ -30,7 +30,7 @@ fn env_opt(key: &str) -> Option<String> {
 
 impl Config {
     pub fn load(config_dir: Option<PathBuf>) -> anyhow::Result<Config> {
-        if config_dir.as_ref().is_some_and(|f| f.ends_with(".conf")) {
+        if config_dir.as_ref().is_some_and(|f| f.display().to_string().ends_with(".conf")) {
             Self::load_hocon(config_dir)
         } else {
             Self::load_toml(config_dir)
