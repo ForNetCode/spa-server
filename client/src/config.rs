@@ -132,6 +132,11 @@ pub(crate) mod test {
         env::set_var("SPA_SERVER_AUTH_TOKEN", "token");
         env::set_var("SPA_UPLOAD_PARALLEL", "4");
     }
+    fn remove_env() {
+        env::remove_var("SPA_SERVER_ADDRESS");
+        env::remove_var("SPA_SERVER_AUTH_TOKEN");
+        env::remove_var("SPA_UPLOAD_PARALLEL");
+    }
 
     pub(crate) fn default_local_config() -> anyhow::Result<Config> {
         init_env();
@@ -140,12 +145,14 @@ pub(crate) mod test {
 
     #[test]
     fn config_load_with_env() {
+        remove_env();
         //println!("{:?}", default_local_config());
         assert!(default_local_config().is_ok());
     }
 
     #[test]
     fn config_load() {
+        remove_env();
         let c = Config::load(None);
         assert!(c.is_err());
     }
@@ -164,6 +171,7 @@ pub(crate) mod test {
     }
     #[test]
     fn load_file_equal() {
+        remove_env();
         let path = get_project_path().join("client");
         assert_eq!(
             Config::load_hocon(Some(path.join("client_config_default.conf"))).unwrap(),
