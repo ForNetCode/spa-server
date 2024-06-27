@@ -56,9 +56,9 @@ pub async fn create_service(
     if let Some(authority) = authority_opt {
         let origin_host = authority.host();
         let (is_alias, host) = if let Some(alias) = service_config.host_alias.get(origin_host) {
-            (true, alias)
+            (true, alias.as_str())
         } else {
-            (false, origin_host.into())
+            (false, origin_host)
         };
 
         let service_config = service_config.get_domain_service_config(host);
@@ -112,7 +112,7 @@ pub async fn create_service(
         if is_alias {
             //TODO: needs external port
         }
-        
+
         // static file
         let mut resp = match get_cache_file(path, host, domain_storage.clone()).await {
             Some(item) => {
@@ -145,7 +145,7 @@ pub async fn create_service(
                 } else {
                     Ok(not_found())
                 }
-            },
+            }
         };
 
         if let Some(Validated::Simple(origin)) = origin_opt {
