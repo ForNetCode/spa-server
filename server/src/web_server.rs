@@ -84,9 +84,19 @@ impl Server {
             })
             .collect();
 
+        let mut alias_map = HashMap::new();
+        for domain in conf.domains.iter() {
+            if let Some(alias_host_list) = domain.alias.as_ref() {
+                for alias_host in alias_host_list {
+                    alias_map.insert(alias_host.clone(), domain.domain.clone());
+                }
+            }
+        }
+
         let service_config = Arc::new(ServiceConfig {
             default,
             inner: service_config,
+            host_alias: Arc::new(alias_map),
         });
         Server {
             conf,
@@ -147,6 +157,9 @@ impl Server {
             run_server!(server, rx);
         }
         Ok(())
+    }
+    pub fn get_host_alias(&self) -> Arc<HashMap<String, String>> {
+        self.service_config.host_alias.clone()
     }
 }
 

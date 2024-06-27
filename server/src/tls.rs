@@ -49,7 +49,7 @@ impl ResolvesServerCert for FileCertResolver {
 #[derive(Debug)]
 struct DashMapCertResolver {
     dash_map: Arc<DashMap<String, Arc<CertifiedKey>>>,
-    host_alias_map: HashMap<String, String>,
+    host_alias_map: Arc<HashMap<String, String>>,
 }
 
 impl ResolvesServerCert for DashMapCertResolver {
@@ -68,6 +68,7 @@ impl ResolvesServerCert for DashMapCertResolver {
 pub fn load_ssl_server_config(
     config: &Config,
     acme_manager: Arc<ACMEManager>,
+    host_alias_map: Arc<HashMap<String, String>>,
 ) -> anyhow::Result<Option<Arc<ServerConfig>>> {
     let dynamic_resolver: Arc<dyn ResolvesServerCert> = if config
         .https
@@ -75,17 +76,10 @@ pub fn load_ssl_server_config(
         .and_then(|v| v.acme.as_ref())
         .is_some()
     {
-        let mut alias_map = HashMap::new();
-        for domain in config.domains.iter() {
-            if let Some(alias_host_list) = domain.alias.as_ref() {
-                for alias_host in alias_host_list {
-                    alias_map.insert(alias_host.clone(), domain.domain.clone());
-                }
-            }
-        }
+
         Arc::new(DashMapCertResolver {
             dash_map: acme_manager.certificate_map.clone(),
-            host_alias_map: alias_map,
+            host_alias_map,
         })
     } else if config.https.is_some() {
         let default = if let Some(ref ssl) = config.https.as_ref().and_then(|x| x.ssl.clone()) {

@@ -92,7 +92,7 @@ pub async fn reload_server(
         }
         let challenge_path = acme_manager.challenge_dir.clone();
         let _sender = acme_manager.sender.clone();
-        let tls_server_config = load_ssl_server_config(&config, acme_manager)?;
+        let tls_server_config = load_ssl_server_config(&config, acme_manager, server.get_host_alias())?;
         tokio::task::spawn(async move {
             join(
                 server
@@ -154,7 +154,7 @@ pub async fn run_server_with_config(config: Config) -> anyhow::Result<()> {
         )?);
         let challenge_path = acme_manager.challenge_dir.clone();
 
-        let tls_server_config = load_ssl_server_config(&config, acme_manager.clone())?;
+        let tls_server_config = load_ssl_server_config(&config, acme_manager.clone(), server.get_host_alias())?;
         let _ = tokio::join!(
             server
                 .init_https_server(https_rx, tls_server_config, challenge_path.clone())
@@ -194,7 +194,7 @@ pub async fn run_server_with_config(config: Config) -> anyhow::Result<()> {
             &delay_timer,
         )?);
         let challenge_path = acme_manager.challenge_dir.clone();
-        let tls_server_config = load_ssl_server_config(&config, acme_manager.clone())?;
+        let tls_server_config = load_ssl_server_config(&config, acme_manager.clone(), server.get_host_alias())?;
         let _ = tokio::join!(
             server
                 .init_https_server(None, tls_server_config, challenge_path.clone())

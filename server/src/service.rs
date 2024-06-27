@@ -19,6 +19,7 @@ use crate::static_file_filter::{cache_or_file_reply, get_cache_file};
 pub struct ServiceConfig {
     pub default: DomainServiceConfig,
     pub inner: HashMap<String, DomainServiceConfig>,
+    pub host_alias: Arc<HashMap<String, String>>,
 }
 
 pub struct DomainServiceConfig {
@@ -53,7 +54,12 @@ pub async fn create_service(
     });
 
     if let Some(authority) = authority_opt {
-        let host = authority.host();
+        let origin_host = authority.host();
+        let (is_alias, host) = if let Some(alias) = service_config.host_alias.get(origin_host) {
+            (true, alias)
+        } else {
+            (false, origin_host.into())
+        };
 
         let service_config = service_config.get_domain_service_config(host);
         // cors
@@ -103,6 +109,9 @@ pub async fn create_service(
                 return Ok(resp);
             }
         }
+        if is_alias {
+            //TODO: needs external port
+        }
         
         // static file
         let mut resp = match get_cache_file(path, host, domain_storage.clone()).await {
@@ -123,6 +132,7 @@ pub async fn create_service(
                 // path: "" => "/"
                 if domain_storage.check_if_empty_index(host, path) {
                     let mut resp = Response::default();
+                    //TODO: alias would be twice. otherwise needs to add outer bind port config.
                     let mut path = format!("{path}/");
                     if let Some(query) = uri.query() {
                         path.push('?');
