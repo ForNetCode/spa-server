@@ -49,7 +49,6 @@ impl DomainStorage {
     pub fn init<T: AsRef<Path>>(path_prefix: T, cache: FileCache) -> anyhow::Result<DomainStorage> {
         let path_prefix = path_prefix.as_ref();
         let path_prefix_buf = path_prefix.to_path_buf();
-
         if path_prefix.exists() {
             let domain_version: DashMap<String, DomainMeta> = DashMap::new();
             let uploading_status: DashMap<String, u32> = DashMap::new();

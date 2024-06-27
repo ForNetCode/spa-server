@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::fs::File;
 use std::io::Write;
@@ -152,11 +152,14 @@ impl ACMEProvider {
         &self,
         domain: String,
         challenge_path: Arc<PathBuf>,
+        alias: Option<Vec<String>>,
     ) -> anyhow::Result<(PathBuf, PathBuf)> {
         //
         let identifier = Identifier::Dns(domain.clone());
+        let mut identifiers = alias.map(|list| list.into_iter().map(Identifier::Dns).collect::<Vec<Identifier>>()).unwrap_or_else(|| vec![]);
+        identifiers.push(identifier);
         let mut order = self.account.new_order(&NewOrder {
-            identifiers: &[identifier],
+            identifiers: &identifiers,
         })?;
         let state = order.state();
         debug!("domain:{domain} order state:{:#?}", state);
@@ -263,6 +266,7 @@ pub struct RefreshDomainMessage(pub Vec<String>);
 pub struct ReloadACMEState {
     provider: Arc<ACMEProvider>,
     disabled_hosts: Arc<HashSet<String>>,
+    alias_hosts: Arc<HashMap<String, Vec<String>>>,
     hosts: Arc<HashSet<String>>,
     pub challenge_path: Arc<PathBuf>,
 }
@@ -315,6 +319,7 @@ impl ACMEManager {
                     disabled_hosts,
                     hosts,
                     challenge_path,
+                    alias_hosts,
                 }) = reload_acme_state
                 {
                     let refresh_domains = if refresh_domains.is_empty() {
@@ -351,6 +356,7 @@ impl ACMEManager {
                         _certificate_map.clone(),
                         refresh_domains,
                         challenge_path.clone(),
+                        alias_hosts.clone(),
                     )
                     .await;
                 }
@@ -448,11 +454,20 @@ impl ACMEManager {
                 hosts.insert(domain);
             }
         }
+        let mut alias_map = HashMap::new();
+        for domain in &config.domains {
+            if let Some(alias) = domain.alias.as_ref() {
+                if !alias.is_empty() {
+                    alias_map.insert(domain.domain.clone(), alias.iter().map(|x|x.clone()).collect());
+                }
+            }
+        }
         Ok(ReloadACMEState {
             provider: Arc::new(provider),
             hosts: Arc::new(hosts),
             disabled_hosts: Arc::new(disable_https_hosts),
             challenge_path: Arc::new(challenge_path),
+            alias_hosts: Arc::new(alias_map),
         })
     }
 
@@ -461,11 +476,13 @@ impl ACMEManager {
         certificate_map: Arc<DashMap<String, Arc<CertifiedKey>>>,
         renewal_domains: HashSet<String>,
         challenge_path: Arc<PathBuf>,
+        alias_map: Arc<HashMap<String, Vec<String>>>,
     ) {
         for domain in renewal_domains {
             debug!("{domain} begin to get cert");
+            let alias = alias_map.get(&domain).map(|x|x.clone());
             match provider
-                .create_order_and_auth(domain.clone(), challenge_path.clone())
+                .create_order_and_auth(domain.clone(), challenge_path.clone(), alias)
                 .await
             {
                 Ok((public_cert, private_key)) => {

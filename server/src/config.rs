@@ -104,6 +104,7 @@ pub struct DomainConfig {
     pub cors: Option<bool>,
     pub cache: Option<DomainCacheConfig>,
     pub https: Option<DomainHttpsConfig>,
+    pub alias: Option<Vec<String>>,
 }
 
 #[derive(Deserialize, Debug, Clone, PartialEq)]

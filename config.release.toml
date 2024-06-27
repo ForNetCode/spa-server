@@ -79,6 +79,8 @@ addr = "0.0.0.0"
 ## optional, domains specfic config, it will use the default config if not set
 # [[domains]]
 # domain = "www.example.com"
+## optional, `example.com` would redirect to `www.example.com`
+# alias = ["example.com"]
 # cors = false
 # [domains.https]
 # http_redirect_to_https = 443
