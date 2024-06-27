@@ -34,13 +34,25 @@ impl ServiceConfig {
     }
 }
 
+pub struct ServiceContext {
+    pub is_https: bool,
+    pub external_port: u16,
+    pub redirect_url: Arc<Option<String>>, //
+    pub challenge_path: ChallengePath,
+}
+
 pub async fn create_service(
     req: Request<Body>,
     service_config: Arc<ServiceConfig>,
     domain_storage: Arc<DomainStorage>,
-    challenge_path: ChallengePath,
-    is_https: bool,
+    context: ServiceContext,
 ) -> Result<warp::reply::Response, Infallible> {
+    let ServiceContext {
+        is_https,
+        external_port,
+        redirect_url,
+        challenge_path,
+    } = context;
     let uri = req.uri();
     let from_uri = uri.authority().cloned();
     // trick, need more check

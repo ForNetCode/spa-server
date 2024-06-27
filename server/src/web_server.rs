@@ -1,21 +1,21 @@
+use crate::acme::ChallengePath;
 use chrono::{DateTime, Local};
 use hyper::server::conn::AddrIncoming;
 use hyper::server::Server as HServer;
 use hyper::service::service_fn;
+use rustls::ServerConfig;
 use socket2::{Domain, Socket, Type};
 use std::collections::HashMap;
 use std::convert::Infallible;
 use std::net::{SocketAddr, TcpListener};
 use std::str::FromStr;
 use std::sync::Arc;
-use rustls::ServerConfig;
 use tokio::net::TcpListener as TKTcpListener;
 use tokio::sync::oneshot::Receiver;
-use crate::acme::ChallengePath;
 
 use crate::config::Config;
 use crate::domain_storage::DomainStorage;
-use crate::service::{create_service, DomainServiceConfig, ServiceConfig};
+use crate::service::{create_service, DomainServiceConfig, ServiceConfig, ServiceContext};
 use crate::tls::TlsAcceptor;
 
 async fn handler(rx: Receiver<()>, time: DateTime<Local>, http_or_https: &'static str) {
@@ -56,15 +56,12 @@ pub struct Server {
 
 impl Server {
     pub fn new(conf: Config, storage: Arc<DomainStorage>) -> Self {
-        let default_http_redirect_to_https = conf
-            .https
-            .as_ref()
-            .map(|x| x.http_redirect_to_https);
-        
+        let default_http_redirect_to_https = conf.https.as_ref().map(|x| x.http_redirect_to_https);
+
         let default = DomainServiceConfig {
             cors: conf.cors,
             http_redirect_to_https: default_http_redirect_to_https,
-            enable_acme: conf.https.as_ref().and_then(|x|x.acme.as_ref()).is_some(),
+            enable_acme: conf.https.as_ref().and_then(|x| x.acme.as_ref()).is_some(),
         };
         let service_config: HashMap<String, DomainServiceConfig> = conf
             .domains
@@ -77,7 +74,11 @@ impl Server {
                         .as_ref()
                         .and_then(|x| x.http_redirect_to_https)
                         .or(default_http_redirect_to_https),
-                    enable_acme: domain.https.as_ref().map(|x|x.disable_acme).unwrap_or(default.enable_acme),
+                    enable_acme: domain
+                        .https
+                        .as_ref()
+                        .map(|x| x.disable_acme)
+                        .unwrap_or(default.enable_acme),
                 };
 
                 (domain.domain.clone(), domain_service_config)
@@ -116,6 +117,7 @@ impl Server {
             let tls_server_config = tls_server_config.unwrap();
             let bind_address =
                 SocketAddr::from_str(&format!("{}:{}", &config.addr, &config.port)).unwrap();
+            let external_port = config.external_port.unwrap_or(bind_address.port());
 
             let make_svc = hyper::service::make_service_fn(|_| {
                 let service_config = self.service_config.clone();
@@ -123,7 +125,16 @@ impl Server {
                 let challenge_path = challenge_path.clone();
                 async move {
                     Ok::<_, Infallible>(service_fn(move |req| {
-                        create_service(req, service_config.clone(), storage.clone(), challenge_path.clone(),true)
+                        create_service(
+                            req,
+                            service_config.clone(),
+                            storage.clone(),
+                            ServiceContext {
+                                challenge_path: challenge_path.clone(),
+                                is_https: true,
+                                external_port,
+                            },
+                        )
                     }))
                 }
             });
@@ -138,17 +149,32 @@ impl Server {
         Ok(())
     }
 
-    pub async fn init_http_server(&self, rx: Option<Receiver<()>>, challenge_path: ChallengePath) -> anyhow::Result<()> {
+    pub async fn init_http_server(
+        &self,
+        rx: Option<Receiver<()>>,
+        challenge_path: ChallengePath,
+    ) -> anyhow::Result<()> {
         if let Some(http_config) = &self.conf.http {
             let bind_address =
-                SocketAddr::from_str(&format!("{}:{}", &http_config.addr, &http_config.port)).unwrap();
+                SocketAddr::from_str(&format!("{}:{}", &http_config.addr, &http_config.port))
+                    .unwrap();
+            let external_port = http_config.external_port.unwrap_or(bind_address.port());
             let make_svc = hyper::service::make_service_fn(|_| {
                 let service_config = self.service_config.clone();
                 let storage = self.storage.clone();
                 let challenge_path = challenge_path.clone();
                 async move {
                     Ok::<_, Infallible>(service_fn(move |req| {
-                        create_service(req, service_config.clone(), storage.clone(),challenge_path.clone(),false)
+                        create_service(
+                            req,
+                            service_config.clone(),
+                            storage.clone(),
+                            ServiceContext {
+                                challenge_path: challenge_path.clone(),
+                                is_https: true,
+                                external_port,
+                            },
+                        )
                     }))
                 }
             });

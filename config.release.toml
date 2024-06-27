@@ -10,14 +10,20 @@ cors = false
 [http]
 port = 80
 addr = "0.0.0.0"
+## port when serving public PI,default is http port. external_port should not be 0.
+# external_port = 80
+
+## optional, when https enabled, redirect_https default value is true
+# redirect_https = false
 
 # [https]
 # port = 443 # https bind address
 # addr = "0.0.0.0"
+## port when serving public PI,default is https port. external_port should not be 0.
+# external_port = 443
+
 ## if set true, http server(80) will send client
 ## status code:301(Moved Permanently) to tell client redirect to https
-## optional, default is false
-# http_redirect_to_https = false
 
 ## default value for https ssl
 # [https.ssl]
@@ -83,7 +89,9 @@ addr = "0.0.0.0"
 # alias = ["example.com"]
 # cors = false
 # [domains.https]
-# http_redirect_to_https = 443
+## optional, default is `http.redirect_https` value.
+# redirect_https = false
+
 ## this would be usefully when set https.acme
 # disable_acme = false
 # [domains.https.ssl]

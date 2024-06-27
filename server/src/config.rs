@@ -160,14 +160,16 @@ pub struct ACMEConfig {
 #[derive(Deserialize, Debug, Clone, PartialEq)]
 pub struct HttpConfig {
     pub addr: String,
-    pub port: u32,
+    pub port: u16,
+    pub external_port: Option<u16>,
 }
 
 #[derive(Deserialize, Debug, Clone, PartialEq)]
 pub struct HttpsConfig {
     pub ssl: Option<SSL>,
     pub acme: Option<ACMEConfig>,
-    pub port: u32,
+    pub port: u16,
+    pub external_port: Option<u16>,
     pub addr: String,
     #[serde(default)]
     pub http_redirect_to_https: u32,
