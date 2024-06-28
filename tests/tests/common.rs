@@ -3,8 +3,8 @@ use reqwest::redirect::Policy;
 use reqwest::{Certificate, Client, ClientBuilder, StatusCode, Url};
 use spa_client::api::API;
 use std::path::{Path, PathBuf};
-use std::{env, fs, io};
 use std::sync::OnceLock;
+use std::{env, fs, io};
 //use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
 use tracing::{debug, error};
@@ -39,11 +39,9 @@ pub fn get_server_data_path(domain: &str, version: u32) -> PathBuf {
         .join(version.to_string())
 }
 
-fn get_root_cert() -> Certificate {
-    let path = get_test_dir().join("pebble/certs/pebble.minica.pem");
+fn get_root_cert(path: PathBuf) -> Certificate {
     Certificate::from_pem(&fs::read(&path).unwrap()).unwrap()
 }
-
 pub fn run_server_with_config(config_file_name: &str) -> JoinHandle<()> {
     env::set_var(
         "SPA_CONFIG",
@@ -51,8 +49,7 @@ pub fn run_server_with_config(config_file_name: &str) -> JoinHandle<()> {
     );
     let _ = tracing_subscriber::fmt()
         .with_env_filter(
-            EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "info,spa_server=debug".into())
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| "info,spa_server=debug".into()),
         )
         .with_test_writer()
         .try_init();
@@ -111,10 +108,10 @@ pub async fn upload_file_and_check(
     assert_files(domain, request_prefix, version, check_path).await;
 }
 
-pub async fn assert_redirects(request:&str, redirect_urls: Vec<String>) {
+pub async fn assert_redirects(request: &str, redirect_urls: Vec<String>) {
     let mut request = request.to_string();
     for redirect_url in redirect_urls {
-        let target= assert_redirect_correct(request.as_str(), &redirect_url).await;
+        let target = assert_redirect_correct(request.as_str(), &redirect_url).await;
         match Url::parse(&target) {
             Ok(_) => {
                 request = target;
@@ -125,7 +122,6 @@ pub async fn assert_redirects(request:&str, redirect_urls: Vec<String>) {
                 request = url.to_string();
             }
         }
-
     }
 }
 pub async fn assert_files(
@@ -173,7 +169,10 @@ pub fn get_http_client() -> &'static Client {
     static CLIENT: OnceLock<Client> = OnceLock::new();
     CLIENT.get_or_init(|| {
         ClientBuilder::new()
-            .add_root_certificate(get_root_cert())
+            .add_root_certificate(get_root_cert(
+                get_test_dir().join("pebble/certs/pebble.minica.pem"),
+            ))
+            .add_root_certificate(get_root_cert(get_test_dir().join("cert/cacerts.pem")))
             // .danger_accept_invalid_certs(true)
             .build()
             .unwrap()
@@ -183,7 +182,10 @@ pub fn get_http_no_redirect_client() -> &'static Client {
     static CLIENT: OnceLock<Client> = OnceLock::new();
     CLIENT.get_or_init(|| {
         ClientBuilder::new()
-            .add_root_certificate(get_root_cert())
+            .add_root_certificate(get_root_cert(
+                get_test_dir().join("pebble/certs/pebble.minica.pem"),
+            ))
+            .add_root_certificate(get_root_cert(get_test_dir().join("cert/cacerts.pem")))
             // .danger_accept_invalid_certs(true)
             .redirect(Policy::none())
             .build()
@@ -198,7 +200,13 @@ pub async fn assert_redirect_correct(request_prefix: &str, target_prefix: &str) 
     let query = url.query().unwrap();
     let response = client.get(url.clone()).send().await.unwrap();
 
-    let location = response.headers().get(LOCATION).unwrap().to_str().unwrap().to_string();
+    let location = response
+        .headers()
+        .get(LOCATION)
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_string();
     assert_eq!(response.status(), StatusCode::MOVED_PERMANENTLY);
     assert_eq!(
         location,

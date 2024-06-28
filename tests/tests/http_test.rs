@@ -218,7 +218,6 @@ async fn self_signed_cert_https() {
 
     run_server_with_config("server_config_https.conf");
     tokio::time::sleep(Duration::from_secs(2)).await;
-    /*
     upload_file_and_check(domain, request_prefix, 1, vec!["index.html", "1.html"]).await;
     assert_redirect_correct(request_prefix, "/27/").await;
     assert_files(
@@ -240,7 +239,6 @@ async fn self_signed_cert_https() {
     assert_eq!(result.status(), StatusCode::MOVED_PERMANENTLY);
     let location = result.headers().get(LOCATION).unwrap().to_str().unwrap();
     assert_eq!(location, format!("https://{LOCAL_HOST}:8443/27/index.html"))
-     */
 }
 
 #[tokio::test]
@@ -266,10 +264,9 @@ async fn single_domain_reject_multiple_update() {
         get_template_version(domain, 1),
         client_config.upload.parallel,
     )
-        .await;
+    .await;
     assert!(upload_result.is_err());
 }
-
 
 #[tokio::test]
 async fn multiple_domain_reject_single_update() {
@@ -294,7 +291,7 @@ async fn multiple_domain_reject_single_update() {
         get_template_version(domain, 1),
         client_config.upload.parallel,
     )
-        .await;
+    .await;
     assert!(upload_result.is_err());
 }
 
@@ -330,5 +327,9 @@ async fn alias_start_server_and_client_upload_file() {
     run_server_with_config("server_config_alias.toml");
     tokio::time::sleep(Duration::from_secs(1)).await;
     upload_file_and_check(domain, request_prefix, 1, vec!["index.html"]).await;
-    assert_redirects(request_prefix, vec![format!("http://{LOCAL_HOST}:8080/27"), "/27/".to_owned()]).await
+    assert_redirects(
+        request_prefix,
+        vec![format!("http://{LOCAL_HOST}:8080/27"), "/27/".to_owned()],
+    )
+    .await
 }
