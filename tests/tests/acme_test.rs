@@ -86,7 +86,7 @@ async fn simple_acme_test() {
     sleep(Duration::from_secs(2)).await;
     assert_files(domain, request_prefix, 1, vec!["", "index.html"]).await;
 }
-#[ignore]
+
 #[tokio::test]
 async fn simple_acme_test2() {
     let domain = LOCAL_HOST.to_owned();
@@ -115,3 +115,34 @@ async fn simple_acme_test2() {
     }
     assert_files(domain, request_prefix, 1, vec!["", "index.html"]).await;
 }
+
+#[tokio::test]
+async fn alias_acme() {
+    let domain = LOCAL_HOST.to_owned();
+    let domain = &domain;
+    let request_prefix = format!("https://{LOCAL_HOST2}:8443");
+    let request_prefix = &request_prefix;
+    clean_web_domain_dir(LOCAL_HOST);
+    clean_cert();
+    run_server_with_config("server_config_acme_alias.toml");
+    sleep(Duration::from_secs(2)).await;
+    upload_file_and_check(domain, request_prefix, 1, vec![]).await;
+
+    let (api, _) = get_client_api("client_config.conf");
+    let mut wait_count = 0;
+    loop {
+        assert!(wait_count < 60, "60 seconds doest not have cert");
+        sleep(Duration::from_secs(1)).await;
+        let cert_info = api
+            .get_acme_cert_info(Some(get_host_path_from_domain(domain).0.to_string()))
+            .await
+            .unwrap();
+        if !cert_info.is_empty() {
+            break;
+        }
+        wait_count += 1;
+    }
+    assert_files(domain, request_prefix, 1, vec!["index.html"]).await;
+    assert_redirects(request_prefix, vec![format!("https://{LOCAL_HOST}:8443/27"), "/27/".to_owned()]).await
+}
+

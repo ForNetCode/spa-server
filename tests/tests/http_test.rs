@@ -316,3 +316,17 @@ async fn revoke_version() {
     assert_files(domain, request_prefix, 2, vec!["index.html", "2.html"]).await;
     assert_files_no_exists(request_prefix, vec!["3.html"]).await;
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 3)]
+async fn alias_start_server_and_client_upload_file() {
+    let domain = LOCAL_HOST.to_owned() + "/27";
+    let domain = &domain;
+    let request_prefix = format!("http://{LOCAL_HOST2}:8080/27");
+    let request_prefix = &request_prefix;
+
+    clean_web_domain_dir(LOCAL_HOST);
+    run_server_with_config("server_config_alias.toml");
+    tokio::time::sleep(Duration::from_secs(1)).await;
+    upload_file_and_check(domain, request_prefix, 1, vec!["index.html"]).await;
+    assert_redirects(request_prefix, vec![format!("http://{LOCAL_HOST}:8080/27"), "/27/".to_owned()]).await
+}

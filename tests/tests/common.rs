@@ -1,15 +1,16 @@
 use reqwest::header::{CACHE_CONTROL, LOCATION};
 use reqwest::redirect::Policy;
-use reqwest::{ClientBuilder, StatusCode, Url};
+use reqwest::{Certificate, ClientBuilder, StatusCode, Url};
 use spa_client::api::API;
 use std::path::{Path, PathBuf};
 use std::{env, fs, io};
 //use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
-use tracing::{debug, error, Level};
+use tracing::{debug, error};
 use tracing_subscriber::EnvFilter;
 
 pub const LOCAL_HOST: &str = "local.fornetcode.com";
+pub const LOCAL_HOST2: &str = "local2.fornetcode.com";
 
 pub fn get_test_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("data")
@@ -35,6 +36,11 @@ pub fn get_server_data_path(domain: &str, version: u32) -> PathBuf {
         .join("web")
         .join(domain)
         .join(version.to_string())
+}
+
+fn get_root_cert() -> Certificate {
+    let path = get_test_dir().join("pebble/certs/pebble.minica.pem");
+    Certificate::from_pem(&fs::read(&path).unwrap()).unwrap()
 }
 
 pub fn run_server_with_config(config_file_name: &str) -> JoinHandle<()> {
@@ -115,6 +121,24 @@ pub async fn upload_file_and_check(
 
     assert_files(domain, request_prefix, version, check_path).await;
 }
+
+pub async fn assert_redirects(request:&str, redirect_urls: Vec<String>) {
+    let mut request = request.to_string();
+    for redirect_url in redirect_urls {
+        let target= assert_redirect_correct(request.as_str(), &redirect_url).await;
+        match Url::parse(&target) {
+            Ok(_) => {
+                request = target;
+            }
+            Err(_) => {
+                let mut url = Url::parse(&request).unwrap();
+                url.set_path(&redirect_url);
+                request = url.to_string();
+            }
+        }
+
+    }
+}
 pub async fn assert_files(
     domain: &str,
     request_prefix: &str,
@@ -160,9 +184,9 @@ pub async fn assert_files(
         }
     }
 }
-pub async fn assert_redirect_correct(request_prefix: &str, target_prefix: &str) {
+pub async fn assert_redirect_correct(request_prefix: &str, target_prefix: &str) -> String {
     let client = ClientBuilder::new()
-        .danger_accept_invalid_certs(true)
+        .add_root_certificate(get_root_cert())
         .redirect(Policy::none())
         .build()
         .unwrap();
@@ -170,11 +194,14 @@ pub async fn assert_redirect_correct(request_prefix: &str, target_prefix: &str) 
     let url = Url::parse_with_params(request_prefix, &query).unwrap();
     let query = url.query().unwrap();
     let response = client.get(url.clone()).send().await.unwrap();
+
+    let location = response.headers().get(LOCATION).unwrap().to_str().unwrap().to_string();
     assert_eq!(response.status(), StatusCode::MOVED_PERMANENTLY);
     assert_eq!(
-        response.headers().get(LOCATION).unwrap().to_str().unwrap(),
+        location,
         format!("{target_prefix}?{query}") //format!("{path}/?{query}")
     );
+    location
 }
 pub async fn assert_files_no_exists(request_prefix: &str, check_path: Vec<&'static str>) {
     for file in check_path {

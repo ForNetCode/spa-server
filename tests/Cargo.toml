@@ -5,7 +5,7 @@ edition = "2021"
 publish = false
 
 [[test]]
-name = "starter"
+name = "http_test"
 [[test]]
 name = "acme_test"
 

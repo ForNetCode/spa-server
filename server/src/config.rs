@@ -105,12 +105,12 @@ pub struct DomainConfig {
     pub cache: Option<DomainCacheConfig>,
     pub https: Option<DomainHttpsConfig>,
     pub alias: Option<Vec<String>>,
+    pub redirect_https: Option<bool>,
 }
 
 #[derive(Deserialize, Debug, Clone, PartialEq)]
 pub struct DomainHttpsConfig {
     pub ssl: Option<SSL>,
-    pub http_redirect_to_https: Option<u32>,
     #[serde(default)]
     pub disable_acme: bool,
 }
@@ -162,6 +162,7 @@ pub struct HttpConfig {
     pub addr: String,
     pub port: u16,
     pub external_port: Option<u16>,
+    pub redirect_https: Option<bool>,
 }
 
 #[derive(Deserialize, Debug, Clone, PartialEq)]
@@ -172,7 +173,7 @@ pub struct HttpsConfig {
     pub external_port: Option<u16>,
     pub addr: String,
     #[serde(default)]
-    pub http_redirect_to_https: u32,
+    pub http_redirect_to_https: u16,
 }
 // should write Deserialize by hand.
 #[derive(Deserialize, Debug, Clone, PartialEq)]
