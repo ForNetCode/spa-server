@@ -165,29 +165,29 @@ impl ACMEProvider {
         debug!("domain:{domain} order state:{:#?}", state);
         assert!(matches!(state.status, OrderStatus::Pending));
         let authorizations = order.authorizations()?;
-        assert_eq!(authorizations.len(), 1);
-        let authz = authorizations.first().unwrap();
-        //for authz in &authorizations {
-        // get authorization
-        match authz.status {
-            AuthorizationStatus::Pending => {}
-            //AuthorizationStatus::Valid => continue,
-            _ => todo!(),
+        let mut names = vec![];
+        for authz in &authorizations {
+            match authz.status {
+                AuthorizationStatus::Pending => {}
+                AuthorizationStatus::Valid => continue,
+                _ => {
+                    warn!("authorization : {authz:#?}")
+                },
+            }
+            let challenge = authz
+                .challenges
+                .iter()
+                .find(|c| c.r#type == ChallengeType::Http01)
+                .ok_or_else(|| anyhow!("no http01 challenge found for domain:{domain}"))?;
+            let Identifier::Dns(identifier) = &authz.identifier;
+            let token = challenge.token.clone();
+
+            let key_authorization = order.key_authorization(challenge);
+            let challenge_domain_token_path = get_challenge_path(&challenge_path, identifier, &token);
+            fs::write(challenge_domain_token_path, key_authorization.as_str())?;
+            names.push(identifier.clone());
+            order.set_challenge_ready(&challenge.url)?;
         }
-        let challenge = authz
-            .challenges
-            .iter()
-            .find(|c| c.r#type == ChallengeType::Http01)
-            .ok_or_else(|| anyhow!("no http01 challenge found for domain:{domain}"))?;
-        let Identifier::Dns(identifier) = &authz.identifier;
-        let token = challenge.token.clone();
-
-        let key_authorization = order.key_authorization(challenge);
-        //TODO: save to
-        let challenge_domain_token_path = get_challenge_path(&challenge_path, &domain, &token);
-        fs::write(challenge_domain_token_path, key_authorization.as_str())?;
-        order.set_challenge_ready(&challenge.url)?;
-
         // get token
         let mut retries: u32 = 0;
         let state = loop {
@@ -211,7 +211,7 @@ impl ACMEProvider {
             bail!("domain: {domain} order is invalid")
         }
 
-        let mut params = CertificateParams::new(vec![identifier.to_string()]);
+        let mut params = CertificateParams::new(names);
         params.distinguished_name = DistinguishedName::new();
         let cert = Certificate::from_params(params).unwrap();
         let csr = cert.serialize_request_der()?;

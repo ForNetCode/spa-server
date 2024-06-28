@@ -143,6 +143,6 @@ async fn alias_acme() {
         wait_count += 1;
     }
     assert_files(domain, request_prefix, 1, vec!["index.html"]).await;
-    assert_redirects(request_prefix, vec![format!("https://{LOCAL_HOST}:8443/27"), "/27/".to_owned()]).await
+    assert_redirects(request_prefix, vec![format!("https://{LOCAL_HOST}:8443/")]).await
 }
 

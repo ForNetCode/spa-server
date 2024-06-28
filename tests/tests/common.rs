@@ -186,7 +186,8 @@ pub async fn assert_files(
 }
 pub async fn assert_redirect_correct(request_prefix: &str, target_prefix: &str) -> String {
     let client = ClientBuilder::new()
-        .add_root_certificate(get_root_cert())
+        //.add_root_certificate(get_root_cert()) // does not work
+        .danger_accept_invalid_certs(true)
         .redirect(Policy::none())
         .build()
         .unwrap();

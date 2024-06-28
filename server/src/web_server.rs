@@ -59,15 +59,31 @@ pub struct Server {
 impl Server {
     pub fn new(conf: Config, storage: Arc<DomainStorage>) -> anyhow::Result<Self> {
         let default_http_redirect_to_https:Option<Either<&'static str, u16>> = conf.http.as_ref().and_then(|x| {
-            if x.redirect_https.is_some_and(|x|x) {
-                let external_port = conf.https.as_ref().and_then(|https| https.external_port);
-                if external_port.is_none() {
-                    Some(Either::Left("when redirect_https is undefined or true, https.external_port should be set"))
-                } else {
-                    external_port.map(|x|Either::Right(x))
+            match x.redirect_https {
+                Some(true) => {
+                    let external_port = conf.https.as_ref().and_then(|https| https.external_port);
+                    if external_port.is_none() {
+                        Some(Either::Left("when redirect_https is undefined or true, https.external_port should be set"))
+                    } else {
+                        external_port.map(|x|Either::Right(x))
+                    }
+                },
+                None => {
+                    match &conf.https {
+                        Some(https) => {
+                            let external_port = https.external_port;
+                            if external_port.is_none() {
+                                Some(Either::Left("when redirect_https is undefined or true, https.external_port should be set"))
+                            } else {
+                                external_port.map(|x|Either::Right(x))
+                            }
+                        },
+                        None => None,
+                    }
+                },
+                Some(false) => {
+                    None
                 }
-            } else {
-                None
             }
         });
         let default_http_redirect_to_https = match default_http_redirect_to_https {

@@ -35,7 +35,9 @@ impl ServiceConfig {
     }
 }
 
-fn alias_redirect(uri: &Uri, https:bool, host:&str, external_port:u16) -> warp::reply::Response { // cors?
+// http to https
+// alias
+fn alias_redirect(uri: &Uri, https: bool, host:&str, external_port:u16) -> warp::reply::Response { // cors?
     let mut resp = Response::default();
     let schema = if https {"https://"} else {"http://"};
 
@@ -137,7 +139,7 @@ pub async fn create_http_service(
             let token = &path[ACME_CHALLENGE.len()..];
             {
                 if let Some(path) = challenge_path.read().await.as_ref() {
-                    let path = get_challenge_path(path, host, token);
+                    let path = get_challenge_path(path, origin_host, token);
                     let headers = req.headers();
                     let conditionals = Conditionals {
                         if_modified_since: headers.typed_get(),
@@ -163,7 +165,7 @@ pub async fn create_http_service(
                 Some(external_port) => (true, external_port),
                 None => (false, external_port)
             };
-            return Ok(alias_redirect(uri,https, host, external_port));
+            return Ok(alias_redirect(uri, https, host, external_port));
         }
         file_resp(&req, uri, host, domain_storage, origin_opt).await
     } else {
