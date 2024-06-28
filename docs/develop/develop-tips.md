@@ -21,7 +21,7 @@ config should be set as follows:
 
 ```shell
 # I try to change Pebble httpPort, but does not success. so the port must be Pebble default port.
-http.port = 5002
+http.port = 8080
 https.acme {
       emails = ["mailto:zsy.evan@gmail.com"]
       # directory to store account and certificate

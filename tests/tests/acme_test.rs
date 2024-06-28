@@ -1,4 +1,4 @@
-#[allow(unused_variables)]
+#![allow(unused_variables)]
 use crate::common::*;
 use spa_server::config::get_host_path_from_domain;
 use std::fs;
@@ -50,7 +50,7 @@ async fn simple_acme_test() {
 
     assert_redirect_correct(request_prefix, "/27/").await;
     assert_redirect_correct(
-        &format!("http://{LOCAL_HOST}:5002/27"),
+        &format!("http://{LOCAL_HOST}:8080/27"),
         &format!("https://{LOCAL_HOST}:8443/27"),
     )
     .await;
@@ -58,7 +58,7 @@ async fn simple_acme_test() {
     assert_files(domain, request_prefix, 1, vec![""]).await;
     assert_files(
         domain,
-        &format!("http://{LOCAL_HOST}:5002/27"),
+        &format!("http://{LOCAL_HOST}:8080/27"),
         1,
         vec!["", "index.html"],
     )
@@ -145,4 +145,3 @@ async fn alias_acme() {
     assert_files(domain, request_prefix, 1, vec!["index.html"]).await;
     assert_redirects(request_prefix, vec![format!("https://{LOCAL_HOST}:8443/")]).await
 }
-

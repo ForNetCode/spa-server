@@ -49,7 +49,8 @@ pub fn run_server_with_config(config_file_name: &str) -> JoinHandle<()> {
     );
     let _ = tracing_subscriber::fmt()
         .with_env_filter(
-            EnvFilter::try_from_default_env().unwrap_or_else(|_| "info,spa_server=debug".into()),
+            EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "info,spa_server=debug,spa_client=debug".into()),
         )
         .with_test_writer()
         .try_init();
@@ -172,8 +173,9 @@ pub fn get_http_client() -> &'static Client {
             .add_root_certificate(get_root_cert(
                 get_test_dir().join("pebble/certs/pebble.minica.pem"),
             ))
+            //.tls_built_in_root_certs(false)
             .add_root_certificate(get_root_cert(get_test_dir().join("cert/cacerts.pem")))
-            // .danger_accept_invalid_certs(true)
+            .danger_accept_invalid_certs(true)
             .build()
             .unwrap()
     })
@@ -186,7 +188,8 @@ pub fn get_http_no_redirect_client() -> &'static Client {
                 get_test_dir().join("pebble/certs/pebble.minica.pem"),
             ))
             .add_root_certificate(get_root_cert(get_test_dir().join("cert/cacerts.pem")))
-            // .danger_accept_invalid_certs(true)
+            //.tls_built_in_root_certs(false)
+            .danger_accept_invalid_certs(true)
             .redirect(Policy::none())
             .build()
             .unwrap()

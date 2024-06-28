@@ -1,4 +1,4 @@
-#[allow(unused_variables)]
+#![allow(unused_variables)]
 use reqwest::header::LOCATION;
 use reqwest::redirect::Policy;
 use reqwest::{ClientBuilder, StatusCode};
