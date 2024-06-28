@@ -1,4 +1,6 @@
 # Break Changes
+## V2.3.0
+* spa-server: `https.http_redirect_to_https` move to `http.redirect_https`, and value is bool.
 ## V2.2.2(2024-06-18)
 * spa-server: `http_redirect_to_https` convert from bool to u32.
 ## V2.2.0(2024-06-15)
