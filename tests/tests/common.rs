@@ -1,9 +1,10 @@
 use reqwest::header::{CACHE_CONTROL, LOCATION};
 use reqwest::redirect::Policy;
-use reqwest::{Certificate, ClientBuilder, StatusCode, Url};
+use reqwest::{Certificate, Client, ClientBuilder, StatusCode, Url};
 use spa_client::api::API;
 use std::path::{Path, PathBuf};
 use std::{env, fs, io};
+use std::sync::OnceLock;
 //use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
 use tracing::{debug, error};
@@ -55,7 +56,6 @@ pub fn run_server_with_config(config_file_name: &str) -> JoinHandle<()> {
         )
         .with_test_writer()
         .try_init();
-    //let (tx, rx) = oneshot::channel::<()>();
     tokio::spawn(async move {
         let result = spa_server::run_server().await;
         if result.is_err() {
@@ -63,18 +63,7 @@ pub fn run_server_with_config(config_file_name: &str) -> JoinHandle<()> {
         } else {
             debug!("spa server finish");
         }
-        // tokio::select! {
-        //     _ = rx => {
-        //         debug!("stop server")
-        //     }
-        //     result = spa_server::run_server() => {
-        //         if result.is_err() {
-        //             error!("spa server run error: {:?}", result.unwrap_err());
-        //         }
-        //     }
-        // }
     })
-    //tx
 }
 pub fn run_server() -> JoinHandle<()> {
     run_server_with_config("server_config.conf")
@@ -145,11 +134,7 @@ pub async fn assert_files(
     version: u32,
     check_path: Vec<&'static str>,
 ) {
-    let client = ClientBuilder::new()
-        .danger_accept_invalid_certs(true)
-        .redirect(Policy::default())
-        .build()
-        .unwrap();
+    let client = get_http_client();
     for file in check_path {
         println!("begin to check: {request_prefix}/{file}, version:{version}");
         let result = client
@@ -184,13 +169,30 @@ pub async fn assert_files(
         }
     }
 }
+pub fn get_http_client() -> &'static Client {
+    static CLIENT: OnceLock<Client> = OnceLock::new();
+    CLIENT.get_or_init(|| {
+        ClientBuilder::new()
+            .add_root_certificate(get_root_cert())
+            // .danger_accept_invalid_certs(true)
+            .build()
+            .unwrap()
+    })
+}
+pub fn get_http_no_redirect_client() -> &'static Client {
+    static CLIENT: OnceLock<Client> = OnceLock::new();
+    CLIENT.get_or_init(|| {
+        ClientBuilder::new()
+            .add_root_certificate(get_root_cert())
+            // .danger_accept_invalid_certs(true)
+            .redirect(Policy::none())
+            .build()
+            .unwrap()
+    })
+}
+
 pub async fn assert_redirect_correct(request_prefix: &str, target_prefix: &str) -> String {
-    let client = ClientBuilder::new()
-        //.add_root_certificate(get_root_cert()) // does not work
-        .danger_accept_invalid_certs(true)
-        .redirect(Policy::none())
-        .build()
-        .unwrap();
+    let client = get_http_no_redirect_client();
     let query = [("lang", "rust"), ("browser", "servo"), ("zh", "转义字符")];
     let url = Url::parse_with_params(request_prefix, &query).unwrap();
     let query = url.query().unwrap();

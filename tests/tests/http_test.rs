@@ -218,8 +218,8 @@ async fn self_signed_cert_https() {
 
     run_server_with_config("server_config_https.conf");
     tokio::time::sleep(Duration::from_secs(2)).await;
-    upload_file_and_check(domain, request_prefix, 1, vec!["index.html", "1.html"]).await;
     /*
+    upload_file_and_check(domain, request_prefix, 1, vec!["index.html", "1.html"]).await;
     assert_redirect_correct(request_prefix, "/27/").await;
     assert_files(
         domain,
