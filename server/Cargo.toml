@@ -33,8 +33,8 @@ mime = "0.3"
 mime_guess = "2.0.0"
 rustls = { version = "0.22" }
 rustls-pemfile = "2.0"
-rustls-platform-verifier = "0.3"
-rustls-webpki = { version = "0.102.4", features = ["alloc"] } #sync with rustls
+#rustls-platform-verifier = "0.3"
+#rustls-webpki = { version = "0.102.4", features = ["alloc"] } #sync with rustls
 x509-parser = "0.16"
 tokio-rustls = "0.25"
 futures-util = "0.3"

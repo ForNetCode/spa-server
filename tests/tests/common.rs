@@ -1,7 +1,9 @@
 use reqwest::header::{CACHE_CONTROL, LOCATION};
 use reqwest::redirect::Policy;
 use reqwest::{Certificate, Client, ClientBuilder, StatusCode, Url};
+use rustls::ClientConfig;
 use spa_client::api::API;
+use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use std::{env, fs, io};
@@ -37,6 +39,23 @@ pub fn get_server_data_path(domain: &str, version: u32) -> PathBuf {
         .join("web")
         .join(domain)
         .join(version.to_string())
+}
+
+fn get_tls_config() -> ClientConfig {
+    let mut roots = rustls::RootCertStore::empty();
+    let mut reader = io::BufReader::new(
+        File::open(get_test_dir().join("pebble/certs/pebble.minica.pem")).unwrap(),
+    );
+    let cert = rustls_pemfile::certs(&mut reader).map(|v| v.unwrap());
+    roots.add_parsable_certificates(cert);
+    // let mut reader =
+    //     io::BufReader::new(File::open(get_test_dir().join("cert/cacerts.pem")).unwrap());
+    // let cert = rustls_pemfile::certs(&mut reader).map(|v| v.unwrap());
+    // roots.add_parsable_certificates(cert);
+
+    ClientConfig::builder()
+        .with_root_certificates(roots)
+        .with_no_client_auth()
 }
 
 fn get_root_cert(path: PathBuf) -> Certificate {
