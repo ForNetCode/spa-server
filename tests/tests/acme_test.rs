@@ -17,7 +17,7 @@ fn clean_cert() {
         fs::remove_dir_all(&cert).unwrap();
     }
 }
-// Attention: must run pebble server firstly, then run it. the bash is at /tests/bash/run_pebble.sh
+// Attention: must run pebble server firstly, then run it. the bash is at /tests/bash/run_pebble(mac/dev).sh
 #[tokio::test]
 async fn simple_acme_test() {
     let domain = LOCAL_HOST.to_owned() + "/27";
