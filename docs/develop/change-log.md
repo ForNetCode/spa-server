@@ -6,6 +6,7 @@
 - feat: support host alias. add config `http.external_port`, `https.external_port`
 - conf: **break change** `https.http_redirect_to_https` move to `http.redirect_https`, and value is bool.
 - improve: improve change_status response text style (release JS SDK 2.3.0)
+- improve: clean deps, update clap
 
 ### Version 2.2.4
 

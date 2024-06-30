@@ -6,7 +6,7 @@ use std::path::PathBuf;
 pub struct CliCommand {
     #[clap(subcommand)]
     pub commands: Commands,
-    #[clap(long, short, parse(from_os_str), value_name = "SPA_CLIENT_CONFIG")]
+    #[clap(long, short, value_name = "SPA_CLIENT_CONFIG")]
     pub config_dir: Option<PathBuf>,
 }
 
@@ -28,12 +28,11 @@ pub enum Commands {
     Revoke {
         domain: String,
         version: u32,
-    }
+    },
 }
 
 #[derive(Args, Debug)]
 pub struct UploadArg {
-    #[clap(parse(from_os_str))]
     pub path: PathBuf,
     pub domain: String,
     pub version: Option<u32>,
@@ -124,7 +123,7 @@ mod test {
     #[test]
     fn revoke_version() {
         let c = CliCommand::parse_from(&["test", "revoke", "www.example.com", "1"]);
-        if let Commands::Revoke {domain, version} = c.commands {
+        if let Commands::Revoke { domain, version } = c.commands {
             assert_eq!(domain, "www.example.com".to_string());
             assert_eq!(version, 1);
         } else {

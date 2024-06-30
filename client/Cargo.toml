@@ -28,7 +28,7 @@ futures = "0.3"
 
 
 # command arg parse
-clap = { version = "3.1", features = ["env", "derive"] }
+clap = { version = "4.5.7", features = ["env", "derive"] }
 
 # tokio trace and log
 tracing = "0.1"
