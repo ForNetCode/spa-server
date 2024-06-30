@@ -1,9 +1,7 @@
 use reqwest::header::{CACHE_CONTROL, LOCATION};
 use reqwest::redirect::Policy;
 use reqwest::{Certificate, Client, ClientBuilder, StatusCode, Url};
-use rustls::ClientConfig;
 use spa_client::api::API;
-use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use std::{env, fs, io};
@@ -41,13 +39,14 @@ pub fn get_server_data_path(domain: &str, version: u32) -> PathBuf {
         .join(version.to_string())
 }
 
+/*
 fn get_tls_config() -> ClientConfig {
     let mut roots = rustls::RootCertStore::empty();
     let mut reader = io::BufReader::new(
         File::open(get_test_dir().join("pebble/certs/pebble.minica.pem")).unwrap(),
     );
-    let cert = rustls_pemfile::certs(&mut reader).map(|v| v.unwrap());
-    roots.add_parsable_certificates(cert);
+    let cert:Vec<CertificateDer> = rustls_pemfile::certs(&mut reader).map(|v| v.unwrap()).collect();
+    roots.add_parsable_certificates(&cert);
     // let mut reader =
     //     io::BufReader::new(File::open(get_test_dir().join("cert/cacerts.pem")).unwrap());
     // let cert = rustls_pemfile::certs(&mut reader).map(|v| v.unwrap());
@@ -57,6 +56,8 @@ fn get_tls_config() -> ClientConfig {
         .with_root_certificates(roots)
         .with_no_client_auth()
 }
+
+ */
 
 fn get_root_cert(path: PathBuf) -> Certificate {
     Certificate::from_pem(&fs::read(&path).unwrap()).unwrap()
@@ -192,11 +193,12 @@ pub fn get_http_client() -> &'static Client {
             .add_root_certificate(get_root_cert(
                 get_test_dir().join("pebble/certs/pebble.minica.pem"),
             ))
+            .tls_built_in_root_certs(false)
             .use_rustls_tls()
             //.min_tls_version(Version::TLS_1_3)
             //.tls_built_in_root_certs(false)
-            .add_root_certificate(get_root_cert(get_test_dir().join("cert/cacerts.pem")))
-            //.danger_accept_invalid_certs(true)
+            //.add_root_certificate(get_root_cert(get_test_dir().join("cert/cacerts.pem")))
+            .danger_accept_invalid_certs(true)
             .build()
             .unwrap()
     })
@@ -208,11 +210,12 @@ pub fn get_http_no_redirect_client() -> &'static Client {
             .add_root_certificate(get_root_cert(
                 get_test_dir().join("pebble/certs/pebble.minica.pem"),
             ))
+            .tls_built_in_root_certs(false)
             .use_rustls_tls()
             //.min_tls_version(Version::TLS_1_3)
-            .add_root_certificate(get_root_cert(get_test_dir().join("cert/cacerts.pem")))
+            //.add_root_certificate(get_root_cert(get_test_dir().join("cert/cacerts.pem")))
             //.tls_built_in_root_certs(false)
-            //.danger_accept_invalid_certs(true)
+            .danger_accept_invalid_certs(true)
             .redirect(Policy::none())
             .build()
             .unwrap()
