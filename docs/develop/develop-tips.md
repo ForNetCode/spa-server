@@ -34,3 +34,7 @@ https.acme {
 ```
 
 **Remember to remove `tests/data/web/acme` directory when Pebble reinit.**
+
+## reqwest
+
+when reqwest use rustls, redirect would have problems: it would not redirect event with Policy::default().
