@@ -56,7 +56,7 @@ async function getClient(configPath:string|undefined){
 }
 
 function writeResult(func:() => Promise<any>) {
-    func().then(console.log).catch((e) =>{
+    func().then((v) => console.log(chalk.green(v))).catch((e) =>{
         console.error(e)
         process.exit(-1)
     })

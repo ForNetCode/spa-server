@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::fs::File;
 use std::io::Write;
@@ -152,39 +152,42 @@ impl ACMEProvider {
         &self,
         domain: String,
         challenge_path: Arc<PathBuf>,
+        alias: Option<Vec<String>>,
     ) -> anyhow::Result<(PathBuf, PathBuf)> {
         //
         let identifier = Identifier::Dns(domain.clone());
+        let mut identifiers = alias.map(|list| list.into_iter().map(Identifier::Dns).collect::<Vec<Identifier>>()).unwrap_or_else(|| vec![]);
+        identifiers.push(identifier);
         let mut order = self.account.new_order(&NewOrder {
-            identifiers: &[identifier],
+            identifiers: &identifiers,
         })?;
         let state = order.state();
         debug!("domain:{domain} order state:{:#?}", state);
         assert!(matches!(state.status, OrderStatus::Pending));
         let authorizations = order.authorizations()?;
-        assert_eq!(authorizations.len(), 1);
-        let authz = authorizations.first().unwrap();
-        //for authz in &authorizations {
-        // get authorization
-        match authz.status {
-            AuthorizationStatus::Pending => {}
-            //AuthorizationStatus::Valid => continue,
-            _ => todo!(),
+        let mut names = vec![];
+        for authz in &authorizations {
+            match authz.status {
+                AuthorizationStatus::Pending => {}
+                AuthorizationStatus::Valid => continue,
+                _ => {
+                    warn!("authorization : {authz:#?}")
+                },
+            }
+            let challenge = authz
+                .challenges
+                .iter()
+                .find(|c| c.r#type == ChallengeType::Http01)
+                .ok_or_else(|| anyhow!("no http01 challenge found for domain:{domain}"))?;
+            let Identifier::Dns(identifier) = &authz.identifier;
+            let token = challenge.token.clone();
+
+            let key_authorization = order.key_authorization(challenge);
+            let challenge_domain_token_path = get_challenge_path(&challenge_path, identifier, &token);
+            fs::write(challenge_domain_token_path, key_authorization.as_str())?;
+            names.push(identifier.clone());
+            order.set_challenge_ready(&challenge.url)?;
         }
-        let challenge = authz
-            .challenges
-            .iter()
-            .find(|c| c.r#type == ChallengeType::Http01)
-            .ok_or_else(|| anyhow!("no http01 challenge found for domain:{domain}"))?;
-        let Identifier::Dns(identifier) = &authz.identifier;
-        let token = challenge.token.clone();
-
-        let key_authorization = order.key_authorization(challenge);
-        //TODO: save to
-        let challenge_domain_token_path = get_challenge_path(&challenge_path, &domain, &token);
-        fs::write(challenge_domain_token_path, key_authorization.as_str())?;
-        order.set_challenge_ready(&challenge.url)?;
-
         // get token
         let mut retries: u32 = 0;
         let state = loop {
@@ -208,7 +211,7 @@ impl ACMEProvider {
             bail!("domain: {domain} order is invalid")
         }
 
-        let mut params = CertificateParams::new(vec![identifier.to_string()]);
+        let mut params = CertificateParams::new(names);
         params.distinguished_name = DistinguishedName::new();
         let cert = Certificate::from_params(params).unwrap();
         let csr = cert.serialize_request_der()?;
@@ -263,6 +266,7 @@ pub struct RefreshDomainMessage(pub Vec<String>);
 pub struct ReloadACMEState {
     provider: Arc<ACMEProvider>,
     disabled_hosts: Arc<HashSet<String>>,
+    alias_hosts: Arc<HashMap<String, Vec<String>>>,
     hosts: Arc<HashSet<String>>,
     pub challenge_path: Arc<PathBuf>,
 }
@@ -315,6 +319,7 @@ impl ACMEManager {
                     disabled_hosts,
                     hosts,
                     challenge_path,
+                    alias_hosts,
                 }) = reload_acme_state
                 {
                     let refresh_domains = if refresh_domains.is_empty() {
@@ -351,6 +356,7 @@ impl ACMEManager {
                         _certificate_map.clone(),
                         refresh_domains,
                         challenge_path.clone(),
+                        alias_hosts.clone(),
                     )
                     .await;
                 }
@@ -448,11 +454,20 @@ impl ACMEManager {
                 hosts.insert(domain);
             }
         }
+        let mut alias_map = HashMap::new();
+        for domain in &config.domains {
+            if let Some(alias) = domain.alias.as_ref() {
+                if !alias.is_empty() {
+                    alias_map.insert(domain.domain.clone(), alias.iter().map(|x|x.clone()).collect());
+                }
+            }
+        }
         Ok(ReloadACMEState {
             provider: Arc::new(provider),
             hosts: Arc::new(hosts),
             disabled_hosts: Arc::new(disable_https_hosts),
             challenge_path: Arc::new(challenge_path),
+            alias_hosts: Arc::new(alias_map),
         })
     }
 
@@ -461,11 +476,13 @@ impl ACMEManager {
         certificate_map: Arc<DashMap<String, Arc<CertifiedKey>>>,
         renewal_domains: HashSet<String>,
         challenge_path: Arc<PathBuf>,
+        alias_map: Arc<HashMap<String, Vec<String>>>,
     ) {
         for domain in renewal_domains {
             debug!("{domain} begin to get cert");
+            let alias = alias_map.get(&domain).map(|x|x.clone());
             match provider
-                .create_order_and_auth(domain.clone(), challenge_path.clone())
+                .create_order_and_auth(domain.clone(), challenge_path.clone(), alias)
                 .await
             {
                 Ok((public_cert, private_key)) => {
@@ -501,42 +518,40 @@ impl ACMEManager {
             .await;
     }
 
-    pub async fn get_cert_data(&self, host:Option<&String>) ->anyhow::Result<Vec<CertInfo>>{
+    pub async fn get_cert_data(&self, host: Option<&String>) -> anyhow::Result<Vec<CertInfo>> {
         let result = match host {
-            Some(host) => {
-                match self.certificate_map.get(host) {
-                    Some(value) => {
-                        let [begin, end] = get_cert_validate_time(&value)?;
-                        vec![CertInfo {
-                            begin,
-                            end,
-                            host: host.to_owned(),
-                        }]
-
-                    },
-                    None => vec![]
+            Some(host) => match self.certificate_map.get(host) {
+                Some(value) => {
+                    let [begin, end] = get_cert_validate_time(&value)?;
+                    vec![CertInfo {
+                        begin,
+                        end,
+                        host: host.to_owned(),
+                    }]
                 }
-            }
-            None => {
-                self.certificate_map.iter().filter_map(|item| {
-                    match get_cert_validate_time(&item)  {
-                        Ok([begin, end]) => Some(CertInfo {
-                            begin, end, host:item.key().to_string()
-                        }),
-                        Err(error) => {
-                            warn!("get {} cert fail:{error}", item.key());
-                            None
-                        }
+                None => vec![],
+            },
+            None => self
+                .certificate_map
+                .iter()
+                .filter_map(|item| match get_cert_validate_time(&item) {
+                    Ok([begin, end]) => Some(CertInfo {
+                        begin,
+                        end,
+                        host: item.key().to_string(),
+                    }),
+                    Err(error) => {
+                        warn!("get {} cert fail:{error}", item.key());
+                        None
                     }
-                }).collect()
-            }
+                })
+                .collect(),
         };
         Ok(result)
     }
-
 }
 
-fn get_cert_validate_time(certified_key: &CertifiedKey) -> anyhow::Result<[DateTime<Utc>;2]> {
+fn get_cert_validate_time(certified_key: &CertifiedKey) -> anyhow::Result<[DateTime<Utc>; 2]> {
     let cert = certified_key.end_entity_cert()?;
     let (_, cert) = x509_parser::parse_x509_certificate(cert.as_ref())?;
     let validity = cert.validity();
@@ -658,5 +673,13 @@ mod test {
         let r = &ACMEType::CI;
         let r = matches!(r, ACMEType::CI);
         assert!(r);
+    }
+
+    #[test]
+    fn get_challenge_path_safe_test() {
+        let root = PathBuf::from("/tmp");
+        let challenge_token_path = super::get_challenge_path(&root, "www.example.com", "/../");
+        println!("{}", challenge_token_path.display().to_string());
+        assert!(challenge_token_path.canonicalize().is_err());
     }
 }

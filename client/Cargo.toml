@@ -1,6 +1,6 @@
 [package]
 name = "spa-client"
-version = "2.2.4"
+version = "2.3.0"
 edition = "2021"
 authors = ["timzaak"]
 license = "MIT"
@@ -21,14 +21,14 @@ path = "src/bin/main.rs"
 spa-server = { path = "../server" }
 
 # web request
-reqwest = { version = "0.12.4", features = ["json", "blocking", "multipart", "stream"], default-features = false }
+reqwest = { version = "0.11.27", features = ["json", "blocking", "multipart", "stream", "rustls-tls"], default-features = false }
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread", "io-std", "sync", "time", "tokio-macros", "test-util"] }
 futures = "0.3"
 
 
 
 # command arg parse
-clap = { version = "3.1", features = ["env", "derive"] }
+clap = { version = "4.5.7", features = ["env", "derive"] }
 
 # tokio trace and log
 tracing = "0.1"
@@ -36,6 +36,8 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 #config
 hocon = "0.9"
+toml = "0.8.14"
+toml_edit = "0.22.14"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 

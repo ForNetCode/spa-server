@@ -12,6 +12,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 use tracing::warn;
 use warp::fs::{ArcPath, Conditionals};
+use warp::http::Uri;
 use warp::Reply;
 
 use crate::static_file_filter::{cache_or_file_reply, get_cache_file};
@@ -19,11 +20,12 @@ use crate::static_file_filter::{cache_or_file_reply, get_cache_file};
 pub struct ServiceConfig {
     pub default: DomainServiceConfig,
     pub inner: HashMap<String, DomainServiceConfig>,
+    pub host_alias: Arc<HashMap<String, String>>,
 }
 
 pub struct DomainServiceConfig {
     pub cors: bool,
-    pub http_redirect_to_https: Option<u32>,
+    pub redirect_https: Option<u16>,
     pub enable_acme: bool,
 }
 
@@ -33,27 +35,97 @@ impl ServiceConfig {
     }
 }
 
-pub async fn create_service(
-    req: Request<Body>,
-    service_config: Arc<ServiceConfig>,
-    domain_storage: Arc<DomainStorage>,
-    challenge_path: ChallengePath,
-    is_https: bool,
-) -> Result<warp::reply::Response, Infallible> {
+// http to https
+// alias
+fn alias_redirect(uri: &Uri, https: bool, host:&str, external_port:u16) -> warp::reply::Response { // cors?
+    let mut resp = Response::default();
+    let schema = if https {"https://"} else {"http://"};
+
+    let mut path = format!("{schema}{host}");
+
+    if https && external_port != 443 || !https && external_port != 80 {
+        path.push_str(&format!(":{external_port}"))
+    }
+
+    path = format!("{path}{uri}");
+    let path = path.parse().unwrap();
+    resp.headers_mut().insert(LOCATION, path);
+    *resp.status_mut() = StatusCode::MOVED_PERMANENTLY;
+    resp
+}
+
+// static file reply
+async fn file_resp(req: &Request<Body>,uri:&Uri, host:&str, domain_storage: Arc<DomainStorage>, origin_opt: Option<Validated>) -> Result<Response<Body>, Infallible> {
+    let path = uri.path();
+    let mut resp = match get_cache_file(path, host, domain_storage.clone()).await {
+        Some(item) => {
+            let headers = req.headers();
+            let conditionals = Conditionals {
+                if_modified_since: headers.typed_get(),
+                if_unmodified_since: headers.typed_get(),
+                if_range: headers.typed_get(),
+                range: headers.typed_get(),
+            };
+            let accept_encoding = headers
+                .get("accept-encoding")
+                .and_then(|x| x.to_str().map(|x| x.to_string()).ok());
+            cache_or_file_reply(item, conditionals, accept_encoding).await
+        }
+        None => {
+            // path: "" => "/"
+            if domain_storage.check_if_empty_index(host, path) {
+                let mut resp = Response::default();
+                //Attention: alias would be twice
+                let mut path = format!("{path}/");
+                if let Some(query) = uri.query() {
+                    path.push('?');
+                    path.push_str(query);
+                }
+                let path = path.parse().unwrap();
+                resp.headers_mut().insert(LOCATION, path);
+                *resp.status_mut() = StatusCode::MOVED_PERMANENTLY;
+                Ok(resp)
+            } else {
+                Ok(not_found())
+            }
+        }
+    };
+    if let Some(Validated::Simple(origin)) = origin_opt {
+        resp = resp.map(|r| cors_resp(r, origin));
+    }
+    resp
+}
+fn get_authority(req:&Request<Body>) -> Option<Authority> {
     let uri = req.uri();
     let from_uri = uri.authority().cloned();
     // trick, need more check
-    let authority_opt = from_uri.or_else(|| {
+    from_uri.or_else(|| {
         req.headers().get("host").and_then(|value| {
             value
                 .to_str()
                 .ok()
                 .and_then(|x| Authority::from_str(x).ok())
         })
-    });
+    })
+}
+
+
+pub async fn create_http_service(
+    req: Request<Body>,
+    service_config: Arc<ServiceConfig>,
+    domain_storage: Arc<DomainStorage>,
+    challenge_path: ChallengePath,
+    external_port: u16,
+)  -> Result<warp::reply::Response, Infallible> {
+    let authority_opt = get_authority(&req);
 
     if let Some(authority) = authority_opt {
-        let host = authority.host();
+        let origin_host = authority.host();
+        let (is_alias, host) = if let Some(alias) = service_config.host_alias.get(origin_host) {
+            (true, alias.as_str())
+        } else {
+            (false, origin_host)
+        };
 
         let service_config = service_config.get_domain_service_config(host);
         // cors
@@ -61,97 +133,88 @@ pub async fn create_service(
             Either::Left(x) => Some(x),
             Either::Right(v) => return Ok(v),
         };
+        let uri = req.uri();
         let path = uri.path();
-        // redirect to https
-        if !is_https {
-            // check if acme challenge
-            if service_config.enable_acme && path.starts_with(ACME_CHALLENGE) {
-                let token = &path[ACME_CHALLENGE.len()..];
-                {
-                    if let Some(path) = challenge_path.read().await.as_ref() {
-                        let path = get_challenge_path(path, host, token);
-                        let headers = req.headers();
-                        let conditionals = Conditionals {
-                            if_modified_since: headers.typed_get(),
-                            if_unmodified_since: headers.typed_get(),
-                            if_range: headers.typed_get(),
-                            range: headers.typed_get(),
-                        };
-                        return match warp::fs::file_reply(ArcPath(Arc::new(path)), conditionals)
-                            .await
-                        {
-                            Ok(resp) => Ok(resp.into_response()),
-                            Err(_err) => {
-                                warn!("known challenge error:{_err:?}");
-                                Ok(not_found())
-                            }
-                        };
-                    }
+        if service_config.enable_acme && path.starts_with(ACME_CHALLENGE) {
+            let token = &path[ACME_CHALLENGE.len()..];
+            {
+                if let Some(path) = challenge_path.read().await.as_ref() {
+                    let path = get_challenge_path(path, origin_host, token);
+                    let headers = req.headers();
+                    let conditionals = Conditionals {
+                        if_modified_since: headers.typed_get(),
+                        if_unmodified_since: headers.typed_get(),
+                        if_range: headers.typed_get(),
+                        range: headers.typed_get(),
+                    };
+                    return match warp::fs::file_reply(ArcPath(Arc::new(path)), conditionals)
+                        .await
+                    {
+                        Ok(resp) => Ok(resp.into_response()),
+                        Err(_err) => {
+                            warn!("known challenge error:{_err:?}");
+                            Ok(not_found())
+                        }
+                    };
                 }
-                return Ok(not_found());
             }
-            if let Some(port) = service_config.http_redirect_to_https {
-                let mut resp = Response::default();
-                let redirect_path = if port != 443 {
-                    format!("https://{host}:{port}{uri}")
-                } else {
-                    format!("https://{host}{uri}")
-                };
-                resp.headers_mut()
-                    .insert(LOCATION, redirect_path.parse().unwrap());
-                *resp.status_mut() = StatusCode::MOVED_PERMANENTLY;
-                return Ok(resp);
-            }
+            return Ok(not_found());
         }
-        
-        // static file
-        let mut resp = match get_cache_file(path, host, domain_storage.clone()).await {
-            Some(item) => {
-                let headers = req.headers();
-                let conditionals = Conditionals {
-                    if_modified_since: headers.typed_get(),
-                    if_unmodified_since: headers.typed_get(),
-                    if_range: headers.typed_get(),
-                    range: headers.typed_get(),
-                };
-                let accept_encoding = headers
-                    .get("accept-encoding")
-                    .and_then(|x| x.to_str().map(|x| x.to_string()).ok());
-                cache_or_file_reply(item, conditionals, accept_encoding).await
-            }
-            None => {
-                // path: "" => "/"
-                if domain_storage.check_if_empty_index(host, path) {
-                    let mut resp = Response::default();
-                    let mut path = format!("{path}/");
-                    if let Some(query) = uri.query() {
-                        path.push('?');
-                        path.push_str(query);
-                    }
-                    let path = path.parse().unwrap();
-                    resp.headers_mut().insert(LOCATION, path);
-                    *resp.status_mut() = StatusCode::MOVED_PERMANENTLY;
-                    Ok(resp)
-                } else {
-                    Ok(not_found())
-                }
-            },
+        if is_alias || service_config.redirect_https.is_some() {
+            let (https, external_port) = match service_config.redirect_https {
+                Some(external_port) => (true, external_port),
+                None => (false, external_port)
+            };
+            return Ok(alias_redirect(uri, https, host, external_port));
+        }
+        file_resp(&req, uri, host, domain_storage, origin_opt).await
+    } else {
+        Ok(forbid())
+    }
+
+}
+
+
+pub async fn create_https_service(
+    req: Request<Body>,
+    service_config: Arc<ServiceConfig>,
+    domain_storage: Arc<DomainStorage>,
+    external_port: u16,
+)  -> Result<warp::reply::Response, Infallible>  {
+    let authority_opt = get_authority(&req);
+
+    if let Some(authority) = authority_opt {
+        let origin_host = authority.host();
+        let (is_alias, host) = if let Some(alias) = service_config.host_alias.get(origin_host) {
+            (true, alias.as_str())
+        } else {
+            (false, origin_host)
         };
 
-        if let Some(Validated::Simple(origin)) = origin_opt {
-            resp = resp.map(|r| cors_resp(r, origin));
+        let service_config = service_config.get_domain_service_config(host);
+        // cors
+        let origin_opt = match resp_cors_request(req.method(), req.headers(), service_config.cors) {
+            Either::Left(x) => Some(x),
+            Either::Right(v) => return Ok(v),
+        };
+        let uri = req.uri();
+        if is_alias {
+            return Ok(alias_redirect(uri,true, host, external_port));
         }
-        resp
+        file_resp(&req, uri,host, domain_storage, origin_opt).await
     } else {
-        let mut resp = Response::default();
-        *resp.status_mut() = StatusCode::FORBIDDEN;
-        Ok(resp)
+        Ok(forbid())
     }
 }
 
 pub fn not_found() -> Response<Body> {
     let mut resp = Response::default();
     *resp.status_mut() = StatusCode::NOT_FOUND;
+    resp
+}
+pub fn forbid()-> Response<Body> {
+    let mut resp = Response::default();
+    *resp.status_mut() = StatusCode::FORBIDDEN;
     resp
 }
 

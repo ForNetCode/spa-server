@@ -1,5 +1,13 @@
 # Change Log
 
+### Version 2.3.0
+
+- feat: support toml config format, deprecated hocon config format.
+- feat: support host alias. add config `http.external_port`, `https.external_port`
+- conf: **break change** `https.http_redirect_to_https` move to `http.redirect_https`, and value is bool.
+- improve: improve change_status response text style (release JS SDK 2.3.0)
+- improve: clean deps, update clap
+
 ### Version 2.2.4
 
 - feat: add cert query API (no doc, no client SDK support)
@@ -8,6 +16,7 @@
 - feat: add revoke version API (release JS SDK 2.2.4)
 
 ### Version 2.2.3
+
 - fix: sub_path '' => '/', like GitHub pages
 - fix: redirect with no querystring
 - ci: support ACME pebble integration test

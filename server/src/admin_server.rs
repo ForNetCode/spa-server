@@ -1,9 +1,10 @@
+use std::collections::HashMap;
 use crate::acme::ACMEManager;
 use crate::admin_server::request::{
     DeleteDomainVersionOption, DomainWithOptVersionOption, DomainWithVersionOption,
     GetDomainOption, GetDomainPositionOption, UpdateUploadingStatusOption, UploadFileOption,
 };
-use crate::config::AdminConfig;
+use crate::config::{AdminConfig, get_host_path_from_domain};
 use crate::domain_storage::DomainStorage;
 use crate::hot_reload::HotReloadManager;
 use crate::with;
@@ -15,7 +16,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 use warp::multipart::FormData;
 use warp::reply::Response;
-use warp::{Filter, Rejection};
+use warp::{Filter, Rejection, Reply};
 
 pub struct AdminServer {
     conf: Arc<AdminConfig>,
@@ -23,6 +24,7 @@ pub struct AdminServer {
     reload_manager: Arc<HotReloadManager>,
     acme_manager: Arc<ACMEManager>,
     delay_timer: DelayTimer,
+    host_alias: Arc<HashMap<String, String>>,
 }
 
 impl AdminServer {
@@ -32,6 +34,7 @@ impl AdminServer {
         reload_manager: HotReloadManager,
         acme_manager: Arc<ACMEManager>,
         delay_timer: DelayTimer,
+        host_alias: Arc<HashMap<String, String>>
     ) -> Self {
         AdminServer {
             conf: Arc::new(conf.clone()),
@@ -39,6 +42,7 @@ impl AdminServer {
             reload_manager: Arc::new(reload_manager),
             acme_manager,
             delay_timer,
+            host_alias
         }
     }
 
@@ -86,7 +90,7 @@ impl AdminServer {
 
     fn get_domain_info(
         &self,
-    ) -> impl Filter<Extract = (impl warp::Reply,), Error = Rejection> + Clone {
+    ) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
         warp::path("status")
             .and(warp::query::<GetDomainOption>())
             .and(with(self.domain_storage.clone()))
@@ -99,6 +103,7 @@ impl AdminServer {
         warp::path!("upload" / "position")
             .and(warp::query::<GetDomainPositionOption>())
             .and(with(self.domain_storage.clone()))
+            .and(with(self.host_alias.clone()))
             .map(service::get_upload_position)
     }
 
@@ -140,15 +145,28 @@ impl AdminServer {
                 warp::body::content_length_limit(1024 * 16)
                     .and(warp::body::json::<UpdateUploadingStatusOption>()),
             )
+            .and(with(self.host_alias.clone()))
             .and_then(service::change_upload_status)
     }
 
-    fn upload_file(&self) -> impl Filter<Extract = (impl warp::Reply,), Error = Rejection> + Clone {
+    fn check_alias(domain:&str, host_alias: Arc<HashMap<String, String>>) -> Option<Response> {
+        let (host,_) = get_host_path_from_domain(domain);
+        if let Some(original_host) =  host_alias.get(host) {
+            return Some(bad_resp(format!("should not use alias domain, please use {original_host}")))
+        }
+        None
+    }
+
+    fn upload_file(&self) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
         async fn handler(
             query: UploadFileOption,
             form: FormData,
             storage: Arc<DomainStorage>,
+            host_alias: Arc<HashMap<String, String>>,
         ) -> Result<Response, Infallible> {
+            if let Some(resp) = AdminServer::check_alias(&query.domain, host_alias) {
+                return Ok(resp)
+            }
             let resp = service::update_file(query, form, storage)
                 .await
                 .unwrap_or_else(|e| {
@@ -163,12 +181,13 @@ impl AdminServer {
             .and(warp::query::<UploadFileOption>())
             .and(warp::multipart::form().max_length(self.conf.max_upload_size))
             .and(with(self.domain_storage.clone()))
+            .and(with(self.host_alias.clone()))
             .and_then(handler)
     }
 
     fn get_files_metadata(
         &self,
-    ) -> impl Filter<Extract = (impl warp::Reply,), Error = Rejection> + Clone {
+    ) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
         warp::path!("files" / "metadata")
             .and(with(self.domain_storage.clone()))
             .and(warp::query::<DomainWithVersionOption>())
@@ -204,6 +223,7 @@ impl AdminServer {
 }
 
 pub mod service {
+    use std::collections::HashMap;
     use crate::acme::ACMEManager;
     use crate::admin_server::request::{
         DeleteDomainVersionOption, DomainWithOptVersionOption, DomainWithVersionOption,
@@ -274,7 +294,11 @@ pub mod service {
     pub(super) fn get_upload_position(
         option: GetDomainPositionOption,
         storage: Arc<DomainStorage>,
+        host_alias: Arc<HashMap<String, String>>,
     ) -> Response {
+        if let Some(resp) = super::AdminServer::check_alias(&option.domain, host_alias) {
+            return resp
+        }
         if URI_REGEX.is_match(&option.domain) {
             match storage.get_upload_position(&option.domain) {
                 Ok(ret) => {
@@ -317,7 +341,11 @@ pub mod service {
         storage: Arc<DomainStorage>,
         acme_manager: Arc<ACMEManager>,
         param: UpdateUploadingStatusOption,
+        host_alias: Arc<HashMap<String,String>>,
     ) -> Result<Response, Infallible> {
+        if let Some(resp) = super::AdminServer::check_alias(&param.domain, host_alias) {
+            return Ok(resp)
+        }
         let resp = match storage
             .update_uploading_status(param.domain, param.version, param.status, &acme_manager)
             .await
@@ -471,6 +499,12 @@ pub mod service {
         };
         Ok(resp)
     }
+}
+
+fn bad_resp(text:String) -> Response {
+    let mut resp = StatusCode::BAD_REQUEST.into_response();
+    *resp.body_mut() = Body::from(text);
+    resp
 }
 
 pub mod request {

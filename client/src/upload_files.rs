@@ -31,7 +31,10 @@ pub async fn upload_files(
         return Err(anyhow!("{:?} is not a directory", path));
     }
 
-    let prefix_path = path.to_str().unwrap().to_string();
+    let prefix_path = path
+        .to_str()
+        .ok_or_else(|| anyhow!("upload path can not parse"))?
+        .to_string();
     let version = get_upload_version(&api, &domain, version).await?;
     println!("begin to fetch server file metadata with md5, you may need to wait if there are large number of files.");
     let server_metadata = api.get_file_metadata(&domain, version).await?;

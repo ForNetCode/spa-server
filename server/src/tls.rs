@@ -3,6 +3,7 @@ use crate::config::SSL;
 use crate::Config;
 use anyhow::{anyhow, Context as _};
 use core::task::{Context, Poll};
+use std::collections::HashMap;
 use dashmap::DashMap;
 use futures_util::ready;
 use hyper::server::accept::Accept;
@@ -48,12 +49,16 @@ impl ResolvesServerCert for FileCertResolver {
 #[derive(Debug)]
 struct DashMapCertResolver {
     dash_map: Arc<DashMap<String, Arc<CertifiedKey>>>,
+    host_alias_map: Arc<HashMap<String, String>>,
 }
 
 impl ResolvesServerCert for DashMapCertResolver {
     fn resolve(&self, client_hello: ClientHello) -> Option<Arc<CertifiedKey>> {
         if let Some(name) = client_hello.server_name() {
-            self.dash_map.get(name).map(|v| v.value().clone())
+            self.dash_map.get(name).map(|v| v.clone()).or_else(|| {
+                self.host_alias_map.get(name).and_then(|host|
+                    self.dash_map.get(host).map(|v| v.clone()))
+            })
         } else {
             None
         }
@@ -63,6 +68,7 @@ impl ResolvesServerCert for DashMapCertResolver {
 pub fn load_ssl_server_config(
     config: &Config,
     acme_manager: Arc<ACMEManager>,
+    host_alias_map: Arc<HashMap<String, String>>,
 ) -> anyhow::Result<Option<Arc<ServerConfig>>> {
     let dynamic_resolver: Arc<dyn ResolvesServerCert> = if config
         .https
@@ -70,8 +76,10 @@ pub fn load_ssl_server_config(
         .and_then(|v| v.acme.as_ref())
         .is_some()
     {
+
         Arc::new(DashMapCertResolver {
             dash_map: acme_manager.certificate_map.clone(),
+            host_alias_map,
         })
     } else if config.https.is_some() {
         let default = if let Some(ref ssl) = config.https.as_ref().and_then(|x| x.ssl.clone()) {

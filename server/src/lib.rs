@@ -14,6 +14,7 @@ pub mod cors;
 pub mod service;
 pub mod static_file_filter;
 
+use std::collections::HashMap;
 use crate::acme::{ACMEManager, RefreshDomainMessage, ReloadACMEState};
 use crate::admin_server::AdminServer;
 use crate::config::{AdminConfig, Config};
@@ -47,6 +48,7 @@ async fn run_admin_server(
     reload_manager: HotReloadManager,
     acme_manager: Arc<ACMEManager>,
     delay_timer: DelayTimer,
+    host_alias: Arc<HashMap<String, String>>
 ) -> anyhow::Result<()> {
     let admin_server = AdminServer::new(
         config,
@@ -54,6 +56,7 @@ async fn run_admin_server(
         reload_manager,
         acme_manager,
         delay_timer,
+        host_alias,
     );
     admin_server.run().await
 }
@@ -71,7 +74,7 @@ pub async fn reload_server(
         let domain_storage = Arc::new(DomainStorage::init(&config.file_dir, cache)?);
 
         let (state, http_rx, https_rx) = OneShotReloadState::init(&config);
-        let server = Server::new(config.clone(), domain_storage.clone());
+        let server = Server::new(config.clone(), domain_storage.clone())?;
         let acme_config = config.https.as_ref().and_then(|x| x.acme.clone());
         let reload_acme_state: Option<ReloadACMEState> = if let Some(acme_config) = acme_config {
             Some(ACMEManager::init_acme_provider_and_certificate(
@@ -92,14 +95,14 @@ pub async fn reload_server(
         }
         let challenge_path = acme_manager.challenge_dir.clone();
         let _sender = acme_manager.sender.clone();
-        let tls_server_config = load_ssl_server_config(&config, acme_manager)?;
+        let tls_server_config = load_ssl_server_config(&config, acme_manager, server.get_host_alias())?;
         tokio::task::spawn(async move {
             join(
                 server
-                    .init_http_server(http_rx, challenge_path.clone())
+                    .init_http_server(http_rx, challenge_path)
                     .map_err(|error| error!("reload http server error:{error}")),
                 server
-                    .init_https_server(https_rx, tls_server_config, challenge_path.clone())
+                    .init_https_server(https_rx, tls_server_config)
                     .map_err(|error| error!("reload https server error:{error}")),
             )
             .await
@@ -125,7 +128,7 @@ pub async fn run_server() -> anyhow::Result<()> {
 pub async fn run_server_with_config(config: Config) -> anyhow::Result<()> {
     let cache = FileCache::new(&config);
     let domain_storage = Arc::new(DomainStorage::init(&config.file_dir, cache)?);
-    let server = Server::new(config.clone(), domain_storage.clone());
+    let server = Server::new(config.clone(), domain_storage.clone())?;
 
     if let Some(admin_config) = &config.admin_config {
         tracing::info!("admin server enabled");
@@ -154,16 +157,19 @@ pub async fn run_server_with_config(config: Config) -> anyhow::Result<()> {
         )?);
         let challenge_path = acme_manager.challenge_dir.clone();
 
-        let tls_server_config = load_ssl_server_config(&config, acme_manager.clone())?;
+        let host_alias = server.get_host_alias();
+
+
+        let tls_server_config = load_ssl_server_config(&config, acme_manager.clone(), host_alias.clone())?;
         let _ = tokio::join!(
             server
-                .init_https_server(https_rx, tls_server_config, challenge_path.clone())
+                .init_https_server(https_rx, tls_server_config)
                 .map_err(|error| {
                     error!("init https server error: {error}");
                     error
                 }),
             server
-                .init_http_server(http_rx, challenge_path.clone())
+                .init_http_server(http_rx, challenge_path)
                 .map_err(|error| {
                     error!("init http server error: {error}");
                     error
@@ -174,6 +180,7 @@ pub async fn run_server_with_config(config: Config) -> anyhow::Result<()> {
                 reload_manager,
                 acme_manager.clone(),
                 delay_timer,
+                host_alias,
             )
             .map_err(|error| {
                 error!("init admin server error: {error}");
@@ -194,10 +201,10 @@ pub async fn run_server_with_config(config: Config) -> anyhow::Result<()> {
             &delay_timer,
         )?);
         let challenge_path = acme_manager.challenge_dir.clone();
-        let tls_server_config = load_ssl_server_config(&config, acme_manager.clone())?;
+        let tls_server_config = load_ssl_server_config(&config, acme_manager.clone(), server.get_host_alias())?;
         let _ = tokio::join!(
             server
-                .init_https_server(None, tls_server_config, challenge_path.clone())
+                .init_https_server(None, tls_server_config)
                 .map_err(|error| {
                     error!("init https server error: {error}");
                     panic!("init https server error: {error}")

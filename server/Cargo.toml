@@ -1,6 +1,6 @@
 [package]
 name = "spa-server"
-version = "2.2.4"
+version = "2.3.0"
 edition = "2021"
 authors = ["timzaak"]
 license = "MIT"
@@ -33,8 +33,8 @@ mime = "0.3"
 mime_guess = "2.0.0"
 rustls = { version = "0.22" }
 rustls-pemfile = "2.0"
-rustls-platform-verifier = "0.3"
-rustls-webpki = { version = "0.102.4", features = ["alloc"] } #sync with rustls
+#rustls-platform-verifier = "0.3"
+#rustls-webpki = { version = "0.102.4", features = ["alloc"] } #sync with rustls
 x509-parser = "0.16"
 tokio-rustls = "0.25"
 futures-util = "0.3"
@@ -50,7 +50,7 @@ delay_timer = "0.11.6" # dashmap is same
 
 #config
 hocon = "0.9"
-serde_yml = "0.0.10"
+toml = { version = "0.8.14" }
 serde = { version = "1.0", features = ["derive"] }
 serde_repr = "0.1"
 serde_json = "1"

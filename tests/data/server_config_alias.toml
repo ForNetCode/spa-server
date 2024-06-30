@@ -1,0 +1,41 @@
+cors = true
+file_dir = "./data/web"
+
+
+# http bind, if set port <= 0, will disable http server(need set https config)
+[http]
+port = 8080
+addr = "0.0.0.0"
+
+
+
+[cache]
+# if file size > max_size, it will not be cached. default is (10MB).
+max_size = 20
+compression = true
+
+[[cache.client_cache]]
+expire = '30d'
+extension_names = ['icon','gif','jpg','jpeg','png','js']
+
+[[cache.client_cache]]
+expire = '0'
+extension_names = ['html']
+
+
+# admin server config
+# admin server don't support hot reload. the config should not change.
+# optional, and it's disabled by default.
+# if you use spa-client to upload files, control version. Need to open it
+[admin_config]
+# bind host
+port = 9000
+addr = "127.0.0.1"
+
+# this is used to check client request
+# put it in http header,  Authorization: Bearer $token
+token = "token"
+
+[[domains]]
+domain = "local.fornetcode.com"
+alias = ["local2.fornetcode.com"]
