@@ -16,6 +16,7 @@ import {
 } from "cmd-ts";
 import {ExistingPath} from 'cmd-ts/batteries/fs';
 import {version as Version} from '../package.json'
+import chalk from "chalk";
 
 export const Integer: Type<string, number> = extendType(number, {
     async from(n) {
@@ -38,25 +39,25 @@ const domain = positional({type: string, displayName: 'domain'})
 const version = positional({type: Integer, displayName: 'version'});
 const versionOptional = positional({type: optional(Integer), displayName: 'version'});
 
-async function getClient(configPath:string|undefined){
+async function getClient(configPath: string | undefined) {
     //load config
     const hocon = configPath ? await parse({url: configPath}) : {}
     // address: string
     // authToken: string
-    const address: string|undefined = hocon?.server?.address ?? process.env.SPA_SERVER_ADDRESS
-    const authToken: string|undefined = hocon?.server?.auth_token ?? process.env.SPA_SERVER_AUTH_TOKEN
+    const address: string | undefined = hocon?.server?.address ?? process.env.SPA_SERVER_ADDRESS
+    const authToken: string | undefined = hocon?.server?.auth_token ?? process.env.SPA_SERVER_AUTH_TOKEN
 
-    if(!address) {
+    if (!address) {
         return Promise.reject("server.address could not get")
     }
-    if(!authToken) {
+    if (!authToken) {
         return Promise.reject("server.auth_token could not get")
     }
     return new SPAClient({address, authToken})
 }
 
-function writeResult(func:() => Promise<any>) {
-    func().then((v) => console.log(chalk.green(v))).catch((e) =>{
+function writeResult(func: () => Promise<any>) {
+    func().then((v) => console.log(chalk.green(v))).catch((e) => {
         console.error(e)
         process.exit(-1)
     })
@@ -81,15 +82,15 @@ const upload = command({
     args: {
         path: positional({type: ExistingPath, displayName: 'path'}),
         domain,
-        version:versionOptional,
+        version: versionOptional,
         parallel: option({type: optional(Integer), short: 'p', long: 'parallel'}),
         config: configDirOption,
     },
     handler({path, domain, version, parallel, config}) {
         writeResult(async () => {
             const client = await getClient(config)
-            const parallelParam = parallel ?? (process.env.SPA_UPLOAD_PARALLEL ? Number(process.env.SPA_UPLOAD_PARALLEL): undefined) ?? 3
-            await client.uploadFilesParallel(domain,version, path, parallelParam)
+            const parallelParam = parallel ?? (process.env.SPA_UPLOAD_PARALLEL ? Number(process.env.SPA_UPLOAD_PARALLEL) : undefined) ?? 3
+            await client.uploadFilesParallel(domain, version, path, parallelParam)
             return "upload files finish"
         })
     }
@@ -102,7 +103,7 @@ const release = command({
         config: configDirOption,
     },
     handler({domain, version, config}) {
-        writeResult(async() => {
+        writeResult(async () => {
             const client = await getClient(config)
             return await client.releaseDomainVersion(domain, version)
         })
@@ -113,7 +114,7 @@ const reload = command({
     name: 'reload',
     args: {config: configDirOption,},
     handler({config}) {
-        writeResult(async() => {
+        writeResult(async () => {
             const client = await getClient(config)
             await client.reloadSPAServer()
             return "reload successful"
@@ -128,7 +129,7 @@ const deleteCmd = command({
         config: configDirOption,
     },
     handler({domain, maxReserve, config}) {
-        writeResult(async() => {
+        writeResult(async () => {
             const client = await getClient(config)
             await client.removeFiles(domain, maxReserve)
             return "delete successful"
@@ -143,7 +144,7 @@ const revokeVersionCmd = command({
         config: configDirOption
     },
     handler({domain, version, config}) {
-        writeResult(async() => {
+        writeResult(async () => {
             const client = await getClient(config)
             await client.revokeVersion(domain, version)
             return "revoke successful"
