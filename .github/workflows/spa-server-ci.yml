@@ -25,5 +25,5 @@ jobs:
         run: cargo test -p tests --test acme_test -j 1 -- --test-threads 1
       - name: run spa-client test
         run: cargo test -p spa-client -j 1 -- --test-threads 1
-      - name: run spa-client test
+      - name: run spa-server test
         run: cargo test -p spa-server
