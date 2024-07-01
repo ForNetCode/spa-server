@@ -27,11 +27,11 @@ async fn simple_acme_test() {
     clean_web_domain_dir(LOCAL_HOST);
     clean_cert();
     // console_subscriber::init();
-    run_server_with_config("server_config_acme.conf");
+    run_server_with_config("server_config_acme.toml");
     sleep(Duration::from_secs(2)).await;
     upload_file_and_check(domain, request_prefix, 1, vec![]).await;
 
-    let (api, _) = get_client_api("client_config.conf");
+    let (api, _) = get_client_api("client_config.toml");
     let mut wait_count = 0;
     loop {
         assert!(wait_count < 60, "60 seconds doest not have cert");
@@ -81,7 +81,7 @@ async fn simple_acme_test() {
         wait_count +=1;
     }
     // sometimes it output error. don't know why
-    run_server_with_config("server_config_acme.conf");
+    run_server_with_config("server_config_acme.toml");
     */
     sleep(Duration::from_secs(2)).await;
     assert_files(domain, request_prefix, 1, vec!["", "index.html"]).await;
@@ -95,11 +95,11 @@ async fn simple_acme_test2() {
     let request_prefix = &request_prefix;
     clean_web_domain_dir(LOCAL_HOST);
     clean_cert();
-    run_server_with_config("server_config_acme.conf");
+    run_server_with_config("server_config_acme.toml");
     sleep(Duration::from_secs(2)).await;
     upload_file_and_check(domain, request_prefix, 1, vec![]).await;
 
-    let (api, _) = get_client_api("client_config.conf");
+    let (api, _) = get_client_api("client_config.toml");
     let mut wait_count = 0;
     loop {
         assert!(wait_count < 60, "60 seconds doest not have cert");
@@ -128,7 +128,7 @@ async fn alias_acme() {
     sleep(Duration::from_secs(2)).await;
     upload_file_and_check(domain, request_prefix, 1, vec![]).await;
 
-    let (api, _) = get_client_api("client_config.conf");
+    let (api, _) = get_client_api("client_config.toml");
     let mut wait_count = 0;
     loop {
         assert!(wait_count < 60, "60 seconds doest not have cert");

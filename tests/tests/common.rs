@@ -84,12 +84,12 @@ pub fn run_server_with_config(config_file_name: &str) -> JoinHandle<()> {
     })
 }
 pub fn run_server() -> JoinHandle<()> {
-    run_server_with_config("server_config.conf")
+    run_server_with_config("server_config.toml")
 }
 
 pub async fn reload_server() {
     let client_config =
-        spa_client::config::Config::load(Some(get_test_dir().join("client_config.conf"))).unwrap();
+        spa_client::config::Config::load(Some(get_test_dir().join("client_config.toml"))).unwrap();
     let client_api = API::new(&client_config).unwrap();
     client_api.reload_spa_server().await.unwrap()
 }
@@ -106,7 +106,7 @@ pub async fn upload_file_and_check(
     version: u32,
     check_path: Vec<&'static str>,
 ) {
-    let (client_api, client_config) = get_client_api("client_config.conf");
+    let (client_api, client_config) = get_client_api("client_config.toml");
     println!("begin to upload file");
 
     spa_client::upload_files(

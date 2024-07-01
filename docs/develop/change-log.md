@@ -1,4 +1,7 @@
 # Change Log
+### Version 2.4.0
+- 
+- conf: remove hocon config
 
 ### Version 2.3.0
 

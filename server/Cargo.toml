@@ -49,7 +49,6 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 delay_timer = "0.11.6" # dashmap is same
 
 #config
-hocon = "0.9"
 toml = { version = "0.8.14" }
 serde = { version = "1.0", features = ["derive"] }
 serde_repr = "0.1"

@@ -120,8 +120,3 @@ addr = "0.0.0.0"
 # extension_names = ['icon', 'gif', 'jpg', 'jpeg', 'png', 'js']
 
 ```
-
-## Hocon Format Config
-
-**Attention: hocon format would not support in the future.**
-the format is like Toml. you could check it from toml format.

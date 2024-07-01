@@ -853,6 +853,7 @@ mod test {
     #[ignore]
     #[test]
     fn test_domain_storage_get_domain_info() {
+        //TODO: fix config path
         let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../test/config.test.conf");
         env::set_var("SPA_CONFIG", path.display().to_string());
         let mut config = Config::load().unwrap();
