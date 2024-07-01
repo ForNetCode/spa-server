@@ -18,6 +18,7 @@ jobs:
       check_server: ${{ steps.filter.outputs.check_server }}
       check_js_client: ${{ steps.filter.outputs.check_js_client }}
     steps:
+      - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
         id: filter
         with:
