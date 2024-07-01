@@ -27,7 +27,8 @@ use tracing::{debug, error, info, warn};
 use walkdir::WalkDir;
 
 use crate::config::{get_host_path_from_domain, ACMEConfig, ACMEType, Config};
-use crate::domain_storage::{CertInfo, DomainStorage};
+use entity::storage::{CertInfo};
+use crate::domain_storage::DomainStorage;
 use crate::tls::load_ssl_file;
 
 const ACME_DIR: &str = "acme";

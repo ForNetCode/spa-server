@@ -4,17 +4,20 @@ use console::style;
 use futures::future::Either;
 use futures::StreamExt;
 use if_chain::if_chain;
-use spa_server::admin_server::request::UpdateUploadingStatusOption;
-use spa_server::domain_storage::{
-    md5_file, GetDomainPositionStatus, ShortMetaData, UploadingStatus,
+use entity::request::UpdateUploadingStatusOption;
+use entity::storage::{
+    GetDomainPositionStatus, ShortMetaData, UploadingStatus,
 };
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fs;
-use std::path::PathBuf;
+use std::fs::File;
+use std::io::Read;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
+use md5::{Digest, Md5};
 use tracing::warn;
 use walkdir::WalkDir;
 
@@ -203,4 +206,24 @@ async fn get_upload_version(api: &API, domain: &str, version: Option<u32>) -> an
         };
         Ok(resp.version)
     }
+}
+
+fn md5_file(path: impl AsRef<Path>, byte_buffer: &mut Vec<u8>) -> Option<String> {
+    File::open(path)
+        .ok()
+        .map(|mut f| {
+            let mut hasher = Md5::new();
+            //if file_size > 1024 * 1024 {
+            //1Mb
+            loop {
+                let n = f.read(byte_buffer).ok()?;
+                let valid_buf_slice = &byte_buffer[..n];
+                if n == 0 {
+                    break;
+                }
+                hasher.update(valid_buf_slice);
+            }
+            Some(format!("{:x}", hasher.finalize()))
+        })
+        .flatten()
 }

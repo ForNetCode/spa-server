@@ -877,6 +877,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "entity"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "duration-str",
+ "serde",
+ "serde_json",
+ "serde_repr",
+]
+
+[[package]]
 name = "env_filter"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2766,6 +2777,7 @@ dependencies = [
  "anyhow",
  "clap",
  "console",
+ "entity",
  "futures",
  "if_chain",
  "indicatif",
@@ -2773,7 +2785,6 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
- "spa-server",
  "tokio",
  "toml",
  "toml_edit",
@@ -2793,6 +2804,7 @@ dependencies = [
  "dashmap",
  "delay_timer",
  "duration-str",
+ "entity",
  "flate2",
  "futures",
  "futures-util",

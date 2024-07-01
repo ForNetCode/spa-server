@@ -1,6 +1,7 @@
 # Change Log
 ### Version 2.4.0
-- 
+
+- improve: extract client and server common entity 
 - conf: remove hocon config
 
 ### Version 2.3.0

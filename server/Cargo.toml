@@ -18,6 +18,7 @@ name = "spa-server"
 path = "src/bin/main.rs"
 
 [dependencies]
+entity = {path = "../entity"}
 # web
 hyper = { version = "0.14", features = ["stream", "server", "http1", "http2", "tcp"] } # sync with warp
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread", "io-std", "sync", "time", "tokio-macros"] } # sync with warp
