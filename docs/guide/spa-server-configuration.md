@@ -2,8 +2,7 @@
 
 ## Overview
 
-The config format
-is [HOCON(Human-Optimized Config Object Notation)](https://github.com/lightbend/config/blob/main/HOCON.md).
+The config format toml.
 
 The config default path is './config.conf', you can change it by environment `SPA_CONFIG`.
 
