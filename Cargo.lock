@@ -878,7 +878,7 @@ dependencies = [
 
 [[package]]
 name = "entity"
-version = "0.1.0"
+version = "2.4.0"
 dependencies = [
  "chrono",
  "duration-str",
@@ -2772,7 +2772,7 @@ dependencies = [
 
 [[package]]
 name = "spa-client"
-version = "2.3.0"
+version = "2.4.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -2795,7 +2795,7 @@ dependencies = [
 
 [[package]]
 name = "spa-server"
-version = "2.3.0"
+version = "2.4.0"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
