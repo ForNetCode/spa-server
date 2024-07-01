@@ -1,6 +1,7 @@
 use anyhow::{bail, Context};
 use serde::Deserialize;
 use small_acme::LetsEncrypt;
+use duration_str::deserialize_duration;
 use std::time::Duration;
 use std::{env, fs};
 use tracing::warn;
@@ -184,6 +185,7 @@ fn default_max_size() -> u64 {
 
 #[derive(Deserialize, Debug, Clone, PartialEq)]
 pub struct ClientCacheItem {
+    #[serde(deserialize_with = "deserialize_duration")]
     pub expire: Duration,
     pub extension_names: Vec<String>,
 }
