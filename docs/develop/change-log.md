@@ -2,7 +2,9 @@
 ### Version 2.4.0
 
 - improve: extract client and server common entity 
-- conf: remove hocon config
+- conf: **break change** remove hocon config
+- ci: add js client build ci
+- improve: clean deps, update claps
 
 ### Version 2.3.0
 
