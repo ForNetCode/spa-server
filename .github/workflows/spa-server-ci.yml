@@ -26,6 +26,7 @@ jobs:
             check_server:
               - 'client/**'
               - 'server/**'
+              - 'Cargo.lock'
             check_js_sdk:
               - 'jsclient/**'
 
