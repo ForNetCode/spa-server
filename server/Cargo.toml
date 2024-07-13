@@ -18,7 +18,7 @@ name = "spa-server"
 path = "src/bin/main.rs"
 
 [dependencies]
-entity = {path = "../entity"}
+entity = { path = "../entity" }
 # web
 hyper = { version = "0.14", features = ["stream", "server", "http1", "http2", "tcp"] } # sync with warp
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread", "io-std", "sync", "time", "tokio-macros"] } # sync with warp
@@ -47,12 +47,13 @@ flate2 = "1.0"
 tracing = "0.1.21"# sync with warp
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
-#tracing-opentelemetry = "0.24"
-#opentelemetry = "0.23"
-#opentelemetry_sdk = { version = "0.23", features = ["rt-tokio", "metrics"] }
-#opentelemetry-otlp = {version = "0.16", features = ["default", "metrics"]}
-#opentelemetry-resource-detectors = {version = "0.2"}
-#opentelemetry-semantic-conventions = { version = "0.15"}
+tracing-opentelemetry = "0.24"
+opentelemetry = "0.23"
+opentelemetry_sdk = { version = "0.23", features = ["rt-tokio", "metrics"] }
+opentelemetry-otlp = { version = "0.16", features = ["default", "metrics"] }
+opentelemetry-stdout = { version = "0.4", features = ["trace"] }
+opentelemetry-resource-detectors = { version = "0.2" }
+opentelemetry-semantic-conventions = { version = "0.15" }
 
 # tokio cron
 delay_timer = "0.11.6" # dashmap is same
@@ -90,3 +91,4 @@ walkdir = "2.5"
 chrono = { version = "0.4", features = ["serde"] }
 #make if let more easy
 if_chain = "1"
+tracing-core = "0.1.32"

@@ -104,3 +104,8 @@ addr = "0.0.0.0"
 # [[domains.cache.client_cache]]
 # expire = '30d' # 30day
 # extension_names = ['icon', 'gif', 'jpg', 'jpeg', 'png', 'js']
+
+[openTelemetry]
+endpoint = "http://localhost:4317"
+
+

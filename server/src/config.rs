@@ -1,7 +1,7 @@
 use anyhow::{bail, Context};
+use duration_str::deserialize_duration;
 use serde::Deserialize;
 use small_acme::LetsEncrypt;
-use duration_str::deserialize_duration;
 use std::time::Duration;
 use std::{env, fs};
 use tracing::warn;
@@ -20,6 +20,12 @@ pub struct Config {
     pub cache: CacheConfig,
     #[serde(default)]
     pub domains: Vec<DomainConfig>,
+    pub open_telemetry: Option<OpenTelemetry>,
+}
+
+#[derive(Deserialize, Debug, Clone, PartialEq)]
+pub struct OpenTelemetry {
+    endpoint: String,
 }
 
 //TODO: create config with lots of default value
