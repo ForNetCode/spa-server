@@ -48,7 +48,7 @@ tracing = "0.1.21"# sync with warp
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 tracing-opentelemetry = "0.24"
-opentelemetry = "0.23"
+opentelemetry = { version = "0.23", features = ["trace", "metrics"] }
 opentelemetry_sdk = { version = "0.23", features = ["rt-tokio", "metrics"] }
 opentelemetry-otlp = { version = "0.16", features = ["default", "metrics"] }
 opentelemetry-stdout = { version = "0.4", features = ["trace"] }
