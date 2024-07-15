@@ -1,3 +1,4 @@
+/*
 use opentelemetry::{global, Key, KeyValue};
 use opentelemetry_otlp::{ExportConfig, Protocol, WithExportConfig};
 use opentelemetry_sdk::{
@@ -174,8 +175,10 @@ async fn foo() {
 
     tracing::info!(histogram.baz = 10, "histogram example",);
 }
-/*
-use opentelemetry::KeyValue;
+
+ */
+
+use opentelemetry::{global, Key, KeyValue};
 use opentelemetry_otlp::{ExportConfig, Protocol, TonicExporterBuilder, WithExportConfig};
 use opentelemetry_resource_detectors::{OsResourceDetector, ProcessResourceDetector};
 use opentelemetry_sdk::metrics::reader::DefaultAggregationSelector;
@@ -183,9 +186,11 @@ use opentelemetry_sdk::resource::{
     ResourceDetector, SdkProvidedResourceDetector, TelemetryResourceDetector,
 };
 use opentelemetry_sdk::trace::config;
-use opentelemetry_sdk::Resource;
+use opentelemetry_sdk::{Resource, runtime};
 use opentelemetry_semantic_conventions::resource;
 use std::time::Duration;
+use opentelemetry_sdk::metrics::{Aggregation, Instrument, MeterProviderBuilder, PeriodicReader, SdkMeterProvider, Stream};
+use opentelemetry_stdout::MetricsExporter;
 use tracing::{debug, error, info, instrument, warn, Level};
 use tracing_opentelemetry::OpenTelemetryLayer;
 use tracing_subscriber::layer::SubscriberExt;
@@ -216,7 +221,7 @@ fn otlp_exporter() -> TonicExporterBuilder {
         protocol: Protocol::Grpc,
     };
     opentelemetry_otlp::new_exporter().tonic()
-    //.with_export_config(export_config)
+    .with_export_config(export_config)
 }
 
 #[tokio::main]
@@ -225,14 +230,45 @@ async fn main() -> anyhow::Result<()> {
         .tracing()
         .with_exporter(otlp_exporter())
         .with_trace_config(config().with_resource(resource()))
-        .install_batch(opentelemetry_sdk::runtime::Tokio)?;
+        .install_batch(runtime::Tokio)?;
 
-    let metrics = opentelemetry_otlp::new_pipeline()
-        .metrics(opentelemetry_sdk::runtime::Tokio)
-        .with_exporter(otlp_exporter())
-        .with_resource(resource())
-        .with_aggregation_selector(DefaultAggregationSelector::new())
-        .build()?;
+
+
+
+    // does not work for metrics
+    // let metrics = opentelemetry_otlp::new_pipeline()
+    //     .metrics(runtime::Tokio)
+    //     .with_exporter(otlp_exporter())
+    //     .with_period(Duration::from_secs(3))
+    //     .with_resource(resource())
+    //     .with_aggregation_selector(DefaultAggregationSelector::new())
+    //     .build()?;
+
+
+
+    let stdout_reader = PeriodicReader::builder(
+        MetricsExporter::default(),
+        runtime::Tokio,
+    )
+        .build();
+    
+    let metrics = {
+        let reader =
+            PeriodicReader::builder(MetricsExporter::default(), runtime::Tokio)
+                .with_interval(Duration::from_secs(3))
+                .build();
+        SdkMeterProvider::builder()
+            .with_resource(resource())
+            .with_reader(reader)
+            .with_reader(stdout_reader)
+            .build()
+    };
+
+
+    global::set_meter_provider(metrics.clone());
+
+
+
 
     let filter = EnvFilter::builder()
         .with_default_directive(Level::INFO.into())
@@ -245,12 +281,20 @@ async fn main() -> anyhow::Result<()> {
         .with(OpenTelemetryLayer::new(tracer)) // traces_layer
         .init();
 
-    for _ in 1..5 {
-        test_instrument().await;
+    for _ in 1..10 {
+        test_instrument2().await;
     }
 
+    let _ = tokio::time::sleep(Duration::from_secs(2)).await;
     println!("finish");
     Ok(())
+}
+
+#[instrument]
+async fn test_instrument2() {
+    tokio::time::sleep(Duration::from_secs(1)).await;
+    info!(monotonic_counter.baz = 1,"info log");
+
 }
 
 #[instrument]
@@ -258,7 +302,7 @@ async fn test_instrument() {
     debug!("test debug");
     info!("test info");
     warn!("test warn");
-    error!("test  error");
+    error!("test error");
     tokio::time::sleep(Duration::from_secs(1)).await;
     info!(
         monotonic_counter.foo = 1_u64,
@@ -269,4 +313,4 @@ async fn test_instrument() {
 
     info!(histogram.baz = 10, "histogram example",);
 }
-*/
+
