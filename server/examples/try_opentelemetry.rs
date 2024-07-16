@@ -251,7 +251,7 @@ async fn main() -> anyhow::Result<()> {
         runtime::Tokio,
     )
         .build();
-    
+
     let metrics = {
         let reader =
             PeriodicReader::builder(MetricsExporter::default(), runtime::Tokio)
@@ -315,3 +315,5 @@ async fn test_instrument() {
 }
 
 */
+
+fn main() {}
