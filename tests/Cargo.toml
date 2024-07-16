@@ -19,5 +19,10 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 anyhow = "1.0.56"
 console-subscriber = "0.3"
+opentelemetry-stdout = { version = "0.4", features = ["trace"] }
+tracing-opentelemetry = "0.24"
+opentelemetry = { version = "0.23", features = ["trace", "metrics"] }
+opentelemetry_sdk = { version = "0.23", features = ["rt-tokio", "metrics"] }
+
 #rustls = "0.21.12" # from reqwest
 #rustls-pemfile = "2.1.2"

@@ -5,10 +5,16 @@ use spa_client::api::API;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use std::{env, fs, io};
+use opentelemetry::trace::TracerProvider as _;
+use opentelemetry_sdk::trace::TracerProvider;
+use opentelemetry_stdout::SpanExporter;
 //use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
 use tracing::{debug, error};
 use tracing_subscriber::EnvFilter;
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
+
 
 pub const LOCAL_HOST: &str = "local.fornetcode.com";
 pub const LOCAL_HOST2: &str = "local2.fornetcode.com";
@@ -67,13 +73,27 @@ pub fn run_server_with_config(config_file_name: &str) -> JoinHandle<()> {
         "SPA_CONFIG",
         get_test_dir().join(config_file_name).display().to_string(),
     );
-    let _ = tracing_subscriber::fmt()
-        .with_env_filter(
+    let provider = TracerProvider::builder()
+        .with_simple_exporter(SpanExporter::default())
+        .build();
+    let tracer = provider.tracer("spa-server");
+    let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
+
+    let _ = tracing_subscriber::registry()
+        .with(
             EnvFilter::try_from_default_env()
                 .unwrap_or_else(|_| "info,spa_server=debug,spa_client=debug".into()),
         )
-        .with_test_writer()
-        .try_init();
+        .with(tracing_subscriber::fmt::layer().compact())
+        .with(telemetry).try_init();
+
+    // let _ = tracing_subscriber::fmt()
+    //     .with_env_filter(
+    //         EnvFilter::try_from_default_env()
+    //             .unwrap_or_else(|_| "info,spa_server=debug,spa_client=debug".into()),
+    //     )
+    //     .with_test_writer()
+    //     .try_init();
     tokio::spawn(async move {
         let result = spa_server::run_server().await;
         if result.is_err() {

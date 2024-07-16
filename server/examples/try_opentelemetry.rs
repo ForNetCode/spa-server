@@ -177,7 +177,7 @@ async fn foo() {
 }
 
  */
-
+/*
 use opentelemetry::{global, Key, KeyValue};
 use opentelemetry_otlp::{ExportConfig, Protocol, TonicExporterBuilder, WithExportConfig};
 use opentelemetry_resource_detectors::{OsResourceDetector, ProcessResourceDetector};
@@ -314,3 +314,4 @@ async fn test_instrument() {
     info!(histogram.baz = 10, "histogram example",);
 }
 
+*/

@@ -1977,17 +1977,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "opentelemetry-resource-detectors"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b5cd98b7277913e22e95b6fd3a5f7413438005471a6e33e8a4ae7b9a20be36ad"
-dependencies = [
- "opentelemetry",
- "opentelemetry-semantic-conventions",
- "opentelemetry_sdk",
-]
-
-[[package]]
 name = "opentelemetry-semantic-conventions"
 version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2933,9 +2922,7 @@ dependencies = [
  "mime_guess",
  "opentelemetry",
  "opentelemetry-otlp",
- "opentelemetry-resource-detectors",
  "opentelemetry-semantic-conventions",
- "opentelemetry-stdout",
  "opentelemetry_sdk",
  "percent-encoding",
  "rcgen",
@@ -3060,11 +3047,15 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "console-subscriber",
+ "opentelemetry",
+ "opentelemetry-stdout",
+ "opentelemetry_sdk",
  "reqwest",
  "spa-client",
  "spa-server",
  "tokio",
  "tracing",
+ "tracing-opentelemetry",
  "tracing-subscriber",
 ]
 

@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use std::convert::Infallible;
 use std::str::FromStr;
 use std::sync::Arc;
-use tracing::warn;
+use tracing::{instrument, warn};
 use warp::fs::{ArcPath, Conditionals};
 use warp::http::Uri;
 use warp::Reply;
@@ -55,6 +55,7 @@ fn alias_redirect(uri: &Uri, https: bool, host:&str, external_port:u16) -> warp:
 }
 
 // static file reply
+#[instrument(skip(uri,host,domain_storage,origin_opt))]
 async fn file_resp(req: &Request<Body>,uri:&Uri, host:&str, domain_storage: Arc<DomainStorage>, origin_opt: Option<Validated>) -> Result<Response<Body>, Infallible> {
     let path = uri.path();
     let mut resp = match get_cache_file(path, host, domain_storage.clone()).await {
@@ -109,7 +110,7 @@ fn get_authority(req:&Request<Body>) -> Option<Authority> {
     })
 }
 
-
+#[instrument(skip(service_config, domain_storage,challenge_path, external_port))]
 pub async fn create_http_service(
     req: Request<Body>,
     service_config: Arc<ServiceConfig>,
@@ -174,7 +175,7 @@ pub async fn create_http_service(
 
 }
 
-
+#[instrument(skip(service_config, domain_storage, external_port))]
 pub async fn create_https_service(
     req: Request<Body>,
     service_config: Arc<ServiceConfig>,

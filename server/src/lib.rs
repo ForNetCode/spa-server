@@ -11,7 +11,6 @@ pub mod tls;
 
 mod acme;
 pub mod cors;
-mod otlp;
 pub mod service;
 pub mod static_file_filter;
 

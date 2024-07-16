@@ -22,6 +22,7 @@ It provides a static web http server with cache and hot reload.
 - Provide command line/npm package to deploy spa.
 - Multiple configs for different domain.
 - support Let's Encrypt
+- support OpenTelemetry Trace
 - provide JS SDK and command line client to interact with Server
 
 ## Document

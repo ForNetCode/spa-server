@@ -25,7 +25,7 @@ pub struct Config {
 
 #[derive(Deserialize, Debug, Clone, PartialEq)]
 pub struct OpenTelemetry {
-    endpoint: String,
+    pub endpoint: String,
 }
 
 //TODO: create config with lots of default value

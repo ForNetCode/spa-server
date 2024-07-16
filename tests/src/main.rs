@@ -10,6 +10,7 @@ async fn main() -> Result<()> {
         "SPA_CONFIG",
         get_test_dir().join("server_config.toml").display().to_string(),
     );
+
     tracing_subscriber::fmt()
         .with_env_filter(
             EnvFilter::builder()
