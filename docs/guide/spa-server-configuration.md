@@ -118,4 +118,7 @@ addr = "0.0.0.0"
 # expire = '30d' # 30day
 # extension_names = ['icon', 'gif', 'jpg', 'jpeg', 'png', 'js']
 
+
+# [openTelemetry]
+# endpoint = "http://localhost:4317"
 ```
