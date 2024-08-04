@@ -14,7 +14,6 @@ pub mod cors;
 pub mod service;
 pub mod static_file_filter;
 
-use std::collections::HashMap;
 use crate::acme::{ACMEManager, RefreshDomainMessage, ReloadACMEState};
 use crate::admin_server::AdminServer;
 use crate::config::{AdminConfig, Config};
@@ -28,6 +27,7 @@ use delay_timer::prelude::DelayTimerBuilder;
 use futures::future::join;
 use futures_util::TryFutureExt;
 use if_chain::if_chain;
+use std::collections::HashMap;
 use std::convert::Infallible;
 use std::sync::Arc;
 use std::time::Duration;
@@ -48,7 +48,7 @@ async fn run_admin_server(
     reload_manager: HotReloadManager,
     acme_manager: Arc<ACMEManager>,
     delay_timer: DelayTimer,
-    host_alias: Arc<HashMap<String, String>>
+    host_alias: Arc<HashMap<String, String>>,
 ) -> anyhow::Result<()> {
     let admin_server = AdminServer::new(
         config,
@@ -95,7 +95,8 @@ pub async fn reload_server(
         }
         let challenge_path = acme_manager.challenge_dir.clone();
         let _sender = acme_manager.sender.clone();
-        let tls_server_config = load_ssl_server_config(&config, acme_manager, server.get_host_alias())?;
+        let tls_server_config =
+            load_ssl_server_config(&config, acme_manager, server.get_host_alias())?;
         tokio::task::spawn(async move {
             join(
                 server
@@ -159,8 +160,8 @@ pub async fn run_server_with_config(config: Config) -> anyhow::Result<()> {
 
         let host_alias = server.get_host_alias();
 
-
-        let tls_server_config = load_ssl_server_config(&config, acme_manager.clone(), host_alias.clone())?;
+        let tls_server_config =
+            load_ssl_server_config(&config, acme_manager.clone(), host_alias.clone())?;
         let _ = tokio::join!(
             server
                 .init_https_server(https_rx, tls_server_config)
@@ -201,7 +202,8 @@ pub async fn run_server_with_config(config: Config) -> anyhow::Result<()> {
             &delay_timer,
         )?);
         let challenge_path = acme_manager.challenge_dir.clone();
-        let tls_server_config = load_ssl_server_config(&config, acme_manager.clone(), server.get_host_alias())?;
+        let tls_server_config =
+            load_ssl_server_config(&config, acme_manager.clone(), server.get_host_alias())?;
         let _ = tokio::join!(
             server
                 .init_https_server(None, tls_server_config)

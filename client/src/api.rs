@@ -1,8 +1,8 @@
 use crate::Config;
 use anyhow::anyhow;
 use reqwest::{header, multipart, StatusCode};
-use spa_server::admin_server::request::{DeleteDomainVersionOption, DomainWithOptVersionOption, DomainWithVersionOption, GetDomainOption, UpdateUploadingStatusOption};
-use spa_server::domain_storage::{CertInfo, DomainInfo, ShortMetaData, UploadDomainPosition};
+use entity::request::{DeleteDomainVersionOption, DomainWithOptVersionOption, DomainWithVersionOption, GetDomainOption, UpdateUploadingStatusOption};
+use entity::storage::{CertInfo, DomainInfo, ShortMetaData, UploadDomainPosition};
 use std::borrow::Cow;
 use std::path::PathBuf;
 
@@ -205,8 +205,8 @@ impl API {
 #[cfg(test)]
 mod test {
     use crate::api::API;
-    use spa_server::admin_server::request::UpdateUploadingStatusOption;
-    use spa_server::domain_storage::UploadingStatus;
+    use entity::request::UpdateUploadingStatusOption;
+    use entity::storage::UploadingStatus;
     use crate::LOCAL_HOST;
 
     fn get_api() -> API {

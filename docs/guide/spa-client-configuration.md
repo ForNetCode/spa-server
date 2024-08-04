@@ -19,23 +19,3 @@ auth_token = "token"
 ## default value is:3
 # parallel = 3
 ```
-
-## Hocon Format Config
-
-**Attention: hocon format would not support in the future.**
-
-```hocon
-# admin server address and auth
-server {
-  # required
-  address: "http://127.0.0.1:9000"
-  # required
-  auth_token: "token"
-}
-
-# uploading file thread number.
-upload {
-  # optional, default value is 3.
-  parallel: 3
-}
-```

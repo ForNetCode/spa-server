@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use crate::acme::ACMEManager;
-use crate::admin_server::request::{
+use entity::request::{
     DeleteDomainVersionOption, DomainWithOptVersionOption, DomainWithVersionOption,
     GetDomainOption, GetDomainPositionOption, UpdateUploadingStatusOption, UploadFileOption,
 };
@@ -225,12 +225,12 @@ impl AdminServer {
 pub mod service {
     use std::collections::HashMap;
     use crate::acme::ACMEManager;
-    use crate::admin_server::request::{
+    use entity::request::{
         DeleteDomainVersionOption, DomainWithOptVersionOption, DomainWithVersionOption,
         GetDomainOption, GetDomainPositionFormat, GetDomainPositionOption,
         UpdateUploadingStatusOption, UploadFileOption,
     };
-    use crate::domain_storage::{DomainInfo, DomainStorage, URI_REGEX};
+    use crate::domain_storage::{DomainStorage, URI_REGEX};
     use crate::{AdminConfig, HotReloadManager};
     use anyhow::{anyhow, Context};
     use bytes::Buf;
@@ -239,6 +239,7 @@ pub mod service {
     use std::convert::Infallible;
     use std::sync::Arc;
     use tracing::error;
+    use entity::storage::DomainInfo;
     use warp::http::StatusCode;
     use warp::multipart::FormData;
     use warp::reply::Response;
@@ -505,63 +506,6 @@ fn bad_resp(text:String) -> Response {
     let mut resp = StatusCode::BAD_REQUEST.into_response();
     *resp.body_mut() = Body::from(text);
     resp
-}
-
-pub mod request {
-    use crate::domain_storage::UploadingStatus;
-    use serde::{Deserialize, Serialize};
-
-    #[derive(Deserialize, Serialize)]
-    pub struct GetDomainOption {
-        pub domain: Option<String>,
-    }
-
-    #[derive(Deserialize, Serialize, Debug, Eq, PartialEq, Default)]
-    pub enum GetDomainPositionFormat {
-        #[default]
-        Path,
-        Json,
-    }
-
-    #[derive(Deserialize, Serialize, Debug)]
-    pub struct GetDomainPositionOption {
-        pub domain: String,
-        //#[serde(default="crate::admin_server::request::GetDomainPositionFormat::Path")]
-        #[serde(default)]
-        pub format: GetDomainPositionFormat,
-    }
-
-    #[derive(Deserialize, Serialize, Debug)]
-    pub struct UploadFileOption {
-        pub domain: String,
-        pub version: u32,
-        pub path: String,
-    }
-
-    #[derive(Deserialize, Serialize)]
-    pub struct DomainWithVersionOption {
-        pub domain: String,
-        pub version: u32,
-    }
-
-    #[derive(Deserialize, Serialize)]
-    pub struct DomainWithOptVersionOption {
-        pub domain: String,
-        pub version: Option<u32>,
-    }
-
-    #[derive(Deserialize, Serialize)]
-    pub struct UpdateUploadingStatusOption {
-        pub domain: String,
-        pub version: u32,
-        pub status: UploadingStatus,
-    }
-
-    #[derive(Deserialize, Serialize)]
-    pub struct DeleteDomainVersionOption {
-        pub domain: Option<String>,
-        pub max_reserve: Option<u32>,
-    }
 }
 
 fn build_async_job(

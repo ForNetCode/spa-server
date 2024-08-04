@@ -38,3 +38,9 @@ https.acme {
 ## reqwest
 
 when reqwest use rustls, redirect would have problems: it would not redirect event with Policy::default().
+
+## OpenTelemetry Test
+
+```shell
+docker run --rm -p4317:4317 -p16686:16686 jaegertracing/all-in-one:latest
+```

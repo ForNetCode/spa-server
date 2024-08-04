@@ -1,5 +1,5 @@
 use anyhow::{bail, Context};
-use hocon::de::wrappers::Serde;
+use duration_str::deserialize_duration;
 use serde::Deserialize;
 use small_acme::LetsEncrypt;
 use std::time::Duration;
@@ -20,6 +20,12 @@ pub struct Config {
     pub cache: CacheConfig,
     #[serde(default)]
     pub domains: Vec<DomainConfig>,
+    pub open_telemetry: Option<OpenTelemetry>,
+}
+
+#[derive(Deserialize, Debug, Clone, PartialEq)]
+pub struct OpenTelemetry {
+    pub endpoint: String,
 }
 
 //TODO: create config with lots of default value
@@ -27,11 +33,7 @@ impl Config {
     pub fn load() -> anyhow::Result<Self> {
         let config_path = env::var("SPA_CONFIG").unwrap_or(CONFIG_PATH.to_string());
 
-        let config = if config_path.ends_with(".conf") {
-            Self::load_hocon(&config_path)
-        } else {
-            Self::load_toml(&config_path)
-        }?;
+        let config = Self::load_toml(&config_path)?;
         if config.http.is_none() && config.https.is_none() {
             bail!("should set http or https server config")
         }
@@ -68,15 +70,6 @@ impl Config {
         Ok(config)
     }
 
-    fn load_hocon(path: &str) -> anyhow::Result<Self> {
-        warn!("config format: conf would not support in future, please use toml");
-        let load_file = hocon::HoconLoader::new()
-            .load_file(path)
-            .with_context(|| format!("can not read config file: {path}"))?;
-        load_file
-            .resolve::<Config>()
-            .with_context(|| "parse config file error")
-    }
     fn load_toml(path: &str) -> anyhow::Result<Self> {
         let config = fs::read_to_string(path)
             .with_context(|| format!("can not read config file: {path}"))?;
@@ -198,7 +191,7 @@ fn default_max_size() -> u64 {
 
 #[derive(Deserialize, Debug, Clone, PartialEq)]
 pub struct ClientCacheItem {
-    #[serde(deserialize_with = "Serde::<Duration>::with")]
+    #[serde(deserialize_with = "deserialize_duration")]
     pub expire: Duration,
     pub extension_names: Vec<String>,
 }
@@ -235,7 +228,6 @@ pub fn get_host_path_from_domain(domain: &str) -> (&str, &str) {
 
 #[cfg(test)]
 mod test {
-    use crate::config::Config;
     use std::env;
     use std::path::PathBuf;
 
@@ -243,21 +235,5 @@ mod test {
         let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         let path = path.parent().unwrap();
         path.to_owned()
-    }
-    #[test]
-    fn test_hocon_toml_is_same() {
-        let path = get_project_path();
-        env::set_var(
-            "SPA_CONFIG",
-            path.join("config.release.conf").display().to_string(),
-        );
-
-        let hocon_config = Config::load().unwrap();
-        env::set_var(
-            "SPA_CONFIG",
-            path.join("config.release.toml").display().to_string(),
-        );
-        let toml_config = Config::load().unwrap();
-        assert_eq!(hocon_config, toml_config);
     }
 }

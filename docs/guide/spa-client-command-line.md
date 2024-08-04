@@ -47,22 +47,15 @@ spa-client -c $CONFIG_PATH delete $OPT_DOMAIN $OPT_MAX_RESERVE
 
 ### Config
 
-the config file format is hocon:
+the config file format is toml:
 
-```hocon
-# admin server address and auth
-server {
-  # required
-  address: "http://127.0.0.1:9000"
-  # required
-  auth_token: "token"
-}
-
-# uploading file thread number.
-upload {
-  # optional, default value is 3.
-  parallel: 3
-}
+```toml
+[server]
+address = "http://127.0.0.1:9000"
+auth_token = "token"
+# [upload]
+## default value is:3
+# parallel = 3
 ```
 
 the config default file name is `client.conf`.

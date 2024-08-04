@@ -2,8 +2,7 @@
 
 ## Overview
 
-The config format
-is [HOCON(Human-Optimized Config Object Notation)](https://github.com/lightbend/config/blob/main/HOCON.md).
+The config format toml.
 
 The config default path is './config.conf', you can change it by environment `SPA_CONFIG`.
 
@@ -119,9 +118,7 @@ addr = "0.0.0.0"
 # expire = '30d' # 30day
 # extension_names = ['icon', 'gif', 'jpg', 'jpeg', 'png', 'js']
 
+
+# [openTelemetry]
+# endpoint = "http://localhost:4317"
 ```
-
-## Hocon Format Config
-
-**Attention: hocon format would not support in the future.**
-the format is like Toml. you could check it from toml format.

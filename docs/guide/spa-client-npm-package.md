@@ -1,12 +1,13 @@
 # NPM Package
 
-## Overview
-
 ## Install in new project
 
-there is more info at [getting started](./getting-started.md#run-spa-client-in-npm-package)
+```shell
+npm install --save-dev spa-client
+```
+there has more info at [getting started](./getting-started.md#run-spa-client-in-npm-package)
 
-There has an example project for npm package users:
+There id an example project for npm package users, you can view the package.json:
 [js-app-example](https://github.com/fornetcode/spa-server/tree/master/example/js-app-example).
 
 ## Build Source Code

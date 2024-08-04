@@ -2,13 +2,10 @@ use crate::acme::ACMEManager;
 use crate::config::get_host_path_from_domain;
 use crate::file_cache::{CacheItem, FileCache};
 use anyhow::{anyhow, bail, Context};
-use chrono::{DateTime, Utc};
 use dashmap::DashMap;
 use lazy_static::lazy_static;
 use md5::{Digest, Md5};
 use regex::Regex;
-use serde::{Deserialize, Serialize};
-use serde_repr::{Deserialize_repr, Serialize_repr};
 use std::fs;
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
@@ -17,6 +14,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tracing::{debug, info};
 use walkdir::{DirEntry, WalkDir};
+use entity::storage::{DomainInfo, GetDomainPositionStatus, ShortMetaData, UploadDomainPosition, UploadingStatus};
 use warp::fs::sanitize_path;
 
 pub(crate) const URI_REGEX_STR: &str =
@@ -729,7 +727,7 @@ pub fn md5_file(path: impl AsRef<Path>, byte_buffer: &mut Vec<u8>) -> Option<Str
         })
         .flatten()
 }
-
+/*
 #[derive(Deserialize, Serialize, Debug)]
 pub struct DomainInfo {
     pub domain: String, // www.example.com|www.example.com/a/b
@@ -774,6 +772,8 @@ pub struct CertInfo {
     pub end: DateTime<Utc>,
     pub host: String,
 }
+
+ */
 
 #[cfg(test)]
 mod test {
@@ -853,6 +853,7 @@ mod test {
     #[ignore]
     #[test]
     fn test_domain_storage_get_domain_info() {
+        //TODO: fix config path
         let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../test/config.test.conf");
         env::set_var("SPA_CONFIG", path.display().to_string());
         let mut config = Config::load().unwrap();

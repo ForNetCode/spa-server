@@ -8,7 +8,31 @@ on:
   workflow_dispatch:
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    # Required permissions
+    permissions:
+      pull-requests: read
+    # Set job outputs to values from filter step
+    outputs:
+      check_server: ${{ steps.filter.outputs.check_server }}
+      check_js_client: ${{ steps.filter.outputs.check_js_client }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            check_server:
+              - 'client/**'
+              - 'server/**'
+              - 'Cargo.lock'
+            check_js_sdk:
+              - 'jsclient/**'
+
   check_server:
+    needs: changes
+    if: ${{ needs.changes.outputs.check_server == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,3 +51,16 @@ jobs:
         run: cargo test -p spa-client -j 1 -- --test-threads 1
       - name: run spa-server test
         run: cargo test -p spa-server
+  check_js_client:
+    needs: changes
+    if: ${{ needs.changes.outputs.check_js_client == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Setup .npmrc file to publish to npm
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+          cache-dependency-path: './jsclient/package-lock.json'
+      - run: npm ci && npm run build

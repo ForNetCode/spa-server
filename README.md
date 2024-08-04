@@ -1,4 +1,5 @@
 # SPA-SERVER
+[![GitHub Release](https://img.shields.io/github/release/ForNetCode/spa-server?color=brightgreen)](https://github.com/ForNetCode/spa-server/releases)
 [![Build status](https://github.com/ForNetCode/spa-server/actions/workflows/spa-server-ci.yml/badge.svg)](https://github.com/ForNetCode/spa-server/actions/workflows/spa-server-ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/ForNetCode/spa-server/graphs/commit-activity)
@@ -21,6 +22,7 @@ It provides a static web http server with cache and hot reload.
 - Provide command line/npm package to deploy spa.
 - Multiple configs for different domain.
 - support Let's Encrypt
+- support OpenTelemetry Trace
 - provide JS SDK and command line client to interact with Server
 
 ## Document

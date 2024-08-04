@@ -1,6 +1,6 @@
 [package]
 name = "spa-server"
-version = "2.3.0"
+version = "2.4.0"
 edition = "2021"
 authors = ["timzaak"]
 license = "MIT"
@@ -15,9 +15,10 @@ include = ["src/**/*", "Cargo.toml"]
 
 [[bin]]
 name = "spa-server"
-path = "src/bin/main.rs"
+path = "src/main.rs"
 
 [dependencies]
+entity = { path = "../entity" }
 # web
 hyper = { version = "0.14", features = ["stream", "server", "http1", "http2", "tcp"] } # sync with warp
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread", "io-std", "sync", "time", "tokio-macros"] } # sync with warp
@@ -45,15 +46,23 @@ flate2 = "1.0"
 # tokio trace and log
 tracing = "0.1.21"# sync with warp
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+tracing-opentelemetry = "0.24"
+opentelemetry = { version = "0.23", features = ["trace"] }
+opentelemetry_sdk = { version = "0.23", features = ["rt-tokio"] }
+opentelemetry-otlp = { version = "0.16", features = ["default"] }
+#opentelemetry-resource-detectors = { version = "0.2" }
+opentelemetry-semantic-conventions = { version = "0.15" }
+
 # tokio cron
 delay_timer = "0.11.6" # dashmap is same
 
 #config
-hocon = "0.9"
 toml = { version = "0.8.14" }
 serde = { version = "1.0", features = ["derive"] }
 serde_repr = "0.1"
 serde_json = "1"
+duration-str = "0.11"
 
 base64 = "0.22"
 #cache
@@ -81,3 +90,4 @@ walkdir = "2.5"
 chrono = { version = "0.4", features = ["serde"] }
 #make if let more easy
 if_chain = "1"
+tracing-core = "0.1.32"

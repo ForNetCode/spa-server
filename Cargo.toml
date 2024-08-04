@@ -2,6 +2,7 @@
 members = [
     "server",
     "client",
-    "tests"
+    "tests",
+    "entity",
 ]
 resolver = "2"

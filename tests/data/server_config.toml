@@ -1,0 +1,28 @@
+file_dir = "./data/web"
+cors = true
+[http]
+port = 8080
+addr = "0.0.0.0"
+
+[cache]
+max_size = 10_000_000
+compression = true
+[[cache.client_cache]]
+expire = '30d'
+extension_names = ['icon','gif','jpg','jpeg','png','js']
+
+[[cache.client_cache]]
+expire = '0'
+extension_names = ['html']
+
+
+
+[admin_config]
+# bind host
+port = 9000
+addr = "127.0.0.1"
+
+# this is used to check client request
+# put it in http header,  Authorization: Bearer $token
+token = "token"
+deprecated_version_delete = { cron= "0 0 3 * * *", max_preserve = 2 }

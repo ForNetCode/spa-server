@@ -1,6 +1,6 @@
 [package]
 name = "spa-client"
-version = "2.3.0"
+version = "2.4.0"
 edition = "2021"
 authors = ["timzaak"]
 license = "MIT"
@@ -18,10 +18,10 @@ path = "src/bin/main.rs"
 
 
 [dependencies]
-spa-server = { path = "../server" }
+entity = {path = "../entity"}
 
 # web request
-reqwest = { version = "0.11.27", features = ["json", "blocking", "multipart", "stream", "rustls-tls"], default-features = false }
+reqwest = { version = "0.12", features = ["json", "blocking", "multipart", "stream", "rustls-tls"], default-features = false }
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread", "io-std", "sync", "time", "tokio-macros", "test-util"] }
 futures = "0.3"
 
@@ -35,7 +35,6 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 #config
-hocon = "0.9"
 toml = "0.8.14"
 toml_edit = "0.22.14"
 serde = { version = "1.0", features = ["derive"] }

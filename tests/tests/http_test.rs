@@ -41,7 +41,7 @@ async fn start_server_and_client_upload_file() {
 
     assert_files(domain, request_prefix, 1, vec!["1.html"]).await;
 
-    let (api, _) = get_client_api("client_config.conf");
+    let (api, _) = get_client_api("client_config.toml");
     api.remove_files(Some(domain.to_string()), Some(1))
         .await
         .unwrap();
@@ -80,7 +80,7 @@ async fn start_server_with_single_domain() {
 
     assert_files(domain, request_prefix, 1, vec!["1.html"]).await;
 
-    let (api, _) = get_client_api("client_config.conf");
+    let (api, _) = get_client_api("client_config.toml");
     api.remove_files(Some(domain.to_string()), Some(1))
         .await
         .unwrap();
@@ -109,7 +109,7 @@ async fn multiple_domain_check() {
     upload_file_and_check(domain, request_prefix, 1, vec!["index.html"]).await;
 
     upload_file_and_check(domain2, request_prefix2, 1, vec!["index.html"]).await;
-    let (api, _) = get_client_api("client_config.conf");
+    let (api, _) = get_client_api("client_config.toml");
     let result = api.get_domain_info(None).await.unwrap();
     assert_eq!(result.len(), 2);
 }
@@ -137,7 +137,7 @@ async fn evoke_cache_when_serving_new_version() {
     .await;
     assert_files(domain, request_prefix, 2, vec!["2.html"]).await;
     assert_files_no_exists(request_prefix, vec!["1.html"]).await;
-    let (api, _) = get_client_api("client_config.conf");
+    let (api, _) = get_client_api("client_config.toml");
     let result = api.get_domain_info(None).await.unwrap();
     assert_eq!(result.len(), 1);
 }
@@ -163,7 +163,7 @@ async fn cold_start_server_and_serving_files() {
 
     debug!("begin to loop server close");
 
-    let (api, _) = get_client_api("client_config.conf");
+    let (api, _) = get_client_api("client_config.toml");
     loop {
         assert!(wait_count < 10, "10 seconds server does not stop");
         sleep(Duration::from_secs(1)).await;
@@ -216,7 +216,7 @@ async fn self_signed_cert_https() {
     let request_prefix = format!("https://{LOCAL_HOST}:8443/27");
     let request_prefix = &request_prefix;
 
-    run_server_with_config("server_config_https.conf");
+    run_server_with_config("server_config_https.toml");
     tokio::time::sleep(Duration::from_secs(2)).await;
     upload_file_and_check(domain, request_prefix, 1, vec!["index.html", "1.html"]).await;
     assert_redirect_correct(request_prefix, "/27/").await;
@@ -255,7 +255,7 @@ async fn single_domain_reject_multiple_update() {
     let domain = format!("{LOCAL_HOST}/27");
     let domain = &domain;
 
-    let (client_api, client_config) = get_client_api("client_config.conf");
+    let (client_api, client_config) = get_client_api("client_config.toml");
 
     let upload_result = spa_client::upload_files(
         client_api.clone(),
@@ -282,7 +282,7 @@ async fn multiple_domain_reject_single_update() {
     let domain = format!("{LOCAL_HOST}");
     let domain = &domain;
 
-    let (client_api, client_config) = get_client_api("client_config.conf");
+    let (client_api, client_config) = get_client_api("client_config.toml");
 
     let upload_result = spa_client::upload_files(
         client_api.clone(),
@@ -309,7 +309,7 @@ async fn revoke_version() {
     upload_file_and_check(domain, request_prefix, 1, vec![]).await;
     upload_file_and_check(domain, request_prefix, 2, vec![]).await;
     upload_file_and_check(domain, request_prefix, 3, vec![]).await;
-    let (api, _) = get_client_api("client_config.conf");
+    let (api, _) = get_client_api("client_config.toml");
     api.revoke_version(domain.to_string(), 2).await.unwrap();
 
     assert_files(domain, request_prefix, 2, vec!["index.html", "2.html"]).await;

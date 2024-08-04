@@ -3,9 +3,6 @@
 name: spa-client release
 
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
 
 jobs:
@@ -45,3 +42,11 @@ jobs:
           path: ./release/*
           name: ${{ matrix.settings.name }}
           if-no-files-found: error
+
+      - name: Create Release
+        uses: ncipollo/release-action@v1
+        if: ${{ ! startsWith(github.ref, 'refs/tags/') }}
+        with:
+          artifacts: spa-client*
+          token: ${{ secrets.YOUR_GITHUB_TOKEN }}
+          draft: true

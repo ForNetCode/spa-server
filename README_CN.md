@@ -1,4 +1,5 @@
 # SPA-SERVER
+[![GitHub Release](https://img.shields.io/github/release/ForNetCode/spa-server?color=brightgreen)](https://github.com/ForNetCode/spa-server/releases)
 [![Build status](https://github.com/ForNetCode/spa-server/actions/workflows/spa-server-ci.yml/badge.svg)](https://github.com/ForNetCode/spa-server/actions/workflows/spa-server-ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/ForNetCode/spa-server/graphs/commit-activity)
@@ -20,6 +21,7 @@
 - 提供 命令行/npm包 客户端，一行命令部署
 - 每个域名可拥有独立的配置
 - 支持 Let's Encrypt
+- 支持 OpenTelemetry
 - 提供JS SDK、命令行客户端与服务器进行交互。
 
 ## 文档

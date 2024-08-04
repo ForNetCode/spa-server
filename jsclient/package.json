@@ -1,7 +1,7 @@
 {
   "name": "spa-client",
-  "version": "2.3.0",
-  "description": "js sdk for spa-server",
+  "version": "2.4.0",
+  "description": "js client for spa-server",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "scripts": {

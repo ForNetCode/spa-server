@@ -1,12 +1,19 @@
 # Change Log
 
+### Version 2.4.0
+
+- improve: extract client and server common entity
+- conf: **break change** remove hocon config
+- ci: add js client build ci, improve release cd
+- improve: clean deps, update claps
+- feat: add openTelemetry trace
+
 ### Version 2.3.0
 
 - feat: support toml config format, deprecated hocon config format.
 - feat: support host alias. add config `http.external_port`, `https.external_port`
 - conf: **break change** `https.http_redirect_to_https` move to `http.redirect_https`, and value is bool.
 - improve: improve change_status response text style (release JS SDK 2.3.0)
-- improve: clean deps, update clap
 
 ### Version 2.2.4
 

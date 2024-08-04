@@ -4,3 +4,4 @@
 
 - bench: add benchmark
 - admin server support HTTPS
+- openTelemetry
