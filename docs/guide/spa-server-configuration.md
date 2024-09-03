@@ -4,7 +4,7 @@
 
 The config format toml.
 
-The config default path is './config.conf', you can change it by environment `SPA_CONFIG`.
+The config default path is `./config.toml`, you can change it by environment `SPA_CONFIG`.
 
 ## Config Reference
 
@@ -18,6 +18,7 @@ file_dir = "/data"
 ## Access-Control-Allow-Origin: $ORIGIN
 ## Access-Control-Allow-Methods: OPTION,GET,HEAD
 ## Access-Control-Max-Age: 3600
+## If you put the server behind HTTPS proxy, please enable it
 cors = false
 ## http bind, if set port <= 0 or remove http, will disable http server(need set https config)
 [http]
