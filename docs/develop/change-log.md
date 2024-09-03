@@ -1,5 +1,8 @@
 # Change Log
 
+### Version 2.4.1
+- spa-server: `cors` value bool to array string.
+
 ### Version 2.4.0
 
 - improve: extract client and server common entity
