@@ -2,11 +2,11 @@ use crate::acme::{get_challenge_path, ChallengePath, ACME_CHALLENGE};
 use crate::cors::{cors_resp, resp_cors_request, Validated};
 use crate::DomainStorage;
 use futures_util::future::Either;
-use headers::HeaderMapExt;
+use headers::{HeaderMapExt, HeaderValue};
 use hyper::header::LOCATION;
 use hyper::http::uri::Authority;
 use hyper::{Body, Request, Response, StatusCode};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::convert::Infallible;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -24,7 +24,7 @@ pub struct ServiceConfig {
 }
 
 pub struct DomainServiceConfig {
-    pub cors: bool,
+    pub cors: Option<HashSet<HeaderValue>>,
     pub redirect_https: Option<u16>,
     pub enable_acme: bool,
 }
@@ -130,7 +130,7 @@ pub async fn create_http_service(
 
         let service_config = service_config.get_domain_service_config(host);
         // cors
-        let origin_opt = match resp_cors_request(req.method(), req.headers(), service_config.cors) {
+        let origin_opt = match resp_cors_request(req.method(), req.headers(), &service_config.cors) {
             Either::Left(x) => Some(x),
             Either::Right(v) => return Ok(v),
         };
@@ -194,7 +194,7 @@ pub async fn create_https_service(
 
         let service_config = service_config.get_domain_service_config(host);
         // cors
-        let origin_opt = match resp_cors_request(req.method(), req.headers(), service_config.cors) {
+        let origin_opt = match resp_cors_request(req.method(), req.headers(), &service_config.cors) {
             Either::Left(x) => Some(x),
             Either::Right(v) => return Ok(v),
         };

@@ -1,4 +1,4 @@
-cors = true
+cors = []
 file_dir = "./data/web"
 
 

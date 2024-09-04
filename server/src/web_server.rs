@@ -15,7 +15,7 @@ use futures_util::future::Either;
 use tokio::net::TcpListener as TKTcpListener;
 use tokio::sync::oneshot::Receiver;
 
-use crate::config::{Config, HttpConfig, HttpsConfig};
+use crate::config::{extract_origin, Config, HttpConfig, HttpsConfig};
 use crate::domain_storage::DomainStorage;
 use crate::service::{create_http_service, create_https_service, DomainServiceConfig, ServiceConfig};
 use crate::tls::TlsAcceptor;
@@ -93,7 +93,7 @@ impl Server {
         };
 
         let default = DomainServiceConfig {
-            cors: conf.cors,
+            cors: extract_origin(&conf.cors),
             redirect_https: default_http_redirect_to_https,
             enable_acme: conf.https.as_ref().and_then(|x| x.acme.as_ref()).is_some(),
         };
@@ -116,7 +116,7 @@ impl Server {
                 Some(false) => None
             };
             let domain_service_config: DomainServiceConfig = DomainServiceConfig {
-                cors: domain.cors.unwrap_or(default.cors),
+                cors: extract_origin(&domain.cors).or_else(||default.cors.clone()),
                 redirect_https,
                 enable_acme: domain
                     .https

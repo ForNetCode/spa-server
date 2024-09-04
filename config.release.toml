@@ -1,13 +1,13 @@
 ## directory to store static web files. if you use docker, please mount a persistence volume for it.
 file_dir = "/data"
 
-## enable cors, default is none, when set '*', then all cors is ok.
+## enable cors, default is none, if cors is [], then all cors is ok.
 ## Access-Control-Allow-Origin: $ORIGIN
 ## Access-Control-Allow-Methods: OPTION,GET,HEAD
 ## Access-Control-Max-Age: 3600
-## If you put the server behind HTTPS proxy, please enable it, or domains.cors = ['?']
-## Attension: domains.cors would overwrite the cors config, rather than merge this.
-cors = ['*']
+## If you put the server behind HTTPS proxy, please enable it, or domains.cors = ['http://www.example.com:8080']
+## Attension: domains.cors config would overwrite the cors config, rather than merge this.
+cors = []
 ## http bind, if set port <= 0 or remove http, will disable http server(need set https config)
 [http]
 port = 80
