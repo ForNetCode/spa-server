@@ -1,0 +1,20 @@
+file_dir = "./data/web"
+
+[http]
+port = 8080
+addr = "0.0.0.0"
+
+
+[admin_config]
+# bind host
+port = 9000
+addr = "127.0.0.1"
+
+# this is used to check client request
+# put it in http header,  Authorization: Bearer $token
+token = "token"
+
+
+[[domains]]
+domain = "local.fornetcode.com"
+cors = ["http://localhost:9292"]

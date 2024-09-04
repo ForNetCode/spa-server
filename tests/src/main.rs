@@ -4,6 +4,7 @@ use anyhow::Result;
 use tracing::Level;
 use tracing_subscriber::EnvFilter;
 
+//This does not work because of file_dir config.
 #[tokio::main]
 async fn main() -> Result<()> {
     env::set_var(
