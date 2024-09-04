@@ -337,7 +337,7 @@ async fn alias_start_server_and_client_upload_file() {
 
 #[tokio::test]
 async fn cors() {
-    //clean_web_domain_dir(LOCAL_HOST);
+    clean_web_domain_dir(LOCAL_HOST);
     run_server_with_config("server_config_cors.toml");
 
     let domain = LOCAL_HOST.to_owned() + "/27";
@@ -346,7 +346,7 @@ async fn cors() {
     let request_prefix = &request_prefix;
 
     tokio::time::sleep(Duration::from_secs(1)).await;
-    //upload_file_and_check(domain, request_prefix, 1, vec!["index.html"]).await;
+    upload_file_and_check(domain, request_prefix, 1, vec!["index.html"]).await;
 
     let client = get_http_client();
     let request = client.request(Method::OPTIONS, request_prefix)
