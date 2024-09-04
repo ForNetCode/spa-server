@@ -14,17 +14,18 @@ The config default path is `./config.toml`, you can change it by environment `SP
 ## directory to store static web files. if you use docker, please mount a persistence volume for it.
 file_dir = "/data"
 
-## enable cors, default is false, its implementation is simple now.
+## enable cors, default is none, if cors is [], then all cors is ok.
 ## Access-Control-Allow-Origin: $ORIGIN
 ## Access-Control-Allow-Methods: OPTION,GET,HEAD
 ## Access-Control-Max-Age: 3600
-## If you put the server behind HTTPS proxy, please enable it
-cors = false
+## If you put the server behind HTTPS proxy, please enable it, or domains.cors = ['http://www.example.com:8080']
+## Attension: domains.cors config would overwrite the cors config, rather than merge this.
+cors = []
 ## http bind, if set port <= 0 or remove http, will disable http server(need set https config)
 [http]
 port = 80
 addr = "0.0.0.0"
-## port when serving public PI,default is http port. external_port should not be 0.
+## port when serving public network,default is http port. external_port should not be 0.
 # external_port = 80
 
 ## optional, when https enabled, redirect_https default value true
@@ -34,7 +35,7 @@ addr = "0.0.0.0"
 # [https]
 # port = 443 # https bind address
 # addr = "0.0.0.0"
-## port when serving public PI,default is https port. external_port should not be 0.
+## port when serving public network,default is https port. external_port should not be 0.
 # external_port = 443
 
 ## if set true, http server(80) will send client
@@ -102,7 +103,7 @@ addr = "0.0.0.0"
 # domain = "www.example.com"
 ## optional, `example.com` would redirect to `www.example.com`
 # alias = ["example.com"]
-# cors = false
+# cors = ['https://www.example.com', 'http://www.baidu.com']
 # [domains.https]
 ## optional, when https enabled, redirect_https default value true
 ## it would the port would be https.external_port(https.external_port should be defined), otherwise is false

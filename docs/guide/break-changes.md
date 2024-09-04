@@ -1,5 +1,7 @@
 # Break Changes
-## V2.4.0
+## V2.4.1
+* spa-server: `cors` value bool to array string.
+## V2.4.0(2024-08-04)
 * remove hocon config format, change to toml.
 ## V2.3.0(2024-07-01)
 * spa-server: `https.http_redirect_to_https` move to `http.redirect_https`, and value is bool.

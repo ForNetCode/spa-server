@@ -30,14 +30,23 @@ pub fn cors_resp(mut res: Response<Body>, origin: HeaderValue) -> Response<Body>
     res
 }
 
+fn is_origin_allowed(origins: &Option<HashSet<HeaderValue>>, origin: &HeaderValue) -> bool {
+    if let Some(ref allowed) = origins {
+        allowed.is_empty()||allowed.contains(origin)
+    } else {
+        false
+    }
+}
+// preflight response
 pub fn resp_cors_request(
     method: &Method,
     headers: &HeaderMap,
-    allow_cors: bool,
+    origins: &Option<HashSet<HeaderValue>>,
 ) -> Either<Validated, Response<Body>> {
     match (headers.get(header::ORIGIN), method) {
         (Some(origin), &Method::OPTIONS) => {
-            if !allow_cors {
+            
+            if !is_origin_allowed(origins, origin) {
                 return Either::Right(resp(StatusCode::FORBIDDEN, "origin not allowed"));
             }
             if let Some(req_method) = headers.get(header::ACCESS_CONTROL_REQUEST_METHOD) {
@@ -59,7 +68,7 @@ pub fn resp_cors_request(
             Either::Right(res)
         }
         (Some(origin), _) => {
-            if !allow_cors {
+            if !is_origin_allowed(origins, origin) {
                 Either::Right(resp(StatusCode::FORBIDDEN, "origin not allowed"))
             } else {
                 Either::Left(Validated::Simple(origin.clone()))

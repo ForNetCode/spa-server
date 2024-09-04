@@ -1,9 +1,11 @@
 use anyhow::{bail, Context};
 use duration_str::deserialize_duration;
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
 use small_acme::LetsEncrypt;
 use std::time::Duration;
 use std::{env, fs};
+use std::collections::HashSet;
+use headers::{HeaderValue, Origin};
 use tracing::warn;
 
 const CONFIG_PATH: &str = "/config/config.toml";
@@ -12,7 +14,7 @@ const CONFIG_PATH: &str = "/config/config.toml";
 pub struct Config {
     pub file_dir: String,
     #[serde(default)]
-    pub cors: bool,
+    pub cors: Option<HashSet<OriginWrapper>>,
     pub admin_config: Option<AdminConfig>,
     pub http: Option<HttpConfig>,
     pub https: Option<HttpsConfig>,
@@ -94,7 +96,7 @@ fn default_max_upload_size() -> u64 {
 #[derive(Deserialize, Debug, Clone, PartialEq)]
 pub struct DomainConfig {
     pub domain: String,
-    pub cors: Option<bool>,
+    pub cors: Option<HashSet<OriginWrapper>>,
     pub cache: Option<DomainCacheConfig>,
     pub https: Option<DomainHttpsConfig>,
     pub alias: Option<Vec<String>>,
@@ -223,6 +225,29 @@ pub fn get_host_path_from_domain(domain: &str) -> (&str, &str) {
     match domain.split_once('/') {
         None => (domain, ""),
         Some(v) => v,
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct OriginWrapper(HeaderValue);
+
+pub(crate) fn extract_origin(data:&Option<HashSet<OriginWrapper>>) -> Option<HashSet<HeaderValue>> {
+    data.as_ref().map(|set| set.iter().map(|o| o.0.clone()).collect())
+}
+
+impl <'de> Deserialize<'de> for OriginWrapper {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>
+    {
+        let data = String::deserialize(deserializer)?;
+        let mut parts = data.splitn(2, "://");
+        let scheme = parts.next().expect("missing scheme");
+        let rest = parts.next().expect("missing scheme");
+        let origin = Origin::try_from_parts(scheme, rest, None).expect("invalid Origin");
+        
+        Ok(OriginWrapper(origin.to_string().parse()
+            .expect("Origin is always a valid HeaderValue")))
     }
 }
 
