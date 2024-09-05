@@ -142,7 +142,7 @@ curl -X POST "http://$ADMIN_SERVER/files/delete" \
 ```
 
 ### Revoke version
-**Attention: revoke version now is temp, when you reload or restart server, then It would use the max version.**
+**Attention: revoke version now is temp, when you reload or restart server, then it would use the max version.** my may need delete API.
 ```shell
 TARGET_VERSION=1
 curl -X POST "$ADMIN_SERVER/files/revoke_version" \
