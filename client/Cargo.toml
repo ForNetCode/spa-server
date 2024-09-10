@@ -18,7 +18,7 @@ path = "src/bin/main.rs"
 
 
 [dependencies]
-entity = {path = "../entity"}
+entity = { path = "../entity" }
 
 # web request
 reqwest = { version = "0.12", features = ["json", "blocking", "multipart", "stream", "rustls-tls"], default-features = false }
