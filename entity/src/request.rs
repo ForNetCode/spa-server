@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use crate::storage::UploadingStatus;
+use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize)]
 pub struct GetDomainOption {

@@ -21,8 +21,12 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
      cargo build --package spa-server --release
 
 FROM ${RUNTIME_IMAGE}
+
+ENV SPA_CONFIG="/config/config.toml"
+
 RUN mkdir /data
 RUN apk add --no-cache tini
+
 COPY --from=builder ./config.release.toml /config/config.toml
 COPY --from=builder ./target/release/spa-server /usr/bin/
 

@@ -1,3 +1,6 @@
+use opentelemetry::trace::TracerProvider as _;
+use opentelemetry_sdk::trace::TracerProvider;
+use opentelemetry_stdout::SpanExporter;
 use reqwest::header::{CACHE_CONTROL, LOCATION};
 use reqwest::redirect::Policy;
 use reqwest::{Certificate, Client, ClientBuilder, StatusCode, Url};
@@ -5,16 +8,12 @@ use spa_client::api::API;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use std::{env, fs, io};
-use opentelemetry::trace::TracerProvider as _;
-use opentelemetry_sdk::trace::TracerProvider;
-use opentelemetry_stdout::SpanExporter;
 //use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
 use tracing::{debug, error};
-use tracing_subscriber::EnvFilter;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-
+use tracing_subscriber::EnvFilter;
 
 pub const LOCAL_HOST: &str = "local.fornetcode.com";
 pub const LOCAL_HOST2: &str = "local2.fornetcode.com";
@@ -85,7 +84,8 @@ pub fn run_server_with_config(config_file_name: &str) -> JoinHandle<()> {
                 .unwrap_or_else(|_| "info,spa_server=debug,spa_client=debug".into()),
         )
         .with(tracing_subscriber::fmt::layer().compact())
-        .with(telemetry).try_init();
+        .with(telemetry)
+        .try_init();
 
     // let _ = tracing_subscriber::fmt()
     //     .with_env_filter(

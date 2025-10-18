@@ -1,7 +1,7 @@
-use std::path::PathBuf;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
+use std::path::PathBuf;
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct DomainInfo {

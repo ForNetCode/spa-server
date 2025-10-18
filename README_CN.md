@@ -38,7 +38,7 @@
 git clone git@github.com:fornetcode/spa-server.git
 cd spa-server
 git submodule init && git submodule update
-cp config.release.conf config.conf # please remember to change `file_dir` in config.conf
+cp config.release.toml config.toml # please remember to change `file_dir` in config.conf
 cargo run --bin spa-server 
 ```
 

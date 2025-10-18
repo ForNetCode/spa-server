@@ -62,7 +62,7 @@ async fn run_with_commands(commands: CliCommand) -> anyhow::Result<()> {
             api.remove_files(domain, max_reserve).await?;
             success("delete success!");
         }
-        Commands::Revoke {domain, version} => {
+        Commands::Revoke { domain, version } => {
             api.revoke_version(domain, version).await?;
             success("revoke success!");
         }
@@ -86,7 +86,9 @@ mod test {
     #[tokio::test]
     async fn test_info() {
         init_config();
-        run_with_commands(CliCommand::parse_from(&["test", "info"])).await.unwrap();
+        run_with_commands(CliCommand::parse_from(&["test", "info"]))
+            .await
+            .unwrap();
     }
 
     #[ignore]
@@ -98,7 +100,8 @@ mod test {
             "upload",
             "../example/js-app-example/build",
             LOCAL_HOST,
-        ])).await;
+        ]))
+        .await;
         if let Err(ret) = ret {
             println!("{:?}", ret);
         }
@@ -107,11 +110,8 @@ mod test {
     #[tokio::test]
     async fn test_release() {
         init_config();
-        let result = run_with_commands(CliCommand::parse_from(&[
-            "test",
-            "release",
-            LOCAL_HOST,
-        ])).await;
+        let result =
+            run_with_commands(CliCommand::parse_from(&["test", "release", LOCAL_HOST])).await;
         result.unwrap();
     }
 
@@ -119,12 +119,8 @@ mod test {
     #[tokio::test]
     async fn test_delete() {
         init_config();
-        let result = run_with_commands(CliCommand::parse_from(&[
-            "test",
-            "delete",
-            LOCAL_HOST,
-            "2",
-        ])).await;
+        let result =
+            run_with_commands(CliCommand::parse_from(&["test", "delete", LOCAL_HOST, "2"])).await;
         result.unwrap();
     }
 }

@@ -334,7 +334,6 @@ async fn alias_start_server_and_client_upload_file() {
     .await
 }
 
-
 #[tokio::test]
 async fn cors() {
     clean_web_domain_dir(LOCAL_HOST);
@@ -349,19 +348,29 @@ async fn cors() {
     upload_file_and_check(domain, request_prefix, 1, vec!["index.html"]).await;
 
     let client = get_http_client();
-    let request = client.request(Method::OPTIONS, request_prefix)
+    let request = client
+        .request(Method::OPTIONS, request_prefix)
         .header("Origin", "http://localhost:9292")
-        .header("Access-Control-Request-Headers","Origin, Accept, Content-Type")
+        .header(
+            "Access-Control-Request-Headers",
+            "Origin, Accept, Content-Type",
+        )
         .header("Access-Control-Request-Method", "GET")
-        .build().unwrap();
+        .build()
+        .unwrap();
     let result = client.execute(request).await.unwrap();
     assert_eq!(result.status(), StatusCode::OK);
 
-    let request = client.request(Method::OPTIONS, request_prefix)
+    let request = client
+        .request(Method::OPTIONS, request_prefix)
         .header("Origin", "http://localhost:9291")
-        .header("Access-Control-Request-Headers","Origin, Accept, Content-Type")
+        .header(
+            "Access-Control-Request-Headers",
+            "Origin, Accept, Content-Type",
+        )
         .header("Access-Control-Request-Method", "GET")
-        .build().unwrap();
+        .build()
+        .unwrap();
     let result = client.execute(request).await.unwrap();
     assert_ne!(result.status(), StatusCode::OK);
 }

@@ -37,9 +37,10 @@ impl ServiceConfig {
 
 // http to https
 // alias
-fn alias_redirect(uri: &Uri, https: bool, host:&str, external_port:u16) -> warp::reply::Response { // cors?
+fn alias_redirect(uri: &Uri, https: bool, host: &str, external_port: u16) -> warp::reply::Response {
+    // cors?
     let mut resp = Response::default();
-    let schema = if https {"https://"} else {"http://"};
+    let schema = if https { "https://" } else { "http://" };
 
     let mut path = format!("{schema}{host}");
 
@@ -55,8 +56,14 @@ fn alias_redirect(uri: &Uri, https: bool, host:&str, external_port:u16) -> warp:
 }
 
 // static file reply
-#[instrument(skip(uri,host,domain_storage,origin_opt))]
-async fn file_resp(req: &Request<Body>,uri:&Uri, host:&str, domain_storage: Arc<DomainStorage>, origin_opt: Option<Validated>) -> Result<Response<Body>, Infallible> {
+#[instrument(skip(uri, host, domain_storage, origin_opt))]
+async fn file_resp(
+    req: &Request<Body>,
+    uri: &Uri,
+    host: &str,
+    domain_storage: Arc<DomainStorage>,
+    origin_opt: Option<Validated>,
+) -> Result<Response<Body>, Infallible> {
     let path = uri.path();
     let mut resp = match get_cache_file(path, host, domain_storage.clone()).await {
         Some(item) => {
@@ -96,7 +103,7 @@ async fn file_resp(req: &Request<Body>,uri:&Uri, host:&str, domain_storage: Arc<
     }
     resp
 }
-fn get_authority(req:&Request<Body>) -> Option<Authority> {
+fn get_authority(req: &Request<Body>) -> Option<Authority> {
     let uri = req.uri();
     let from_uri = uri.authority().cloned();
     // trick, need more check
@@ -110,14 +117,14 @@ fn get_authority(req:&Request<Body>) -> Option<Authority> {
     })
 }
 
-#[instrument(skip(service_config, domain_storage,challenge_path, external_port))]
+#[instrument(skip(service_config, domain_storage, challenge_path, external_port))]
 pub async fn create_http_service(
     req: Request<Body>,
     service_config: Arc<ServiceConfig>,
     domain_storage: Arc<DomainStorage>,
     challenge_path: ChallengePath,
     external_port: u16,
-)  -> Result<warp::reply::Response, Infallible> {
+) -> Result<warp::reply::Response, Infallible> {
     let authority_opt = get_authority(&req);
 
     if let Some(authority) = authority_opt {
@@ -130,7 +137,8 @@ pub async fn create_http_service(
 
         let service_config = service_config.get_domain_service_config(host);
         // cors
-        let origin_opt = match resp_cors_request(req.method(), req.headers(), &service_config.cors) {
+        let origin_opt = match resp_cors_request(req.method(), req.headers(), &service_config.cors)
+        {
             Either::Left(x) => Some(x),
             Either::Right(v) => return Ok(v),
         };
@@ -148,9 +156,7 @@ pub async fn create_http_service(
                         if_range: headers.typed_get(),
                         range: headers.typed_get(),
                     };
-                    return match warp::fs::file_reply(ArcPath(Arc::new(path)), conditionals)
-                        .await
-                    {
+                    return match warp::fs::file_reply(ArcPath(Arc::new(path)), conditionals).await {
                         Ok(resp) => Ok(resp.into_response()),
                         Err(_err) => {
                             warn!("known challenge error:{_err:?}");
@@ -164,7 +170,7 @@ pub async fn create_http_service(
         if is_alias || service_config.redirect_https.is_some() {
             let (https, external_port) = match service_config.redirect_https {
                 Some(external_port) => (true, external_port),
-                None => (false, external_port)
+                None => (false, external_port),
             };
             return Ok(alias_redirect(uri, https, host, external_port));
         }
@@ -172,7 +178,6 @@ pub async fn create_http_service(
     } else {
         Ok(forbid())
     }
-
 }
 
 #[instrument(skip(service_config, domain_storage, external_port))]
@@ -181,7 +186,7 @@ pub async fn create_https_service(
     service_config: Arc<ServiceConfig>,
     domain_storage: Arc<DomainStorage>,
     external_port: u16,
-)  -> Result<warp::reply::Response, Infallible>  {
+) -> Result<warp::reply::Response, Infallible> {
     let authority_opt = get_authority(&req);
 
     if let Some(authority) = authority_opt {
@@ -194,15 +199,16 @@ pub async fn create_https_service(
 
         let service_config = service_config.get_domain_service_config(host);
         // cors
-        let origin_opt = match resp_cors_request(req.method(), req.headers(), &service_config.cors) {
+        let origin_opt = match resp_cors_request(req.method(), req.headers(), &service_config.cors)
+        {
             Either::Left(x) => Some(x),
             Either::Right(v) => return Ok(v),
         };
         let uri = req.uri();
         if is_alias {
-            return Ok(alias_redirect(uri,true, host, external_port));
+            return Ok(alias_redirect(uri, true, host, external_port));
         }
-        file_resp(&req, uri,host, domain_storage, origin_opt).await
+        file_resp(&req, uri, host, domain_storage, origin_opt).await
     } else {
         Ok(forbid())
     }
@@ -213,7 +219,7 @@ pub fn not_found() -> Response<Body> {
     *resp.status_mut() = StatusCode::NOT_FOUND;
     resp
 }
-pub fn forbid()-> Response<Body> {
+pub fn forbid() -> Response<Body> {
     let mut resp = Response::default();
     *resp.status_mut() = StatusCode::FORBIDDEN;
     resp

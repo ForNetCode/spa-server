@@ -108,8 +108,9 @@ impl FileCache {
                     .iter()
                     .filter_map(|(v, k)| match sub_path {
                         Some(sub_path) => {
-                            if v.starts_with(sub_path) &&
-                                (version > k.version && version - k.version > 2 || version < k.version)
+                            if v.starts_with(sub_path)
+                                && (version > k.version && version - k.version > 2
+                                    || version < k.version)
                             {
                                 None
                             } else {
@@ -117,7 +118,8 @@ impl FileCache {
                             }
                         }
                         None => {
-                            if version > k.version && version - k.version > 2 || version < k.version {
+                            if version > k.version && version - k.version > 2 || version < k.version
+                            {
                                 None
                             } else {
                                 Some((v.clone(), k.clone()))

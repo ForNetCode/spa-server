@@ -27,9 +27,9 @@ use tracing::{debug, error, info, warn};
 use walkdir::WalkDir;
 
 use crate::config::{get_host_path_from_domain, ACMEConfig, ACMEType, Config};
-use entity::storage::{CertInfo};
 use crate::domain_storage::DomainStorage;
 use crate::tls::load_ssl_file;
+use entity::storage::CertInfo;
 
 const ACME_DIR: &str = "acme";
 const CHALLENGE_DIR: &str = "challenge";
@@ -157,7 +157,13 @@ impl ACMEProvider {
     ) -> anyhow::Result<(PathBuf, PathBuf)> {
         //
         let identifier = Identifier::Dns(domain.clone());
-        let mut identifiers = alias.map(|list| list.into_iter().map(Identifier::Dns).collect::<Vec<Identifier>>()).unwrap_or_else(|| vec![]);
+        let mut identifiers = alias
+            .map(|list| {
+                list.into_iter()
+                    .map(Identifier::Dns)
+                    .collect::<Vec<Identifier>>()
+            })
+            .unwrap_or_else(|| vec![]);
         identifiers.push(identifier);
         let mut order = self.account.new_order(&NewOrder {
             identifiers: &identifiers,
@@ -173,7 +179,7 @@ impl ACMEProvider {
                 AuthorizationStatus::Valid => continue,
                 _ => {
                     warn!("authorization : {authz:#?}")
-                },
+                }
             }
             let challenge = authz
                 .challenges
@@ -184,7 +190,8 @@ impl ACMEProvider {
             let token = challenge.token.clone();
 
             let key_authorization = order.key_authorization(challenge);
-            let challenge_domain_token_path = get_challenge_path(&challenge_path, identifier, &token);
+            let challenge_domain_token_path =
+                get_challenge_path(&challenge_path, identifier, &token);
             fs::write(challenge_domain_token_path, key_authorization.as_str())?;
             names.push(identifier.clone());
             order.set_challenge_ready(&challenge.url)?;
@@ -459,7 +466,10 @@ impl ACMEManager {
         for domain in &config.domains {
             if let Some(alias) = domain.alias.as_ref() {
                 if !alias.is_empty() {
-                    alias_map.insert(domain.domain.clone(), alias.iter().map(|x|x.clone()).collect());
+                    alias_map.insert(
+                        domain.domain.clone(),
+                        alias.iter().map(|x| x.clone()).collect(),
+                    );
                 }
             }
         }
@@ -481,7 +491,7 @@ impl ACMEManager {
     ) {
         for domain in renewal_domains {
             debug!("{domain} begin to get cert");
-            let alias = alias_map.get(&domain).map(|x|x.clone());
+            let alias = alias_map.get(&domain).map(|x| x.clone());
             match provider
                 .create_order_and_auth(domain.clone(), challenge_path.clone(), alias)
                 .await

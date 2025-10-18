@@ -1,6 +1,6 @@
+use anyhow::Result;
 use std::env;
 use std::path::PathBuf;
-use anyhow::Result;
 use tracing::Level;
 use tracing_subscriber::EnvFilter;
 
@@ -9,7 +9,10 @@ use tracing_subscriber::EnvFilter;
 async fn main() -> Result<()> {
     env::set_var(
         "SPA_CONFIG",
-        get_test_dir().join("server_config.toml").display().to_string(),
+        get_test_dir()
+            .join("server_config.toml")
+            .display()
+            .to_string(),
     );
 
     tracing_subscriber::fmt()

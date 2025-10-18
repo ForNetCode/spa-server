@@ -3,7 +3,6 @@ use crate::config::SSL;
 use crate::Config;
 use anyhow::{anyhow, Context as _};
 use core::task::{Context, Poll};
-use std::collections::HashMap;
 use dashmap::DashMap;
 use futures_util::ready;
 use hyper::server::accept::Accept;
@@ -12,6 +11,7 @@ use rustls::pki_types::CertificateDer;
 use rustls::server::{ClientHello, ResolvesServerCert, ResolvesServerCertUsingSni};
 use rustls::sign::CertifiedKey;
 use rustls::Error;
+use std::collections::HashMap;
 use std::fs::File;
 use std::future::Future;
 use std::io;
@@ -56,8 +56,9 @@ impl ResolvesServerCert for DashMapCertResolver {
     fn resolve(&self, client_hello: ClientHello) -> Option<Arc<CertifiedKey>> {
         if let Some(name) = client_hello.server_name() {
             self.dash_map.get(name).map(|v| v.clone()).or_else(|| {
-                self.host_alias_map.get(name).and_then(|host|
-                    self.dash_map.get(host).map(|v| v.clone()))
+                self.host_alias_map
+                    .get(name)
+                    .and_then(|host| self.dash_map.get(host).map(|v| v.clone()))
             })
         } else {
             None
@@ -76,7 +77,6 @@ pub fn load_ssl_server_config(
         .and_then(|v| v.acme.as_ref())
         .is_some()
     {
-
         Arc::new(DashMapCertResolver {
             dash_map: acme_manager.certificate_map.clone(),
             host_alias_map,

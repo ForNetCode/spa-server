@@ -1,8 +1,9 @@
 [package]
 name = "tests"
 version = "0.1.0"
-edition = "2021"
 publish = false
+edition.workspace = true
+authors.workspace = true
 
 [[test]]
 name = "http_test"
@@ -13,16 +14,13 @@ name = "acme_test"
 [dependencies]
 spa-client = { path = "../client" }
 spa-server = { path = "../server" }
-tokio = { version = "1", features = ["macros", "rt-multi-thread", "io-std", "sync", "time", "tokio-macros", "test-util"] } # sync with spa-server
-reqwest = { version = "0.12", features = ["json", "multipart", "stream", "rustls-tls"] } # from spa-client
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-anyhow = "1.0.56"
-console-subscriber = "0.3"
-opentelemetry-stdout = { version = "0.4", features = ["trace"] }
-tracing-opentelemetry = "0.24"
-opentelemetry = { version = "0.23", features = ["trace", "metrics"] }
-opentelemetry_sdk = { version = "0.23", features = ["rt-tokio", "metrics"] }
-
-#rustls = "0.21.12" # from reqwest
-#rustls-pemfile = "2.1.2"
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "io-std", "sync", "time", "tokio-macros", "test-util"] }
+reqwest = { workspace = true, features = ["json", "multipart", "stream", "rustls-tls"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
+anyhow = { workspace = true }
+console-subscriber = { workspace = true }
+opentelemetry-stdout = { workspace = true, features = ["trace"] }
+tracing-opentelemetry = { workspace = true }
+opentelemetry = { workspace = true, features = ["trace", "metrics"] }
+opentelemetry_sdk = { workspace = true, features = ["rt-tokio", "metrics"] }

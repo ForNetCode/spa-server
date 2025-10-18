@@ -70,7 +70,6 @@ impl Config {
 pub(crate) mod test {
     use crate::config::Config;
     use std::env;
-    use std::path::PathBuf;
 
     pub(crate) fn init_env() {
         env::set_var("SPA_SERVER_ADDRESS", "http://127.0.0.1:9000");
@@ -101,5 +100,4 @@ pub(crate) mod test {
         let c = Config::load(None);
         assert!(c.is_err());
     }
-
 }

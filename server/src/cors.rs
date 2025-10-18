@@ -32,7 +32,7 @@ pub fn cors_resp(mut res: Response<Body>, origin: HeaderValue) -> Response<Body>
 
 fn is_origin_allowed(origins: &Option<HashSet<HeaderValue>>, origin: &HeaderValue) -> bool {
     if let Some(ref allowed) = origins {
-        allowed.is_empty()||allowed.contains(origin)
+        allowed.is_empty() || allowed.contains(origin)
     } else {
         false
     }
@@ -45,7 +45,6 @@ pub fn resp_cors_request(
 ) -> Either<Validated, Response<Body>> {
     match (headers.get(header::ORIGIN), method) {
         (Some(origin), &Method::OPTIONS) => {
-            
             if !is_origin_allowed(origins, origin) {
                 return Either::Right(resp(StatusCode::FORBIDDEN, "origin not allowed"));
             }

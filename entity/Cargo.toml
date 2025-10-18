@@ -1,11 +1,13 @@
 [package]
 name = "entity"
-version = "2.4.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
 
 [dependencies]
-serde = { version = "1.0", features = ["derive"] }
-serde_repr = "0.1"
-serde_json = "1"
-duration-str = "0.11"
-chrono = { version = "0.4", features = ["serde"] }
+serde = { workspace = true, features = ["derive"] }
+serde_repr = { workspace = true }
+serde_json = { workspace = true }
+duration-str = { workspace = true }
+chrono = { workspace = true, features = ["serde"] }

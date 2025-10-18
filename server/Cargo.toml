@@ -1,8 +1,8 @@
 [package]
 name = "spa-server"
-version = "2.4.1"
-edition = "2021"
-authors = ["timzaak"]
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
 license = "MIT"
 repository = "https://github.com/fornetcode/spa-server"
 readme = "../README.md"
@@ -20,74 +20,65 @@ path = "src/main.rs"
 [dependencies]
 entity = { path = "../entity" }
 # web
-hyper = { version = "0.14", features = ["stream", "server", "http1", "http2", "tcp"] } # sync with warp
-tokio = { version = "1.0", features = ["macros", "rt-multi-thread", "io-std", "sync", "time", "tokio-macros"] } # sync with warp
-#tokio-util = "0.6.9" # sync with warp -> hyper -> h2
-futures = "0.3"# sync with warp
+hyper = { workspace = true, features = ["stream", "server", "http1", "http2", "tcp", "deprecated", "backports"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "io-std", "sync", "time", "tokio-macros"] }
+futures = { workspace = true }
 warp = { path = "../warp", features = ["tls"] }
-socket2 = "0.5.7"
+socket2 = { workspace = true }
 
 # warp inner
-percent-encoding = "2.1"
-headers = "0.3.5"
-mime = "0.3"
-mime_guess = "2.0.0"
-rustls = { version = "0.22" }
-rustls-pemfile = "2.0"
-#rustls-platform-verifier = "0.3"
-#rustls-webpki = { version = "0.102.4", features = ["alloc"] } #sync with rustls
-x509-parser = "0.16"
-tokio-rustls = "0.25"
-futures-util = "0.3"
-bytes = "1"
+percent-encoding = { workspace = true }
+headers = { workspace = true }
+mime = { workspace = true }
+mime_guess = { workspace = true }
+rustls = { workspace = true }
+rustls-pemfile = { workspace = true }
+x509-parser = { workspace = true }
+tokio-rustls = { workspace = true }
+futures-util = { workspace = true }
+bytes = { workspace = true }
 # gzip
-flate2 = "1.0"
+flate2 = { workspace = true }
 
 # tokio trace and log
-tracing = "0.1.21"# sync with warp
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
 
-tracing-opentelemetry = "0.24"
-opentelemetry = { version = "0.23", features = ["trace"] }
-opentelemetry_sdk = { version = "0.23", features = ["rt-tokio"] }
-opentelemetry-otlp = { version = "0.16", features = ["default"] }
-#opentelemetry-resource-detectors = { version = "0.2" }
-opentelemetry-semantic-conventions = { version = "0.15" }
+tracing-opentelemetry = { workspace = true }
+opentelemetry = { workspace = true, features = ["trace"] }
+opentelemetry_sdk = { workspace = true, features = ["rt-tokio"] }
+opentelemetry-otlp = { workspace = true, features = ["default"] }
+opentelemetry-semantic-conventions = { workspace = true }
 
 # tokio cron
-delay_timer = "0.11.6" # dashmap is same
+delay_timer = { workspace = true } # dashmap is same
 
 #config
-toml = { version = "0.8.14" }
-serde = { version = "1.0", features = ["derive"] }
-serde_repr = "0.1"
-serde_json = "1"
-duration-str = "0.11"
+toml = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_repr = { workspace = true }
+serde_json = { workspace = true }
+duration-str = { workspace = true }
 
-base64 = "0.22"
+base64 = { workspace = true }
 #cache
-dashmap = "5.5"
+dashmap = { workspace = true }
 
 #s3
-#rust-s3 = {version="0.31", features = ["blocking", "tokio-rustls-tls"], default-features = false}
 small-acme = { path = "../small-acme" }
-ureq = { version = "2", default-features = false, features = ["json", "tls"] } # from small-acme
-rcgen = "0.12" # sync with small-acme
-#pem = "3.0"# sync with rcgen
-#webpki-roots = "0.26.3"
-#instant-acme = {path = "../instant-acme"} has
-#tokio-rustls-acme = "0.3"
+ureq = { workspace = true, features = ["json", "tls"] }
+rcgen = { workspace = true }
 
 # util
-md-5 = "0.10"
-regex = "1.10"
-lazy_static = "1.4"
+md-5 = { workspace = true }
+regex = { workspace = true }
+lazy_static = { workspace = true }
 # solve return  result
-anyhow = { version = "1.0", features = ["backtrace"] }
+anyhow = { workspace = true, features = ["backtrace"] }
 # solve dir walk without recursion
-walkdir = "2.5"
+walkdir = { workspace = true }
 # time
-chrono = { version = "0.4", features = ["serde"] }
+chrono = { workspace = true, features = ["serde"] }
 #make if let more easy
-if_chain = "1"
-tracing-core = "0.1.32"
+if_chain = { workspace = true }
+tracing-core = { workspace = true }

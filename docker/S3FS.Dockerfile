@@ -5,6 +5,9 @@ FROM ${BASE_IMAGE}:${VERSION} as Source
 
 
 FROM efrecon/s3fs:1.94
+
+ENV SPA_CONFIG="/config/config.toml"
+
 COPY --from=Source /test/config.conf /config/config.conf
 COPY --from=Source /usr/bin/spa-server /usr/bin/spa-server
 

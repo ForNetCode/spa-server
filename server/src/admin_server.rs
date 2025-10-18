@@ -1,15 +1,15 @@
-use std::collections::HashMap;
 use crate::acme::ACMEManager;
-use entity::request::{
-    DeleteDomainVersionOption, DomainWithOptVersionOption, DomainWithVersionOption,
-    GetDomainOption, GetDomainPositionOption, UpdateUploadingStatusOption, UploadFileOption,
-};
-use crate::config::{AdminConfig, get_host_path_from_domain};
+use crate::config::{get_host_path_from_domain, AdminConfig};
 use crate::domain_storage::DomainStorage;
 use crate::hot_reload::HotReloadManager;
 use crate::with;
 use delay_timer::prelude::*;
+use entity::request::{
+    DeleteDomainVersionOption, DomainWithOptVersionOption, DomainWithVersionOption,
+    GetDomainOption, GetDomainPositionOption, UpdateUploadingStatusOption, UploadFileOption,
+};
 use hyper::{Body, StatusCode};
+use std::collections::HashMap;
 use std::convert::Infallible;
 use std::net::SocketAddr;
 use std::str::FromStr;
@@ -34,7 +34,7 @@ impl AdminServer {
         reload_manager: HotReloadManager,
         acme_manager: Arc<ACMEManager>,
         delay_timer: DelayTimer,
-        host_alias: Arc<HashMap<String, String>>
+        host_alias: Arc<HashMap<String, String>>,
     ) -> Self {
         AdminServer {
             conf: Arc::new(conf.clone()),
@@ -42,7 +42,7 @@ impl AdminServer {
             reload_manager: Arc::new(reload_manager),
             acme_manager,
             delay_timer,
-            host_alias
+            host_alias,
         }
     }
 
@@ -88,9 +88,7 @@ impl AdminServer {
         )
     }
 
-    fn get_domain_info(
-        &self,
-    ) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
+    fn get_domain_info(&self) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
         warp::path("status")
             .and(warp::query::<GetDomainOption>())
             .and(with(self.domain_storage.clone()))
@@ -149,10 +147,12 @@ impl AdminServer {
             .and_then(service::change_upload_status)
     }
 
-    fn check_alias(domain:&str, host_alias: Arc<HashMap<String, String>>) -> Option<Response> {
-        let (host,_) = get_host_path_from_domain(domain);
-        if let Some(original_host) =  host_alias.get(host) {
-            return Some(bad_resp(format!("should not use alias domain, please use {original_host}")))
+    fn check_alias(domain: &str, host_alias: Arc<HashMap<String, String>>) -> Option<Response> {
+        let (host, _) = get_host_path_from_domain(domain);
+        if let Some(original_host) = host_alias.get(host) {
+            return Some(bad_resp(format!(
+                "should not use alias domain, please use {original_host}"
+            )));
         }
         None
     }
@@ -165,7 +165,7 @@ impl AdminServer {
             host_alias: Arc<HashMap<String, String>>,
         ) -> Result<Response, Infallible> {
             if let Some(resp) = AdminServer::check_alias(&query.domain, host_alias) {
-                return Ok(resp)
+                return Ok(resp);
             }
             let resp = service::update_file(query, form, storage)
                 .await
@@ -213,7 +213,7 @@ impl AdminServer {
     }
 
     fn revoke_version(
-        &self
+        &self,
     ) -> impl Filter<Extract = (impl warp::Reply,), Error = Rejection> + Clone {
         warp::path!("files" / "revoke_version")
             .and(with(self.domain_storage.clone()))
@@ -223,28 +223,28 @@ impl AdminServer {
 }
 
 pub mod service {
-    use std::collections::HashMap;
     use crate::acme::ACMEManager;
+    use crate::domain_storage::{DomainStorage, URI_REGEX};
+    use crate::service::not_found;
+    use crate::{AdminConfig, HotReloadManager};
+    use anyhow::{anyhow, Context};
+    use bytes::Buf;
     use entity::request::{
         DeleteDomainVersionOption, DomainWithOptVersionOption, DomainWithVersionOption,
         GetDomainOption, GetDomainPositionFormat, GetDomainPositionOption,
         UpdateUploadingStatusOption, UploadFileOption,
     };
-    use crate::domain_storage::{DomainStorage, URI_REGEX};
-    use crate::{AdminConfig, HotReloadManager};
-    use anyhow::{anyhow, Context};
-    use bytes::Buf;
+    use entity::storage::DomainInfo;
     use futures_util::{StreamExt, TryStreamExt};
     use hyper::Body;
+    use std::collections::HashMap;
     use std::convert::Infallible;
     use std::sync::Arc;
     use tracing::error;
-    use entity::storage::DomainInfo;
     use warp::http::StatusCode;
     use warp::multipart::FormData;
     use warp::reply::Response;
     use warp::Reply;
-    use crate::service::not_found;
 
     pub(super) async fn get_domain_info(
         option: GetDomainOption,
@@ -298,7 +298,7 @@ pub mod service {
         host_alias: Arc<HashMap<String, String>>,
     ) -> Response {
         if let Some(resp) = super::AdminServer::check_alias(&option.domain, host_alias) {
-            return resp
+            return resp;
         }
         if URI_REGEX.is_match(&option.domain) {
             match storage.get_upload_position(&option.domain) {
@@ -309,7 +309,7 @@ pub mod service {
                         ret.path.to_string_lossy().to_string().into_response()
                     }
                 }
-                Err(err)=>  {
+                Err(err) => {
                     let mut resp = StatusCode::BAD_REQUEST.into_response();
                     *resp.body_mut() = Body::from(err.to_string());
                     resp
@@ -342,10 +342,10 @@ pub mod service {
         storage: Arc<DomainStorage>,
         acme_manager: Arc<ACMEManager>,
         param: UpdateUploadingStatusOption,
-        host_alias: Arc<HashMap<String,String>>,
+        host_alias: Arc<HashMap<String, String>>,
     ) -> Result<Response, Infallible> {
         if let Some(resp) = super::AdminServer::check_alias(&param.domain, host_alias) {
-            return Ok(resp)
+            return Ok(resp);
         }
         let resp = match storage
             .update_uploading_status(param.domain, param.version, param.status, &acme_manager)
@@ -369,7 +369,7 @@ pub mod service {
         if let Err(e) = storage.check_if_can_upload(&query.domain) {
             let mut resp = StatusCode::BAD_REQUEST.into_response();
             *resp.body_mut() = Body::from(e.to_string());
-            return Ok(resp)
+            return Ok(resp);
         }
         let mut parts = form.into_stream();
         if let Some(Ok(part)) = parts.next().await {
@@ -470,21 +470,21 @@ pub mod service {
     pub(super) async fn revoke_version(
         domain_storage: Arc<DomainStorage>,
         query: DomainWithVersionOption,
-    ) -> Result<Response, Infallible>{
-        let DomainWithVersionOption {
-            domain, version
-        } = query;
+    ) -> Result<Response, Infallible> {
+        let DomainWithVersionOption { domain, version } = query;
         let resp = match domain_storage.get_domain_info_by_domain(&domain) {
-            Some(info)=> {
-                if info.current_version.is_some_and(|current_version| current_version > version)
-                    &&
-                    info.versions.contains(&version)
+            Some(info) => {
+                if info
+                    .current_version
+                    .is_some_and(|current_version| current_version > version)
+                    && info.versions.contains(&version)
                 {
-                    match domain_storage.upload_domain_with_version(domain, Some(version)).await {
-                        Ok(_) => {
-                            Response::default()
-                        },
-                        Err(e) =>  {
+                    match domain_storage
+                        .upload_domain_with_version(domain, Some(version))
+                        .await
+                    {
+                        Ok(_) => Response::default(),
+                        Err(e) => {
                             let mut resp = StatusCode::BAD_REQUEST.into_response();
                             *resp.body_mut() = Body::from(e.to_string());
                             resp
@@ -494,15 +494,13 @@ pub mod service {
                     not_found()
                 }
             }
-            None => {
-                not_found()
-            }
+            None => not_found(),
         };
         Ok(resp)
     }
 }
 
-fn bad_resp(text:String) -> Response {
+fn bad_resp(text: String) -> Response {
     let mut resp = StatusCode::BAD_REQUEST.into_response();
     *resp.body_mut() = Body::from(text);
     resp

@@ -3,6 +3,9 @@ use crate::config::get_host_path_from_domain;
 use crate::file_cache::{CacheItem, FileCache};
 use anyhow::{anyhow, bail, Context};
 use dashmap::DashMap;
+use entity::storage::{
+    DomainInfo, GetDomainPositionStatus, ShortMetaData, UploadDomainPosition, UploadingStatus,
+};
 use lazy_static::lazy_static;
 use md5::{Digest, Md5};
 use regex::Regex;
@@ -14,7 +17,6 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tracing::{debug, info};
 use walkdir::{DirEntry, WalkDir};
-use entity::storage::{DomainInfo, GetDomainPositionStatus, ShortMetaData, UploadDomainPosition, UploadingStatus};
 use warp::fs::sanitize_path;
 
 pub(crate) const URI_REGEX_STR: &str =
@@ -691,15 +693,24 @@ impl DomainStorage {
         Ok(false)
     }
 
-    pub fn check_if_can_upload(&self, domain:&str) -> anyhow::Result<()> {
-        match get_host_path_from_domain(domain)  {
-            (host, "") => {// single
-                if self.meta.get(host).is_some_and(|x| matches!(x.value(), DomainMeta::MultipleWeb(..))) {
+    pub fn check_if_can_upload(&self, domain: &str) -> anyhow::Result<()> {
+        match get_host_path_from_domain(domain) {
+            (host, "") => {
+                // single
+                if self
+                    .meta
+                    .get(host)
+                    .is_some_and(|x| matches!(x.value(), DomainMeta::MultipleWeb(..)))
+                {
                     bail!("this domain already has multiple SPA!")
                 }
-            },
+            }
             (host, _) => {
-                if self.meta.get(host).is_some_and(|x| matches!(x.value(), DomainMeta::OneWeb(..))) {
+                if self
+                    .meta
+                    .get(host)
+                    .is_some_and(|x| matches!(x.value(), DomainMeta::OneWeb(..)))
+                {
                     bail!("this domain already has single SPA!")
                 }
             }

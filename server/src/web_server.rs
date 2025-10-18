@@ -1,7 +1,9 @@
 use crate::acme::ChallengePath;
+use anyhow::bail;
 use chrono::{DateTime, Local};
+use futures_util::future::Either;
 use hyper::server::conn::AddrIncoming;
-use hyper::server::{Server as HServer};
+use hyper::server::Server as HServer;
 use hyper::service::service_fn;
 use rustls::ServerConfig;
 use socket2::{Domain, Socket, Type};
@@ -10,14 +12,14 @@ use std::convert::Infallible;
 use std::net::{SocketAddr, TcpListener};
 use std::str::FromStr;
 use std::sync::Arc;
-use anyhow::bail;
-use futures_util::future::Either;
 use tokio::net::TcpListener as TKTcpListener;
 use tokio::sync::oneshot::Receiver;
 
 use crate::config::{extract_origin, Config, HttpConfig, HttpsConfig};
 use crate::domain_storage::DomainStorage;
-use crate::service::{create_http_service, create_https_service, DomainServiceConfig, ServiceConfig};
+use crate::service::{
+    create_http_service, create_https_service, DomainServiceConfig, ServiceConfig,
+};
 use crate::tls::TlsAcceptor;
 
 async fn handler(rx: Receiver<()>, time: DateTime<Local>, http_or_https: &'static str) {
@@ -89,7 +91,7 @@ impl Server {
         let default_http_redirect_to_https = match default_http_redirect_to_https {
             Some(Either::Right(v)) => Some(v),
             None => None,
-            Some(Either::Left(s)) => bail!(s)
+            Some(Either::Left(s)) => bail!(s),
         };
 
         let default = DomainServiceConfig {
@@ -101,22 +103,21 @@ impl Server {
         for domain in conf.domains.iter() {
             let redirect_https = match domain.redirect_https {
                 None => default_http_redirect_to_https,
-                Some(true) =>  {
-                    match default_http_redirect_to_https {
-                        Some(port) => Some(port),
-                        None => {
-                            let external_port = conf.https.as_ref().and_then(|https| https.external_port);
-                            if external_port.is_none() {
-                                bail!("when domains.redirect_https is true, https.external_port should be set")
-                            }
-                            external_port
+                Some(true) => match default_http_redirect_to_https {
+                    Some(port) => Some(port),
+                    None => {
+                        let external_port =
+                            conf.https.as_ref().and_then(|https| https.external_port);
+                        if external_port.is_none() {
+                            bail!("when domains.redirect_https is true, https.external_port should be set")
                         }
+                        external_port
                     }
                 },
-                Some(false) => None
+                Some(false) => None,
             };
             let domain_service_config: DomainServiceConfig = DomainServiceConfig {
-                cors: extract_origin(&domain.cors).or_else(||default.cors.clone()),
+                cors: extract_origin(&domain.cors).or_else(|| default.cors.clone()),
                 redirect_https,
                 enable_acme: domain
                     .https
@@ -150,13 +151,15 @@ impl Server {
     pub fn init_http_tcp(http_config: &HttpConfig) -> anyhow::Result<TcpListener> {
         let bind_address =
             SocketAddr::from_str(&format!("{}:{}", &http_config.addr, &http_config.port))?;
-        let socket= get_socket(bind_address)?;
+        let socket = get_socket(bind_address)?;
         Ok(socket)
     }
 
-    fn init_https_tcp(config:&HttpsConfig, tls_server_config:Arc<ServerConfig>) -> anyhow::Result<(SocketAddr, TlsAcceptor)> {
-        let bind_address =
-            SocketAddr::from_str(&format!("{}:{}", &config.addr, &config.port))?;
+    fn init_https_tcp(
+        config: &HttpsConfig,
+        tls_server_config: Arc<ServerConfig>,
+    ) -> anyhow::Result<(SocketAddr, TlsAcceptor)> {
+        let bind_address = SocketAddr::from_str(&format!("{}:{}", &config.addr, &config.port))?;
 
         let incoming =
             AddrIncoming::from_listener(TKTcpListener::from_std(get_socket(bind_address)?)?)?;
@@ -173,7 +176,7 @@ impl Server {
             // This has checked by load_ssl_server_config
 
             let tls_server_config = tls_server_config.unwrap();
-            let (local_addr, acceptor ) = Self::init_https_tcp(config, tls_server_config)?;
+            let (local_addr, acceptor) = Self::init_https_tcp(config, tls_server_config)?;
             tracing::info!("listening on https://{}", local_addr);
             let external_port = config.external_port.unwrap_or(local_addr.port());
 
@@ -182,13 +185,17 @@ impl Server {
                 let storage = self.storage.clone();
                 async move {
                     Ok::<_, Infallible>(service_fn(move |req| {
-                        create_https_service(req, service_config.clone(), storage.clone(), external_port)
+                        create_https_service(
+                            req,
+                            service_config.clone(),
+                            storage.clone(),
+                            external_port,
+                        )
                     }))
                 }
             });
 
-            let server =
-                HServer::builder(acceptor).serve(make_svc);
+            let server = HServer::builder(acceptor).serve(make_svc);
             run_server!(tls: server, rx);
         }
         Ok(())
@@ -210,8 +217,13 @@ impl Server {
                 let challenge_path = challenge_path.clone();
                 async move {
                     Ok::<_, Infallible>(service_fn(move |req| {
-                        create_http_service(req, service_config.clone(), storage.clone(), challenge_path.clone(), external_port)
-
+                        create_http_service(
+                            req,
+                            service_config.clone(),
+                            storage.clone(),
+                            challenge_path.clone(),
+                            external_port,
+                        )
                     }))
                 }
             });

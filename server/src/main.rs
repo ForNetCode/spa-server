@@ -1,9 +1,8 @@
 mod otlp;
 
+use spa_server::config::Config;
 use tracing_core::Level;
 use tracing_subscriber::EnvFilter;
-use spa_server::config::Config;
-
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -20,7 +19,6 @@ async fn main() -> anyhow::Result<()> {
             )
             .init();
     }
-
 
     tracing::debug!("config load:{:?}", &config);
     spa_server::run_server_with_config(config).await

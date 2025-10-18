@@ -1,8 +1,8 @@
 [package]
 name = "spa-client"
-version = "2.4.0"
-edition = "2021"
-authors = ["timzaak"]
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
 license = "MIT"
 repository = "https://github.com/fornetcode/spa-server"
 readme = "../README.md"
@@ -21,33 +21,31 @@ path = "src/bin/main.rs"
 entity = { path = "../entity" }
 
 # web request
-reqwest = { version = "0.12", features = ["json", "blocking", "multipart", "stream", "rustls-tls"], default-features = false }
-tokio = { version = "1.0", features = ["macros", "rt-multi-thread", "io-std", "sync", "time", "tokio-macros", "test-util"] }
-futures = "0.3"
+reqwest = { workspace = true, features = ["json", "blocking", "multipart", "stream", "rustls-tls"], default-features = false }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "io-std", "sync", "time", "tokio-macros", "test-util"] }
+futures = { workspace = true }
 
 
 
 # command arg parse
-clap = { version = "4.5.7", features = ["env", "derive"] }
+clap = { workspace = true, features = ["env", "derive"] }
 
 # tokio trace and log
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
 
 #config
-toml = "0.8.14"
-toml_edit = "0.22.14"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+toml = { workspace = true }
+toml_edit = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
 
 #console output
-console = "0.15"
-indicatif = "0.17.8"
+console = { workspace = true }
+indicatif = { workspace = true }
 
-md-5 = "0.10"
+md-5 = { workspace = true }
 # util
-anyhow = { version = "1.0", features = ["backtrace"] }
-walkdir = "2.3"
-if_chain = "1.0"
-
-
+anyhow = { workspace = true, features = ["backtrace"] }
+walkdir = { workspace = true }
+if_chain = { workspace = true }

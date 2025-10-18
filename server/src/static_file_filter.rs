@@ -23,7 +23,7 @@ fn sanitize_path(tail: &str) -> Option<String> {
     if let Ok(p) = percent_decode_str(tail).decode_utf8() {
         for seg in p.split('/') {
             if seg.starts_with("..") || seg.contains('\\') {
-                return None
+                return None;
             }
         }
         Some(p.into_owned())
@@ -256,7 +256,7 @@ pub async fn get_cache_file(
     let _key = sanitize_path(tail)?;
     let key = _key[1..].to_owned();
     //debug!("get file: {host}, tail:{_key}, fixed: {key}");
-    if let Some(cache_item) = domain_storage.get_file(host, &key) { 
+    if let Some(cache_item) = domain_storage.get_file(host, &key) {
         Some((key, cache_item))
     } else {
         debug!("no file for: {}/{}", &host, &key);

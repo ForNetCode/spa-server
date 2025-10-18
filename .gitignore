@@ -3,5 +3,5 @@
 /tmp
 config.conf
 /node_modules
-
+./data
 .DS_Store

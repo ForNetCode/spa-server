@@ -1,13 +1,12 @@
 use crate::{success, API};
 use anyhow::anyhow;
 use console::style;
+use entity::request::UpdateUploadingStatusOption;
+use entity::storage::{GetDomainPositionStatus, ShortMetaData, UploadingStatus};
 use futures::future::Either;
 use futures::StreamExt;
 use if_chain::if_chain;
-use entity::request::UpdateUploadingStatusOption;
-use entity::storage::{
-    GetDomainPositionStatus, ShortMetaData, UploadingStatus,
-};
+use md5::{Digest, Md5};
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fs;
@@ -17,7 +16,6 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
-use md5::{Digest, Md5};
 use tracing::warn;
 use walkdir::WalkDir;
 
