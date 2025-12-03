@@ -72,14 +72,18 @@ pub(crate) mod test {
     use std::env;
 
     pub(crate) fn init_env() {
-        env::set_var("SPA_SERVER_ADDRESS", "http://127.0.0.1:9000");
-        env::set_var("SPA_SERVER_AUTH_TOKEN", "token");
-        env::set_var("SPA_UPLOAD_PARALLEL", "4");
+        unsafe {
+            env::set_var("SPA_SERVER_ADDRESS", "http://127.0.0.1:9000");
+            env::set_var("SPA_SERVER_AUTH_TOKEN", "token");
+            env::set_var("SPA_UPLOAD_PARALLEL", "4");
+        }
     }
     fn remove_env() {
-        env::remove_var("SPA_SERVER_ADDRESS");
-        env::remove_var("SPA_SERVER_AUTH_TOKEN");
-        env::remove_var("SPA_UPLOAD_PARALLEL");
+        unsafe {
+            env::remove_var("SPA_SERVER_ADDRESS");
+            env::remove_var("SPA_SERVER_AUTH_TOKEN");
+            env::remove_var("SPA_UPLOAD_PARALLEL");
+        }
     }
 
     pub(crate) fn default_local_config() -> anyhow::Result<Config> {

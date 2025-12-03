@@ -38,8 +38,6 @@ spa-client -c $CONFIG_PATH release $DOMAIN $OPT_VERSION
 # get info of the specific domain or all domain, just like the admin server http api.
 spa-client -c $CONFIG_PATH info $OPT_DOMAIN
 
-# reload spa-server, this is used to reload https cert
-spa-client -c $CONFIG_PATH reload
 
 # delete deprecated domain files
 spa-client -c $CONFIG_PATH delete $OPT_DOMAIN $OPT_MAX_RESERVE

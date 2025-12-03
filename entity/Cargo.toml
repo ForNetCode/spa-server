@@ -8,6 +8,4 @@ authors.workspace = true
 [dependencies]
 serde = { workspace = true, features = ["derive"] }
 serde_repr = { workspace = true }
-serde_json = { workspace = true }
-duration-str = { workspace = true }
 chrono = { workspace = true, features = ["serde"] }

@@ -1,30 +1,7 @@
 use anyhow::Result;
-use std::env;
-use std::path::PathBuf;
-use tracing::Level;
-use tracing_subscriber::EnvFilter;
 
-//This does not work because of file_dir config.
 #[tokio::main]
 async fn main() -> Result<()> {
-    env::set_var(
-        "SPA_CONFIG",
-        get_test_dir()
-            .join("server_config.toml")
-            .display()
-            .to_string(),
-    );
-
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            EnvFilter::builder()
-                .with_default_directive(Level::DEBUG.into())
-                .from_env_lossy(),
-        )
-        .init();
-    spa_server::run_server().await
-}
-
-pub fn get_test_dir() -> PathBuf {
-    env::current_dir().unwrap().join("tests").join("data")
+    println!("Hello, world!");
+    Ok(())
 }

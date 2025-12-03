@@ -89,11 +89,6 @@ export default class SPAClient {
         }).then(resp<string>)
     }
 
-    public reloadSPAServer() {
-        return this.http.post('/reload').then(emptyResp)
-    }
-
-
     public removeFiles(domain?: string, maxReserve?: number) {
         return this.http.post('/files/delete', {domain, max_reserve: maxReserve}).then(emptyResp)
     }

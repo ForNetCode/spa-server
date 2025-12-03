@@ -9,68 +9,30 @@ members = [
 
 [workspace.package]
 authors = ["timzaak <zsy.evan@gmail.com>"]
-edition = "2021"
-version = "2.4.2"
+edition = "2024"
+version = "3.0.0"
 
 [workspace.dependencies]
-anyhow = { version = "1.0", features = ["backtrace"] }
-async-compression = { version = "0.4.5", features = ["tokio"] }
-base64 = "0.22"
-bytes = "1"
-chrono = { version = "0.4", features = ["serde"] }
-clap = { version = "4.5.7", features = ["env", "derive"] }
-console = "0.15"
-console-subscriber = "0.3"
-dashmap = "5.5"
+anyhow = { version = "1.0" }
+chrono = { version = "0.4" }
+clap = { version = "4.5" }
+console = "0.16"
+dashmap = "6.1"
 delay_timer = "0.11.6"
-duration-str = "0.11"
-flate2 = "1.0"
+duration-str = "0.17"
 futures = "0.3"
-futures-channel = { version = "0.3.17", features = ["sink"]}
-futures-util = { version = "0.3", default-features = false, features = ["sink"] }
-headers = "0.3.5"
-http = "0.2"
-hyper = { version = "0.14", features = ["stream", "server", "http1", "http2", "tcp", "client"] }
-if_chain = "1.0"
-indicatif = "0.17.8"
-lazy_static = "1.4"
-log = "0.4"
+futures-util = { version = "0.3", default-features = false }
 md-5 = "0.10"
-mime = "0.3"
-mime_guess = "2.0.0"
-multer = { version = "2.1.0" }
-opentelemetry = { version = "0.23", features = ["trace", "metrics"] }
-opentelemetry_sdk = { version = "0.23", features = ["rt-tokio", "metrics"] }
-opentelemetry-otlp = { version = "0.16", features = ["default"] }
-opentelemetry-semantic-conventions = { version = "0.15" }
-opentelemetry-stdout = { version = "0.4", features = ["trace"] }
 percent-encoding = "2.1"
-pin-project = "1.0"
-rcgen = "0.12"
 regex = "1.10"
-reqwest = { version = "0.12", features = ["json", "blocking", "multipart", "stream", "rustls-tls"], default-features = false }
-ring = { version = "0.17", features = ["std"] }
-rustls = { version = "0.22" }
-rustls-pemfile = "2.0"
-rustls-pki-types = "1.1.0"
-scoped-tls = "1.0"
-serde = { version = "1.0", features = ["derive"] }
+reqwest = { version = "0.12", default-features = false }
+serde = { version = "1.0" }
 serde_json = "1.0"
 serde_repr = "0.1"
-serde_urlencoded = "0.7.1"
-socket2 = "0.5.7"
-thiserror = "1"
-tokio = { version = "1.0", features = ["macros", "rt-multi-thread", "io-std", "sync", "time", "tokio-macros", "test-util", "fs"] }
-tokio-rustls = "0.25"
-tokio-tungstenite = { version = "0.21" }
-tokio-util = { version = "0.7.1", features = ["io"] }
+tokio = { version = "1.0" }
 toml = { version = "0.9.8" }
 toml_edit = "0.23.7"
-tower-service = "0.3"
 tracing = "0.1.21"
-tracing-core = "0.1.32"
-tracing-opentelemetry = "0.24"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-ureq = { version = "2", default-features = false, features = ["json", "tls"] }
+tracing-subscriber = { version = "0.3" }
 walkdir = "2.5"
-x509-parser = "0.16"
+salvo = "0.85.0"

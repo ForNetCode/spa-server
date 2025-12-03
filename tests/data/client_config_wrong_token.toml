@@ -1,0 +1,6 @@
+[server]
+address = "http://127.0.0.1:9000"
+auth_token = "wrong_token"
+# [upload]
+## default value is:3
+# parallel = 3

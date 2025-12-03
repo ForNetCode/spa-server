@@ -19,50 +19,6 @@ addr = "0.0.0.0"
 ## it would the port would be https.external_port(https.external_port should be defined), otherwise is false
 # redirect_https = true
 
-# [https]
-# port = 443 # https bind address
-# addr = "0.0.0.0"
-## port when serving public network,default is https port. external_port should not be 0.
-# external_port = 443
-
-## if set true, http server(80) will send client
-## status code:301(Moved Permanently) to tell client redirect to https
-
-## default value for https ssl
-# [https.ssl]
-# private = "private.key path" # private ssl key
-# public = "public.cert path" # public ssl cert
-
-## acme config, it doest not support run with https.ssl config.
-# [https.acme]
-## emails to Let's Encrypt needs to interact.
-# emails = ["mailto:email@example.com"]
-
-## directory to store account and certificate
-## optional, default is ${file_dir}/acme
-# dir = "/data/acme"
-
-## ci / stage / prod, default is prod, ci is just for CI test with Pebble, don't use it.
-# type = prod
-
-## default cache config
-[cache]
-## if file size > max_size, it will not be cached. default is (10MB).
-# max_size = 10_000_000
-## gzip compression for js/json/icon/json, default is false,
-## only support gzip algo, and only compress cached files,
-## be careful to set it true
-# compression = false
-
-## http header Cache-Control config,
-## optional, if not set, won't sender this header to client
-# [[cache.client_cache]]
-## 30day
-# expire = '30d'
-# extension_names = ['icon', 'gif', 'jpg', 'jpeg', 'png', 'js']
-# [[cache.client_cache]]
-# expire = '0'
-# extension_names = ['html']
 
 ## admin server config
 ## admin server don't support hot reload. the config should not change.
@@ -95,18 +51,3 @@ addr = "0.0.0.0"
 ## optional, when https enabled, redirect_https default value true
 ## it would the port would be https.external_port(https.external_port should be defined), otherwise is false
 # redirect_https = 443
-
-## this would be usefully when set https.acme
-# disable_acme = false
-# [domains.https.ssl]
-
-# [domains.cache]
-# max_size = 10_000_000
-# compression = false
-# [[domains.cache.client_cache]]
-# expire = '30d' # 30day
-# extension_names = ['icon', 'gif', 'jpg', 'jpeg', 'png', 'js']
-
-
-# [openTelemetry]
-# endpoint = "http://localhost:4317"

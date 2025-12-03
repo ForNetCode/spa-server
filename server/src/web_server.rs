@@ -1,251 +1,148 @@
-use crate::acme::ChallengePath;
-use anyhow::bail;
-use chrono::{DateTime, Local};
-use futures_util::future::Either;
-use hyper::server::conn::AddrIncoming;
-use hyper::server::Server as HServer;
-use hyper::service::service_fn;
-use rustls::ServerConfig;
-use socket2::{Domain, Socket, Type};
-use std::collections::HashMap;
-use std::convert::Infallible;
-use std::net::{SocketAddr, TcpListener};
+use crate::config::Config;
+use crate::domain_storage::DomainStorage;
+use crate::service::ServiceConfig;
+use salvo::fs::NamedFile;
+use salvo::http::uri::{Authority, PathAndQuery, Uri};
+use salvo::http::{ParseError, ResBody};
+use salvo::prelude::*;
+use std::borrow::Cow;
 use std::str::FromStr;
 use std::sync::Arc;
-use tokio::net::TcpListener as TKTcpListener;
-use tokio::sync::oneshot::Receiver;
 
-use crate::config::{extract_origin, Config, HttpConfig, HttpsConfig};
-use crate::domain_storage::DomainStorage;
-use crate::service::{
-    create_http_service, create_https_service, DomainServiceConfig, ServiceConfig,
-};
-use crate::tls::TlsAcceptor;
-
-async fn handler(rx: Receiver<()>, time: DateTime<Local>, http_or_https: &'static str) {
-    rx.await.ok();
-    tracing::info!(
-        "prepare to close {} server which start at {}",
-        http_or_https,
-        time.format("%Y-%m-%d %H:%M:%S"),
-    );
+#[inline]
+pub(crate) fn decode_url_path_safely(path: &str) -> String {
+    percent_encoding::percent_decode_str(path)
+        .decode_utf8_lossy()
+        .to_string()
 }
-macro_rules! run_server {
-    ($server:ident, $rx:ident) => {
-        let time = Local::now();
-        if $rx.is_some() {
-            let h = handler($rx.unwrap(), time, "http");
-            $server.with_graceful_shutdown(h).await?;
+
+#[inline]
+pub(crate) fn format_url_path_safely(path: &str) -> String {
+    let final_slash = if path.ends_with('/') { "/" } else { "" };
+    let mut used_parts = Vec::with_capacity(8);
+    for part in path.split(['/', '\\']) {
+        if part.is_empty() || part == "." || (cfg!(windows) && part.contains(':')) {
+            continue;
+        }
+        if part == ".." {
+            used_parts.pop();
         } else {
-            $server.await?;
+            used_parts.push(part);
         }
-    };
-
-    (tls: $server:ident, $rx:ident) => {
-        let time = Local::now();
-        if $rx.is_some() {
-            let h = handler($rx.unwrap(), time, "https");
-            $server.with_graceful_shutdown(h).await?;
-        } else {
-            $server.await?;
-        };
-    };
+    }
+    used_parts.join("/") + final_slash
 }
 
-pub struct Server {
-    conf: Config,
-    storage: Arc<DomainStorage>,
-    service_config: Arc<ServiceConfig>,
-}
-
-impl Server {
-    pub fn new(conf: Config, storage: Arc<DomainStorage>) -> anyhow::Result<Self> {
-        let default_http_redirect_to_https:Option<Either<&'static str, u16>> = conf.http.as_ref().and_then(|x| {
-            match x.redirect_https {
-                Some(true) => {
-                    let external_port = conf.https.as_ref().and_then(|https| https.external_port);
-                    if external_port.is_none() {
-                        Some(Either::Left("when redirect_https is undefined or true, https.external_port should be set"))
-                    } else {
-                        external_port.map(|x|Either::Right(x))
-                    }
-                },
-                None => {
-                    match &conf.https {
-                        Some(https) => {
-                            let external_port = https.external_port;
-                            if external_port.is_none() {
-                                Some(Either::Left("when redirect_https is undefined or true, https.external_port should be set"))
-                            } else {
-                                external_port.map(|x|Either::Right(x))
-                            }
-                        },
-                        None => None,
-                    }
-                },
-                Some(false) => {
-                    None
-                }
-            }
-        });
-        let default_http_redirect_to_https = match default_http_redirect_to_https {
-            Some(Either::Right(v)) => Some(v),
-            None => None,
-            Some(Either::Left(s)) => bail!(s),
-        };
-
-        let default = DomainServiceConfig {
-            cors: extract_origin(&conf.cors),
-            redirect_https: default_http_redirect_to_https,
-            enable_acme: conf.https.as_ref().and_then(|x| x.acme.as_ref()).is_some(),
-        };
-        let mut service_config: HashMap<String, DomainServiceConfig> = HashMap::new();
-        for domain in conf.domains.iter() {
-            let redirect_https = match domain.redirect_https {
-                None => default_http_redirect_to_https,
-                Some(true) => match default_http_redirect_to_https {
-                    Some(port) => Some(port),
-                    None => {
-                        let external_port =
-                            conf.https.as_ref().and_then(|https| https.external_port);
-                        if external_port.is_none() {
-                            bail!("when domains.redirect_https is true, https.external_port should be set")
-                        }
-                        external_port
-                    }
-                },
-                Some(false) => None,
-            };
-            let domain_service_config: DomainServiceConfig = DomainServiceConfig {
-                cors: extract_origin(&domain.cors).or_else(|| default.cors.clone()),
-                redirect_https,
-                enable_acme: domain
-                    .https
-                    .as_ref()
-                    .map(|x| x.disable_acme)
-                    .unwrap_or(default.enable_acme),
-            };
-            service_config.insert(domain.domain.clone(), domain_service_config);
-        }
-
-        let mut alias_map = HashMap::new();
-        for domain in conf.domains.iter() {
-            if let Some(alias_host_list) = domain.alias.as_ref() {
-                for alias_host in alias_host_list {
-                    alias_map.insert(alias_host.clone(), domain.domain.clone());
-                }
-            }
-        }
-
-        let service_config = Arc::new(ServiceConfig {
-            default,
-            inner: service_config,
-            host_alias: Arc::new(alias_map),
-        });
-        Ok(Server {
-            conf,
-            storage,
-            service_config,
+fn get_authority(req: &Request) -> Option<Authority> {
+    let uri = req.uri();
+    let from_uri = uri.authority().cloned();
+    // trick, need more check
+    from_uri.or_else(|| {
+        req.headers().get("host").and_then(|value| {
+            value
+                .to_str()
+                .ok()
+                .and_then(|x| Authority::from_str(x).ok())
         })
-    }
-    pub fn init_http_tcp(http_config: &HttpConfig) -> anyhow::Result<TcpListener> {
-        let bind_address =
-            SocketAddr::from_str(&format!("{}:{}", &http_config.addr, &http_config.port))?;
-        let socket = get_socket(bind_address)?;
-        Ok(socket)
-    }
+    })
+}
 
-    fn init_https_tcp(
-        config: &HttpsConfig,
-        tls_server_config: Arc<ServerConfig>,
-    ) -> anyhow::Result<(SocketAddr, TlsAcceptor)> {
-        let bind_address = SocketAddr::from_str(&format!("{}:{}", &config.addr, &config.port))?;
+fn replace_uri_path(original_uri: &Uri, new_path: &str) -> Result<Uri, ParseError> {
+    let mut uri_parts = original_uri.clone().into_parts();
+    uri_parts.authority = None;
+    uri_parts.scheme = None;
+    let path = match original_uri.query() {
+        Some(query) => Cow::from(format!("{new_path}?{query}")),
+        None => Cow::from(new_path),
+    };
 
-        let incoming =
-            AddrIncoming::from_listener(TKTcpListener::from_std(get_socket(bind_address)?)?)?;
-        let local_addr = incoming.local_addr();
-        Ok((local_addr, TlsAcceptor::new(tls_server_config, incoming)))
-    }
+    uri_parts.path_and_query = Some(PathAndQuery::from_str(path.as_ref())?);
+    Ok(Uri::from_parts(uri_parts)?)
+}
 
-    pub async fn init_https_server(
-        &self,
-        rx: Option<Receiver<()>>,
-        tls_server_config: Option<Arc<ServerConfig>>,
-    ) -> anyhow::Result<()> {
-        if let Some(config) = &self.conf.https {
-            // This has checked by load_ssl_server_config
+#[handler]
+async fn file_resp(req: &mut Request, depot: &mut Depot, res: &mut Response, _ctrl: &mut FlowCtrl) {
+    let domain_storage = depot.obtain::<Arc<DomainStorage>>().unwrap();
+    let service_config = depot.obtain::<Arc<ServiceConfig>>().unwrap();
+    // let config = depot.obtain::<Arc<Config>>().unwrap();
 
-            let tls_server_config = tls_server_config.unwrap();
-            let (local_addr, acceptor) = Self::init_https_tcp(config, tls_server_config)?;
-            tracing::info!("listening on https://{}", local_addr);
-            let external_port = config.external_port.unwrap_or(local_addr.port());
+    let author_opt = get_authority(req);
+    if let Some(author) = author_opt {
+        let origin_host = author.host();
 
-            let make_svc = hyper::service::make_service_fn(|_| {
-                let service_config = self.service_config.clone();
-                let storage = self.storage.clone();
-                async move {
-                    Ok::<_, Infallible>(service_fn(move |req| {
-                        create_https_service(
-                            req,
-                            service_config.clone(),
-                            storage.clone(),
-                            external_port,
-                        )
-                    }))
+        let host = if let Some(alias) = service_config.host_alias.get(origin_host) {
+            alias.as_str()
+        } else {
+            origin_host
+        };
+
+        let uri = req.uri();
+
+        let req_path = uri.path();
+
+        let rel_path = if let Some(rest) = req.params().tail() {
+            rest
+        } else {
+            &*decode_url_path_safely(req_path)
+        };
+        let rel_path = format_url_path_safely(rel_path);
+        // tracing::debug!("hit {rel_path}");
+        match domain_storage.get_file(host, &rel_path) {
+            Some(item) => {
+                NamedFile::builder(&item.data)
+                    .send(req.headers(), res)
+                    .await;
+            }
+            None => {
+                // trailing slash
+                let original_path = req.uri().path();
+                if !original_path.is_empty() && original_path != "/" {
+                    let ends_with_slash = original_path.ends_with('/');
+
+                    if !ends_with_slash
+                        && let Ok(new_uri) =
+                            replace_uri_path(req.uri(), &format!("{original_path}/"))
+                    {
+                        res.body(ResBody::None);
+
+                        match Redirect::with_status_code(StatusCode::MOVED_PERMANENTLY, new_uri) {
+                            Ok(redirect) => {
+                                res.render(redirect);
+                            }
+                            Err(e) => {
+                                tracing::error!(error = ?e, "redirect failed");
+                            }
+                        }
+                        return;
+                    }
                 }
-            });
-
-            let server = HServer::builder(acceptor).serve(make_svc);
-            run_server!(tls: server, rx);
+                res.status_code(StatusCode::NOT_FOUND);
+            }
         }
-        Ok(())
-    }
-
-    pub async fn init_http_server(
-        &self,
-        rx: Option<Receiver<()>>,
-        challenge_path: ChallengePath,
-    ) -> anyhow::Result<()> {
-        if let Some(http_config) = &self.conf.http {
-            let listener = Self::init_http_tcp(http_config)?;
-            let local_addr = listener.local_addr()?;
-            tracing::info!("listening on http://{}", &local_addr);
-            let external_port = http_config.external_port.unwrap_or(local_addr.port());
-            let make_svc = hyper::service::make_service_fn(|_| {
-                let service_config = self.service_config.clone();
-                let storage = self.storage.clone();
-                let challenge_path = challenge_path.clone();
-                async move {
-                    Ok::<_, Infallible>(service_fn(move |req| {
-                        create_http_service(
-                            req,
-                            service_config.clone(),
-                            storage.clone(),
-                            challenge_path.clone(),
-                            external_port,
-                        )
-                    }))
-                }
-            });
-            let server = HServer::from_tcp(listener)?.serve(make_svc);
-            run_server!(server, rx);
-        }
-        Ok(())
-    }
-    pub fn get_host_alias(&self) -> Arc<HashMap<String, String>> {
-        self.service_config.host_alias.clone()
+    } else {
+        res.status_code(StatusCode::FORBIDDEN);
     }
 }
 
-pub fn get_socket(address: SocketAddr) -> anyhow::Result<TcpListener> {
-    let socket = Socket::new(Domain::for_address(address), Type::STREAM, None)?;
-    socket.set_nodelay(true)?;
-    // socket.set_reuse_address(true)?;
-    #[cfg(not(any(target_os = "solaris", target_os = "illumos", target_os = "windows")))]
-    socket.set_reuse_port(true)?;
-    socket.set_nonblocking(true)?;
-    socket.bind(&address.into())?;
-    socket.listen(128)?;
-    let listener: TcpListener = socket.into();
-    Ok(listener)
+pub async fn init_http_server(
+    conf: Arc<Config>,
+    service_config: Arc<ServiceConfig>,
+    storage: Arc<DomainStorage>,
+) -> anyhow::Result<()> {
+    let http_config = &conf.http;
+    let listener = TcpListener::new((http_config.addr.clone(), http_config.port))
+        .bind()
+        .await;
+
+    // StaticDir::new();
+    let router = Router::with_hoop(
+        affix_state::inject(service_config.clone())
+            .inject(storage.clone())
+            .inject(conf.clone()),
+    )
+    .path("{*path}")
+    .get(file_resp);
+
+    Server::new(listener).serve(router).await;
+    Ok(())
 }

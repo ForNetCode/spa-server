@@ -13,23 +13,16 @@ test('info', async () => {
 })
 
 test('upload', async () => {
-    const exampleProjectDir = path.resolve(__dirname, '../../example/js-app-example')
-    try {
-        const result = await runCommand(['upload', path.join(exampleProjectDir, 'build'), LOCAL_HOST])
-        console.log(result)
-    } catch (e) {
-        // expect error
-    }
+    const exampleProjectDir = path.join(path.resolve(__dirname, '../../example/js-app-example'), 'build')
+    console.log(`upload path ${exampleProjectDir}`)
+    const result = await runCommand(['upload', exampleProjectDir, LOCAL_HOST])
+    console.log(result)
+
 })
+/*
 test('release', async () => {
-    try {
-        const result = await runCommand(['release', LOCAL_HOST])
-        console.log(result)
-    } catch (e) {
-
-    }
+    const result = await runCommand(['release', LOCAL_HOST])
+    console.log(result)
+    // expect(await runCommand(['info'])).toBe(`[{"domain":"${LOCAL_HOST}","current_version":1,"versions":[1]}]`)
 })
-
-
-
-
+*/

@@ -51,10 +51,6 @@ async fn run_with_commands(commands: CliCommand) -> anyhow::Result<()> {
             let resp = api.release_domain_version(domain, version).await?;
             success(&resp);
         }
-        Commands::Reload => {
-            api.reload_spa_server().await?;
-            success("reload success!");
-        }
         Commands::Delete {
             domain,
             max_reserve,
@@ -69,24 +65,28 @@ async fn run_with_commands(commands: CliCommand) -> anyhow::Result<()> {
     };
     Ok(())
 }
+#[cfg(test)]
+const LOCAL_HOST: &str = "local.fornetcode.com";
 
 #[cfg(test)]
 mod test {
-    use crate::{run_with_commands, CliCommand, LOCAL_HOST};
+    use crate::{CliCommand, LOCAL_HOST, run_with_commands};
     use clap::Parser;
     use std::env;
 
     fn init_config() {
-        env::set_var("SPA_SERVER_ADDRESS", "http://127.0.0.1:9000");
-        env::set_var("SPA_SERVER_AUTH_TOKEN", "token");
-        env::set_var("SPA_UPLOAD_PARALLEL", "4");
+        unsafe {
+            env::set_var("SPA_SERVER_ADDRESS", "http://127.0.0.1:9000");
+            env::set_var("SPA_SERVER_AUTH_TOKEN", "token");
+            env::set_var("SPA_UPLOAD_PARALLEL", "4");
+        }
     }
 
     #[ignore]
     #[tokio::test]
     async fn test_info() {
         init_config();
-        run_with_commands(CliCommand::parse_from(&["test", "info"]))
+        run_with_commands(CliCommand::parse_from(["test", "info"]))
             .await
             .unwrap();
     }
@@ -95,7 +95,7 @@ mod test {
     #[tokio::test]
     async fn test_upload() {
         init_config();
-        let ret = run_with_commands(CliCommand::parse_from(&[
+        let ret = run_with_commands(CliCommand::parse_from([
             "test",
             "upload",
             "../example/js-app-example/build",
@@ -111,7 +111,7 @@ mod test {
     async fn test_release() {
         init_config();
         let result =
-            run_with_commands(CliCommand::parse_from(&["test", "release", LOCAL_HOST])).await;
+            run_with_commands(CliCommand::parse_from(["test", "release", LOCAL_HOST])).await;
         result.unwrap();
     }
 
@@ -120,9 +120,7 @@ mod test {
     async fn test_delete() {
         init_config();
         let result =
-            run_with_commands(CliCommand::parse_from(&["test", "delete", LOCAL_HOST, "2"])).await;
+            run_with_commands(CliCommand::parse_from(["test", "delete", LOCAL_HOST, "2"])).await;
         result.unwrap();
     }
 }
-#[cfg(test)]
-const LOCAL_HOST: &str = "local.fornetcode.com";

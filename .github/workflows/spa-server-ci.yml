@@ -27,7 +27,7 @@ jobs:
               - 'client/**'
               - 'server/**'
               - 'Cargo.lock'
-            check_js_sdk:
+            check_js_client:
               - 'jsclient/**'
 
   check_server:
@@ -39,14 +39,10 @@ jobs:
         with:
           submodules: true
       - uses: Swatinem/rust-cache@v2
-      - name: run integration test
-        # --show-output
+      - name: run integration test 1
         run: cargo test -p tests --test http_test -j 1 -- --test-threads 1
-      - name: run pebble
-        run: ./run_pebble.sh
-        working-directory: ./tests/bash/
-      - name: run acme integration test
-        run: cargo test -p tests --test acme_test -j 1 -- --test-threads 1
+      - name: run integration test 2
+        run: cargo test -p tests --test admin_server_test -j 1 -- --test-threads 1
       - name: run spa-client test
         run: cargo test -p spa-client -j 1 -- --test-threads 1
       - name: run spa-server test
@@ -57,10 +53,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # Setup .npmrc file to publish to npm
+      - name: Run spa-server docker
+        run: |
+          docker run -d  --name=test -p 9000:9000 -p 8080:8080 -v ${{ github.workspace }}/jsclient/test/config.toml:/config/config.toml ghcr.io/fornetcode/spa-server:v2.4.0
+          docker ps
+          docker logs --tail 50 test
       - uses: actions/setup-node@v4
         with:
           node-version: '20.x'
           cache: 'npm'
           cache-dependency-path: './jsclient/package-lock.json'
-      - run: npm ci && npm run build
+      - run: |
+          cd ./example/js-app-example && npm ci && npm run build && \
+          cd ../../jsclient && npm ci  && npm test && npm run build

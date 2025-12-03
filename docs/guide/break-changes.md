@@ -1,4 +1,6 @@
 # Break Changes
+## V3.0.0
+* spa-server: remove cors, acme, openTelemetry, cache config, remove hot reload.
 ## V2.4.1
 * spa-server: `cors` value bool to array string.
 ## V2.4.0(2024-08-04)

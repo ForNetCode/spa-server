@@ -1,16 +1,19 @@
 # NPM Package
 
-## Install in new project
+## Install in a new project
 
 ```shell
 npm install --save-dev spa-client
 ```
 
 Use with `.env` and vars, we would run the following command:
+
 ```shell
 npm install --save-dev dotenv-cli cross-var spa-client
 ```
+
 the `pachage.json` would like:
+
 ```json
 {
   "scripts": {
@@ -21,7 +24,9 @@ the `pachage.json` would like:
 }
 
 ```
+
 the `.env` would be like:
+
 ```angular2html
 # all config start with `SPA` for spa-client
 SPA_SERVER_ADDRESS=http://127.0.0.1:9000
@@ -40,8 +45,6 @@ There has more info at [getting started](./getting-started.md#run-spa-client-in-
 
 There id an example project for npm package users, you can view the package.json:
 [js-app-example](https://github.com/fornetcode/spa-server/tree/master/example/js-app-example).
-
-
 
 ## Build Source Code
 

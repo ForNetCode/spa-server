@@ -1,7 +1,17 @@
 # Change Log
 
+### Version 3.0.0
+
+- rewrite, remove warp, cors, ssl and openTelemetry.
+- bump deps.
+
 ### Version 2.4.1
-- spa-server: `cors` value bool to array string.
+
+- conf: spa-server: `cors` value bool to array string.
+- improve: bump deps version.
+- ci: jsclient can test auto.
+- feat: remove openTelemetry trace.
+- jsclient: change info response to pure json
 
 ### Version 2.4.0
 

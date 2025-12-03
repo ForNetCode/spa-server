@@ -57,7 +57,7 @@ async function getClient(configPath: string | undefined) {
 }
 
 function writeResult(func: () => Promise<any>) {
-    func().then((v) => console.log(chalk.green(v))).catch((e) => {
+    func().then((v) => console.log(v)).catch((e) => {
         console.error(e)
         process.exit(-1)
     })
@@ -72,7 +72,7 @@ const info = command({
     handler: ({domain, config}) => {
         writeResult(async () => {
             const client = await getClient(config)
-            return await client.getDomainInfo(domain)
+            return JSON.stringify(await client.getDomainInfo(domain))
         })
     }
 })
@@ -110,17 +110,6 @@ const release = command({
     }
 })
 
-const reload = command({
-    name: 'reload',
-    args: {config: configDirOption,},
-    handler({config}) {
-        writeResult(async () => {
-            const client = await getClient(config)
-            await client.reloadSPAServer()
-            return "reload successful"
-        })
-    }
-})
 const deleteCmd = command({
     name: 'delete',
     args: {
@@ -132,7 +121,7 @@ const deleteCmd = command({
         writeResult(async () => {
             const client = await getClient(config)
             await client.removeFiles(domain, maxReserve)
-            return "delete successful"
+            return chalk.green("delete successful")
         })
     }
 })
@@ -147,7 +136,7 @@ const revokeVersionCmd = command({
         writeResult(async () => {
             const client = await getClient(config)
             await client.revokeVersion(domain, version)
-            return "revoke successful"
+            return chalk.green("revoke successful")
         })
     }
 })
@@ -157,7 +146,7 @@ export const cmd = subcommands({
     name: 'spa-client',
     description: 'js command line for spa-server',
     version: Version,
-    cmds: {info, upload, release, reload, delete: deleteCmd, revoke: revokeVersionCmd}
+    cmds: {info, upload, release, delete: deleteCmd, revoke: revokeVersionCmd}
 })
 export default function runCommand() {
     run(binary(cmd), process.argv)

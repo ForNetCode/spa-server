@@ -20,35 +20,26 @@ path = "src/main.rs"
 [dependencies]
 entity = { path = "../entity" }
 # web
-hyper = { workspace = true, features = ["stream", "server", "http1", "http2", "tcp", "deprecated", "backports"] }
+#hyper = { workspace = true }
+
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "io-std", "sync", "time", "tokio-macros"] }
-futures = { workspace = true }
-warp = { path = "../warp", features = ["tls"] }
-socket2 = { workspace = true }
 
 # warp inner
 percent-encoding = { workspace = true }
-headers = { workspace = true }
-mime = { workspace = true }
-mime_guess = { workspace = true }
-rustls = { workspace = true }
-rustls-pemfile = { workspace = true }
-x509-parser = { workspace = true }
-tokio-rustls = { workspace = true }
+#headers = { workspace = true }
+
 futures-util = { workspace = true }
-bytes = { workspace = true }
-# gzip
-flate2 = { workspace = true }
+
 
 # tokio trace and log
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 
-tracing-opentelemetry = { workspace = true }
-opentelemetry = { workspace = true, features = ["trace"] }
-opentelemetry_sdk = { workspace = true, features = ["rt-tokio"] }
-opentelemetry-otlp = { workspace = true, features = ["default"] }
-opentelemetry-semantic-conventions = { workspace = true }
+#tracing-opentelemetry = { workspace = true }
+#opentelemetry = { workspace = true, features = ["trace"] }
+#opentelemetry_sdk = { workspace = true, features = ["rt-tokio"] }
+#opentelemetry-otlp = { workspace = true, features = ["default"] }
+#opentelemetry-semantic-conventions = { workspace = true }
 
 # tokio cron
 delay_timer = { workspace = true } # dashmap is same
@@ -56,29 +47,19 @@ delay_timer = { workspace = true } # dashmap is same
 #config
 toml = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
-serde_repr = { workspace = true }
-serde_json = { workspace = true }
 duration-str = { workspace = true }
 
-base64 = { workspace = true }
 #cache
 dashmap = { workspace = true }
-
-#s3
-small-acme = { path = "../small-acme" }
-ureq = { workspace = true, features = ["json", "tls"] }
-rcgen = { workspace = true }
 
 # util
 md-5 = { workspace = true }
 regex = { workspace = true }
-lazy_static = { workspace = true }
 # solve return  result
 anyhow = { workspace = true, features = ["backtrace"] }
 # solve dir walk without recursion
 walkdir = { workspace = true }
 # time
 chrono = { workspace = true, features = ["serde"] }
-#make if let more easy
-if_chain = { workspace = true }
-tracing-core = { workspace = true }
+
+salvo = { workspace = true, features = ["serve-static", "size-limiter", "trailing-slash", "affix-state", "basic-auth"] }

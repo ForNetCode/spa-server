@@ -20,7 +20,6 @@ pub enum Commands {
         domain: String,
         version: Option<u32>,
     },
-    Reload,
     Delete {
         domain: Option<String>,
         max_reserve: Option<u32>,
@@ -48,7 +47,7 @@ mod test {
 
     #[test]
     fn info_command_test() {
-        let c = CliCommand::try_parse_from(&["spa-client", "info", "www.example.com"]).unwrap();
+        let c = CliCommand::try_parse_from(["spa-client", "info", "www.example.com"]).unwrap();
         //println!("{:?}", c);
         if let Commands::Info { domain } = c.commands {
             assert_eq!(domain, Some("www.example.com".to_string()));
@@ -58,13 +57,13 @@ mod test {
     }
     #[test]
     fn info_command_with_config_dir() {
-        let c = CliCommand::parse_from(&["spa-client", "-c=abc.conf", "info"]);
+        let c = CliCommand::parse_from(["spa-client", "-c=abc.conf", "info"]);
         //println!("{:?}", &c);
         assert_eq!(c.config_dir, Some(PathBuf::from("abc.conf")));
-        let c = CliCommand::parse_from(&["spa-client", "--config-dir=abc.conf", "info"]);
+        let c = CliCommand::parse_from(["spa-client", "--config-dir=abc.conf", "info"]);
         //println!("{:?}", &c);
         assert_eq!(c.config_dir, Some(PathBuf::from("abc.conf")));
-        let c = CliCommand::parse_from(&["spa-client", "info", "www.example.com"]);
+        let c = CliCommand::parse_from(["spa-client", "info", "www.example.com"]);
         if let Commands::Info { domain } = c.commands {
             assert_eq!(domain.unwrap(), "www.example.com")
         } else {
@@ -74,7 +73,7 @@ mod test {
 
     #[test]
     fn upload_command() {
-        let c = CliCommand::parse_from(&[
+        let c = CliCommand::parse_from([
             "test",
             "upload",
             "/abc/d/",
@@ -100,7 +99,7 @@ mod test {
     }
     #[test]
     fn release_command() {
-        let c = CliCommand::parse_from(&["test", "release", "www.example.com", "2"]);
+        let c = CliCommand::parse_from(["test", "release", "www.example.com", "2"]);
         // println!("{:?}", &c);
         if let Commands::Release { domain, version } = c.commands {
             assert_eq!(domain, "www.example.com".to_string());
@@ -111,7 +110,7 @@ mod test {
     }
     #[test]
     fn release_command2() {
-        let c = CliCommand::parse_from(&["test", "release", "www.example.com"]);
+        let c = CliCommand::parse_from(["test", "release", "www.example.com"]);
         if let Commands::Release { domain, version } = c.commands {
             assert_eq!(domain, "www.example.com".to_string());
             assert_eq!(version, None);
@@ -122,7 +121,7 @@ mod test {
 
     #[test]
     fn revoke_version() {
-        let c = CliCommand::parse_from(&["test", "revoke", "www.example.com", "1"]);
+        let c = CliCommand::parse_from(["test", "revoke", "www.example.com", "1"]);
         if let Commands::Revoke { domain, version } = c.commands {
             assert_eq!(domain, "www.example.com".to_string());
             assert_eq!(version, 1);

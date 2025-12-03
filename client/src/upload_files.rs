@@ -1,11 +1,10 @@
-use crate::{success, API};
+use crate::{API, success};
 use anyhow::anyhow;
 use console::style;
 use entity::request::UpdateUploadingStatusOption;
 use entity::storage::{GetDomainPositionStatus, ShortMetaData, UploadingStatus};
-use futures::future::Either;
 use futures::StreamExt;
-use if_chain::if_chain;
+use futures::future::Either;
 use md5::{Digest, Md5};
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -13,8 +12,8 @@ use std::fs;
 use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 use tracing::warn;
 use walkdir::WalkDir;
@@ -31,13 +30,10 @@ pub async fn upload_files(
     if !path.is_dir() {
         return Err(anyhow!("{:?} is not a directory", path));
     }
-
-    let prefix_path = path
-        .to_str()
-        .ok_or_else(|| anyhow!("upload path can not parse"))?
-        .to_string();
     let version = get_upload_version(&api, &domain, version).await?;
-    println!("begin to fetch server file metadata with md5, you may need to wait if there are large number of files.");
+    println!(
+        "begin to fetch server file metadata with md5, you may need to wait if there are large number of files."
+    );
     let server_metadata = api.get_file_metadata(&domain, version).await?;
     if !server_metadata.is_empty() {
         println!(
@@ -53,30 +49,33 @@ pub async fn upload_files(
         .collect::<HashMap<String, ShortMetaData>>();
 
     let mut byte_buffer = vec![0u8; 1024 * 1024];
+    let parent = path.clone();
     let uploading_files = WalkDir::new(path)
         .min_depth(1)
         .into_iter()
         .filter_map(|entity| {
-            if_chain! {
-                if let Some(entity) = entity.ok();
-                if let Some(metadata) = entity.metadata().ok();
-                if metadata.is_file();
-                if let Some(path) = entity.path().to_str().map(|x|x.to_string());
-                then {
-                    let prefix = format!("{prefix_path}/");
-                    let key = path.replace(&prefix,"");
-                    if server_metadata.get(&key).filter(|x|{
-                        let md5 = md5_file(entity.path(), &mut byte_buffer);
-                        x.length == metadata.len() &&
-                        md5.filter(|md5|md5 == &x.md5).is_some()
-                    }).is_none() {
-                        Some((key, entity.path().to_path_buf()))
-                    } else {
-                        None
-                    }
-                }else {
-                    None
-                }
+            let entity = entity.ok()?;
+            let metadata = entity.metadata().ok()?;
+            if !metadata.is_file() {
+                return None;
+            }
+            let key = entity.path().strip_prefix(&parent).ok()?;
+            let key = key
+                .components()
+                .map(|c| c.as_os_str().to_string_lossy())
+                .collect::<Vec<_>>()
+                .join("/");
+            if server_metadata
+                .get(&key)
+                .filter(|x| {
+                    let md5 = md5_file(entity.path(), &mut byte_buffer);
+                    x.length == metadata.len() && md5.filter(|md5| md5 == &x.md5).is_some()
+                })
+                .is_none()
+            {
+                Some((key, entity.path().to_path_buf()))
+            } else {
+                None
             }
         })
         .collect::<Vec<(String, PathBuf)>>();
@@ -125,15 +124,15 @@ pub async fn upload_files(
     let process_count = Arc::new(AtomicU64::new(1));
     let upload_result = futures::stream::iter(uploading_files.into_iter().map(|(key, path)| {
         let key: Cow<'static, str> = key.into();
-        let r = retry_upload(
+
+        retry_upload(
             api.as_ref(),
             domain.clone(),
             str_version.clone(),
             key,
             path,
             process_count.clone(),
-        );
-        r
+        )
     }))
     .buffer_unordered(parallel as usize)
     .map(|result| match result {
@@ -149,7 +148,7 @@ pub async fn upload_files(
     .collect::<Vec<Option<String>>>()
     .await;
 
-    let fail_keys: Vec<String> = upload_result.into_iter().filter_map(|x| x).collect();
+    let fail_keys: Vec<String> = upload_result.into_iter().flatten().collect();
     if !fail_keys.is_empty() {
         return Err(anyhow!(
             "There are {} file(s) uploaded fail.",
@@ -174,7 +173,7 @@ async fn retry_upload<T: Into<Cow<'static, str>> + Clone>(
     path: PathBuf,
     count: Arc<AtomicU64>,
 ) -> Either<(String, u64), (String, u64)> {
-    for retry in (0..3u32).into_iter() {
+    for retry in 0..3u32 {
         let result = api
             .upload_file(domain.clone(), version.clone(), key.clone(), path.clone())
             .await;
@@ -206,22 +205,19 @@ async fn get_upload_version(api: &API, domain: &str, version: Option<u32>) -> an
     }
 }
 
-fn md5_file(path: impl AsRef<Path>, byte_buffer: &mut Vec<u8>) -> Option<String> {
-    File::open(path)
-        .ok()
-        .map(|mut f| {
-            let mut hasher = Md5::new();
-            //if file_size > 1024 * 1024 {
-            //1Mb
-            loop {
-                let n = f.read(byte_buffer).ok()?;
-                let valid_buf_slice = &byte_buffer[..n];
-                if n == 0 {
-                    break;
-                }
-                hasher.update(valid_buf_slice);
+fn md5_file(path: impl AsRef<Path>, byte_buffer: &mut [u8]) -> Option<String> {
+    File::open(path).ok().and_then(|mut f| {
+        let mut hasher = Md5::new();
+        //if file_size > 1024 * 1024 {
+        //1Mb
+        loop {
+            let n = f.read(byte_buffer).ok()?;
+            let valid_buf_slice = &byte_buffer[..n];
+            if n == 0 {
+                break;
             }
-            Some(format!("{:x}", hasher.finalize()))
-        })
-        .flatten()
+            hasher.update(valid_buf_slice);
+        }
+        Some(format!("{:x}", hasher.finalize()))
+    })
 }

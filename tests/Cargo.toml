@@ -7,8 +7,6 @@ authors.workspace = true
 
 [[test]]
 name = "http_test"
-[[test]]
-name = "acme_test"
 
 
 [dependencies]
@@ -19,8 +17,7 @@ reqwest = { workspace = true, features = ["json", "multipart", "stream", "rustls
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 anyhow = { workspace = true }
-console-subscriber = { workspace = true }
-opentelemetry-stdout = { workspace = true, features = ["trace"] }
-tracing-opentelemetry = { workspace = true }
-opentelemetry = { workspace = true, features = ["trace", "metrics"] }
-opentelemetry_sdk = { workspace = true, features = ["rt-tokio", "metrics"] }
+#opentelemetry-stdout = { workspace = true, features = ["trace"] }
+#tracing-opentelemetry = { workspace = true }
+#opentelemetry = { workspace = true, features = ["trace", "metrics"] }
+#opentelemetry_sdk = { workspace = true, features = ["rt-tokio", "metrics"] }

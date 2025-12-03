@@ -1,12 +1,10 @@
-use crate::acme::ACMEManager;
 use crate::config::get_host_path_from_domain;
 use crate::file_cache::{CacheItem, FileCache};
-use anyhow::{anyhow, bail, Context};
+use anyhow::{Context, anyhow, bail};
 use dashmap::DashMap;
 use entity::storage::{
     DomainInfo, GetDomainPositionStatus, ShortMetaData, UploadDomainPosition, UploadingStatus,
 };
-use lazy_static::lazy_static;
 use md5::{Digest, Md5};
 use regex::Regex;
 use std::fs;
@@ -14,17 +12,17 @@ use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
 use std::ops::RangeInclusive;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use tracing::{debug, info};
 use walkdir::{DirEntry, WalkDir};
-use warp::fs::sanitize_path;
 
 pub(crate) const URI_REGEX_STR: &str =
     "[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+\\.?";
 //"[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+$";
 
-lazy_static! {
-    pub static ref URI_REGEX: Regex = Regex::new(URI_REGEX_STR).unwrap();
+pub(crate) fn uri_regex() -> &'static Regex {
+    static URI_REGEX: OnceLock<Regex> = OnceLock::new();
+    URI_REGEX.get_or_init(|| Regex::new(URI_REGEX_STR).unwrap())
 }
 
 pub(crate) const UPLOADING_FILE_NAME: &str = ".SPA-Processing";
@@ -60,7 +58,7 @@ impl DomainStorage {
                 let domain_dir_name = domain_dir.file_name();
                 //domain_dir_name = www.example.com
                 let domain_dir_name = domain_dir_name.to_str().unwrap();
-                if metadata.is_dir() && URI_REGEX.is_match(domain_dir_name) {
+                if metadata.is_dir() && uri_regex().is_match(domain_dir_name) {
                     let domain_dir = domain_dir.path();
                     // domain_dir = ${path_prefix}/www.example.com
                     let multiple_web_file = domain_dir.join(MULTIPLE_WEB_FILE_NAME);
@@ -105,16 +103,16 @@ impl DomainStorage {
                                 }
                                 let path_buf = sub_dir.join(version.to_string());
                                 match domain_version.get_mut(domain_dir_name) {
-                                    Some(mut domain_meta) => {
-                                        match domain_meta.value_mut() {
-                                            DomainMeta::MultipleWeb(ref mut map) => {
-                                                map.insert(sub_path.clone(), (path_buf, version));
-                                            }
-                                            DomainMeta::OneWeb(..) => {
-                                                panic!("init failure, {sub_dir:?} should be multiple web");
-                                            }
+                                    Some(mut domain_meta) => match domain_meta.value_mut() {
+                                        DomainMeta::MultipleWeb(map) => {
+                                            map.insert(sub_path.clone(), (path_buf, version));
                                         }
-                                    }
+                                        DomainMeta::OneWeb(..) => {
+                                            panic!(
+                                                "init failure, {sub_dir:?} should be multiple web"
+                                            );
+                                        }
+                                    },
                                     None => {
                                         let map = DashMap::new();
                                         map.insert(sub_path.clone(), (path_buf, version));
@@ -171,9 +169,9 @@ impl DomainStorage {
         }
     }
 
-    fn get_multiple_path_data<'a>(
-        domain_dir: &PathBuf,
-        domain_dir_name: &'a str,
+    fn get_multiple_path_data(
+        domain_dir: &Path,
+        domain_dir_name: &str,
         multiple_web_path: &PathBuf,
     ) -> anyhow::Result<Vec<(PathBuf, String, String)>> {
         let sub_dirs = fs::read_to_string(multiple_web_path)
@@ -308,7 +306,7 @@ impl DomainStorage {
                             DomainMeta::OneWeb(new_path.clone(), version),
                         );
                     } else {
-                        let multiple_file = self.prefix.join(&host).join(MULTIPLE_WEB_FILE_NAME);
+                        let multiple_file = self.prefix.join(host).join(MULTIPLE_WEB_FILE_NAME);
                         let mut file = OpenOptions::new()
                             .create(true)
                             .append(true)
@@ -334,7 +332,7 @@ impl DomainStorage {
             let data = self.cache.cache_dir(host, path, version, &new_path)?;
             self.cache.update(host.to_string(), path, version, data);
             debug!(
-                "domain: {host} all keys:{:?}",
+                "domain: {host} sub_path: {path:?} all keys:{:?}",
                 self.cache.get_all_keys(host)
             );
             info!(
@@ -387,13 +385,13 @@ impl DomainStorage {
     }
 
     pub fn get_domain_serving_version(&self, domain: &str) -> Option<u32> {
-        let (host, path) = get_host_path_from_domain(&domain);
+        let (host, path) = get_host_path_from_domain(domain);
         let domain_meta = self.meta.get(host)?;
         match domain_meta.value() {
-            DomainMeta::OneWeb(_, version) if path == "" => Some(version.clone()),
-            DomainMeta::MultipleWeb(map) if path != "" => map.get(path).map(|v| {
+            DomainMeta::OneWeb(_, version) if path.is_empty() => Some(*version),
+            DomainMeta::MultipleWeb(map) if !path.is_empty() => map.get(path).map(|v| {
                 let (_, v) = v.value();
-                v.clone()
+                *v
             }),
             _ => None,
         }
@@ -456,7 +454,7 @@ impl DomainStorage {
             .filter_map(|dir_entity| {
                 let dir_entity = dir_entity.ok()?;
                 let domain_dir_name = dir_entity.file_name().to_str()?;
-                if dir_entity.metadata().ok()?.is_dir() && URI_REGEX.is_match(domain_dir_name) {
+                if dir_entity.metadata().ok()?.is_dir() && uri_regex().is_match(domain_dir_name) {
                     let domain_dir = dir_entity.path().to_path_buf();
                     let multiple_web_path = domain_dir.join(MULTIPLE_WEB_FILE_NAME);
                     if multiple_web_path.is_file() {
@@ -470,7 +468,7 @@ impl DomainStorage {
                         let result: Vec<DomainInfo> = sub_dirs
                             .iter()
                             .filter_map(|(_, domain_with_sub_path, _)| {
-                                self.get_domain_info_by_domain(&domain_with_sub_path)
+                                self.get_domain_info_by_domain(domain_with_sub_path)
                             })
                             .collect();
                         Some(result)
@@ -502,14 +500,14 @@ impl DomainStorage {
         if path_buf.exists() {
             let prefix = path_buf
                 .to_str()
-                .map(|x| Ok(format!("{}/", x.to_string())))
+                .map(|x| Ok(format!("{}/", x)))
                 .unwrap_or(Err(anyhow!("can not parse path")))?;
             let mut byte_buffer = vec![0u8; 1024 * 1024];
 
             fn get_short_metadata(
                 entry: DirEntry,
                 prefix: &str,
-                byte_buffer: &mut Vec<u8>,
+                byte_buffer: &mut [u8],
             ) -> Option<ShortMetaData> {
                 let x = entry.path().to_str()?;
                 let key = x.replace(prefix, "");
@@ -562,7 +560,7 @@ impl DomainStorage {
         domain: String,
         version: u32,
         path: String,
-        data: Vec<u8>,
+        data: &PathBuf,
     ) -> anyhow::Result<()> {
         if self.check_is_in_upload_process(&domain, &version) {
             let file_path = sanitize_path(self.get_version_path(&domain, version), &path)
@@ -573,8 +571,7 @@ impl DomainStorage {
             if !parent_path.exists() {
                 fs::create_dir_all(parent_path)?;
             };
-            let mut file = File::create(file_path)?;
-            file.write_all(&data)?;
+            fs::copy(data, Path::new(&file_path))?;
             Ok(())
         } else {
             Err(anyhow!(
@@ -590,7 +587,6 @@ impl DomainStorage {
         domain: String,
         version: u32,
         uploading_status: UploadingStatus,
-        acme_manager: &ACMEManager,
     ) -> anyhow::Result<()> {
         // TODO: check if multiple and domain match
         if let Some(uploading_version) = self.uploading_status.get(&domain).map(|v| *v.value()) {
@@ -611,9 +607,6 @@ impl DomainStorage {
                     "domain:{}, version:{} change to upload status:finish",
                     domain, version
                 );
-                acme_manager
-                    .add_new_domain(get_host_path_from_domain(&domain).0)
-                    .await;
             }
         } else if uploading_status == UploadingStatus::Uploading {
             if self
@@ -634,10 +627,7 @@ impl DomainStorage {
                 if !multiple.exists() {
                     let parent = self.prefix.join(host);
                     if !parent.exists() && fs::create_dir_all(&parent).is_err() {
-                        bail!(
-                            "create host directory {} failure",
-                            parent.display().to_string()
-                        )
+                        bail!("create host directory {} failure", parent.display())
                     }
                     if File::create_new(multiple).is_err() {
                         bail!("files in same domain should not create at same time")
@@ -719,80 +709,57 @@ impl DomainStorage {
     }
 }
 
-pub fn md5_file(path: impl AsRef<Path>, byte_buffer: &mut Vec<u8>) -> Option<String> {
-    File::open(path)
-        .ok()
-        .map(|mut f| {
-            let mut hasher = Md5::new();
-            //if file_size > 1024 * 1024 {
-            //1Mb
-            loop {
-                let n = f.read(byte_buffer).ok()?;
-                let valid_buf_slice = &byte_buffer[..n];
-                if n == 0 {
-                    break;
-                }
-                hasher.update(valid_buf_slice);
+pub fn md5_file(path: impl AsRef<Path>, byte_buffer: &mut [u8]) -> Option<String> {
+    File::open(path).ok().and_then(|mut f| {
+        let mut hasher = Md5::new();
+        //if file_size > 1024 * 1024 {
+        //1Mb
+        loop {
+            let n = f.read(byte_buffer).ok()?;
+            let valid_buf_slice = &byte_buffer[..n];
+            if n == 0 {
+                break;
             }
-            Some(format!("{:x}", hasher.finalize()))
-        })
-        .flatten()
-}
-/*
-#[derive(Deserialize, Serialize, Debug)]
-pub struct DomainInfo {
-    pub domain: String, // www.example.com|www.example.com/a/b
-    pub current_version: Option<u32>,
-    pub versions: Vec<u32>,
-    //pub uploading_version: Vec<u32>, //TODO: add uploading_versions
-    //pub web_path: Vec<String>, // [www.example.com/index.html|www.example.com/a/b/index.html,...]
+            hasher.update(valid_buf_slice);
+        }
+        Some(format!("{:x}", hasher.finalize()))
+    })
 }
 
-#[derive(Deserialize, Serialize, Debug)]
-pub struct ShortMetaData {
-    pub path: String,
-    pub md5: String,
-    pub length: u64,
+pub fn sanitize_path(base: impl AsRef<Path>, tail: &str) -> anyhow::Result<PathBuf> {
+    let mut buf = PathBuf::from(base.as_ref());
+    let p = match percent_encoding::percent_decode_str(tail).decode_utf8() {
+        Ok(p) => p,
+        Err(err) => {
+            tracing::debug!("dir: failed to decode route={:?}: {:?}", tail, err);
+            bail!("failed to decode route")
+        }
+    };
+    tracing::trace!("dir? base={:?}, route={:?}", base.as_ref(), p);
+    for seg in p.split('/') {
+        if seg.starts_with("..") {
+            tracing::warn!("dir: rejecting segment starting with '..'");
+            bail!("invalid path segment")
+        } else if seg.contains('\\') {
+            tracing::warn!("dir: rejecting segment containing backslash (\\)");
+            bail!("invalid path segment")
+        } else if cfg!(windows) && seg.contains(':') {
+            tracing::warn!("dir: rejecting segment containing colon (:)");
+            bail!("invalid path segment")
+        } else {
+            buf.push(seg);
+        }
+    }
+    Ok(buf)
 }
-
-#[derive(Serialize_repr, Deserialize_repr, PartialEq, Debug)]
-#[repr(u8)]
-pub enum UploadingStatus {
-    Uploading = 0,
-    Finish = 1,
-}
-
-#[derive(Serialize_repr, Deserialize_repr, PartialEq, Debug)]
-#[repr(u8)]
-pub enum GetDomainPositionStatus {
-    NewDomain = 0,
-    NewVersion = 1,
-    InUploading = 2,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct UploadDomainPosition {
-    pub path: PathBuf,
-    pub version: u32,
-    pub status: GetDomainPositionStatus,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct CertInfo {
-    pub begin: DateTime<Utc>,
-    pub end: DateTime<Utc>,
-    pub host: String,
-}
-
- */
 
 #[cfg(test)]
 mod test {
     use crate::config::Config;
     use crate::domain_storage::{DomainStorage, URI_REGEX_STR};
     use crate::file_cache::FileCache;
-    use hyper::Uri;
     use regex::Regex;
+    use salvo::http::uri::Uri;
     use std::env;
     use std::fs::OpenOptions;
     use std::io::Read;
@@ -866,13 +833,15 @@ mod test {
     fn test_domain_storage_get_domain_info() {
         //TODO: fix config path
         let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../test/config.test.conf");
-        env::set_var("SPA_CONFIG", path.display().to_string());
+        unsafe {
+            env::set_var("SPA_CONFIG", path.display().to_string());
+        }
         let mut config = Config::load().unwrap();
         config.file_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../tests/web/data")
             .display()
             .to_string();
-        let file_cache = FileCache::new(&config);
+        let file_cache = FileCache::new();
         let storage = DomainStorage::init(&config.file_dir, file_cache).unwrap();
         let result = storage.get_domain_info().unwrap();
 
@@ -886,7 +855,6 @@ mod test {
             .read(true)
             .create(true)
             .append(true)
-            .write(true)
             .open("/tmp/cde.txt")
             .unwrap();
         let mut text = String::new();

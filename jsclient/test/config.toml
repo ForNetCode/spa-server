@@ -1,0 +1,10 @@
+file_dir = "./data"
+cors = true # would change
+[http]
+port = 8080
+addr = "0.0.0.0"
+
+[admin_config]
+port = 9000
+addr = "0.0.0.0"
+token = "token"

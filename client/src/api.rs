@@ -5,7 +5,7 @@ use entity::request::{
     GetDomainOption, UpdateUploadingStatusOption,
 };
 use entity::storage::{CertInfo, DomainInfo, ShortMetaData, UploadDomainPosition};
-use reqwest::{header, multipart, StatusCode};
+use reqwest::{StatusCode, header, multipart};
 use std::borrow::Cow;
 use std::path::PathBuf;
 
@@ -107,11 +107,6 @@ impl API {
         string_resp!(resp)
     }
 
-    pub async fn reload_spa_server(&self) -> anyhow::Result<()> {
-        let resp = self.async_client.post(self.url("reload")).send().await?;
-        handle!(resp)
-    }
-
     pub async fn remove_files(
         &self,
         domain: Option<String>,
@@ -147,11 +142,12 @@ impl API {
         key: T,
         path: PathBuf,
     ) -> anyhow::Result<()> {
-        let name = path.file_name().unwrap().to_os_string();
-        let name = name.to_str().unwrap().to_string();
-        let file = tokio::fs::File::open(path).await?;
-        let len = file.metadata().await?.len();
-        let file_part = multipart::Part::stream_with_length(file, len).file_name(name);
+        // let name = path.file_name().unwrap().to_os_string();
+        // let name = name.to_str().unwrap().to_string();
+        // let file = tokio::fs::File::open(path).await?;
+        // let len = file.metadata().await?.len();
+        // let file_part = multipart::Part::stream_with_length(file, len).file_name(name);
+        let file_part = multipart::Part::file(&path).await?;
         let form = multipart::Form::new().part("file", file_part);
 
         let resp = self
@@ -211,8 +207,8 @@ impl API {
 }
 #[cfg(test)]
 mod test {
-    use crate::api::API;
     use crate::LOCAL_HOST;
+    use crate::api::API;
     use entity::request::UpdateUploadingStatusOption;
     use entity::storage::UploadingStatus;
 
