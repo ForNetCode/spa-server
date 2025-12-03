@@ -1,17 +1,11 @@
-use crate::config::{Config, extract_origin};
+use crate::config::Config;
 use salvo::Response;
-use salvo::http::{HeaderValue, StatusCode};
-use std::collections::{HashMap, HashSet};
+use salvo::http::StatusCode;
+use std::collections::HashMap;
 use std::sync::Arc;
 
 pub struct ServiceConfig {
-    pub default: DomainServiceConfig,
-    pub inner: HashMap<String, DomainServiceConfig>,
     pub host_alias: Arc<HashMap<String, String>>,
-}
-
-pub struct DomainServiceConfig {
-    pub cors: Option<HashSet<HeaderValue>>,
 }
 
 impl ServiceConfig {
@@ -22,17 +16,6 @@ impl ServiceConfig {
 
      */
     pub fn new(conf: &Config) -> Self {
-        let default = DomainServiceConfig {
-            cors: extract_origin(&conf.cors),
-        };
-        let mut service_config: HashMap<String, DomainServiceConfig> = HashMap::new();
-        for domain in conf.domains.iter() {
-            let domain_service_config: DomainServiceConfig = DomainServiceConfig {
-                cors: extract_origin(&domain.cors).or_else(|| default.cors.clone()),
-            };
-            service_config.insert(domain.domain.clone(), domain_service_config);
-        }
-
         let mut alias_map = HashMap::new();
         for domain in conf.domains.iter() {
             if let Some(alias_host_list) = domain.alias.as_ref() {
@@ -43,8 +26,6 @@ impl ServiceConfig {
         }
 
         ServiceConfig {
-            default,
-            inner: service_config,
             host_alias: Arc::new(alias_map),
         }
     }

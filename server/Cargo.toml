@@ -47,7 +47,6 @@ delay_timer = { workspace = true } # dashmap is same
 #config
 toml = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
-duration-str = { workspace = true }
 
 #cache
 dashmap = { workspace = true }

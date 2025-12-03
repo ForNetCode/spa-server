@@ -1,9 +1,6 @@
 use anyhow::{Context, bail};
-use duration_str::deserialize_duration;
 use salvo::http::HeaderValue;
 use serde::{Deserialize, Deserializer};
-use std::collections::HashSet;
-use std::time::Duration;
 use std::{env, fs};
 
 const CONFIG_PATH: &str = "config.toml";
@@ -11,8 +8,6 @@ const CONFIG_PATH: &str = "config.toml";
 #[derive(Deserialize, Debug, Clone, PartialEq)]
 pub struct Config {
     pub file_dir: String,
-    #[serde(default)]
-    pub cors: Option<HashSet<OriginWrapper>>,
     pub admin_config: Option<AdminConfig>,
     pub http: HttpConfig,
     #[serde(default)]
@@ -60,38 +55,13 @@ fn default_max_upload_size() -> u64 {
 #[derive(Deserialize, Debug, Clone, PartialEq)]
 pub struct DomainConfig {
     pub domain: String,
-    pub cors: Option<HashSet<OriginWrapper>>,
-    pub https: Option<DomainHttpsConfig>,
     pub alias: Option<Vec<String>>,
-    pub redirect_https: Option<bool>,
-}
-
-#[derive(Deserialize, Debug, Clone, PartialEq)]
-pub struct DomainHttpsConfig {
-    pub ssl: Option<SSL>,
-    #[serde(default)]
-    pub disable_acme: bool,
-}
-
-#[derive(Deserialize, Debug, Clone, PartialEq)]
-pub struct SSL {
-    pub private: String,
-    pub public: String,
 }
 
 #[derive(Deserialize, Debug, Clone, PartialEq)]
 pub struct HttpConfig {
     pub addr: String,
     pub port: u16,
-    pub external_port: Option<u16>,
-    pub redirect_https: Option<bool>,
-}
-
-#[derive(Deserialize, Debug, Clone, PartialEq)]
-pub struct ClientCacheItem {
-    #[serde(deserialize_with = "deserialize_duration")]
-    pub expire: Duration,
-    pub extension_names: Vec<String>,
 }
 
 #[derive(Deserialize, Debug, Clone, Eq, PartialEq)]
@@ -117,13 +87,6 @@ pub fn get_host_path_from_domain(domain: &str) -> (&str, &str) {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct OriginWrapper(HeaderValue);
-
-pub(crate) fn extract_origin(
-    data: &Option<HashSet<OriginWrapper>>,
-) -> Option<HashSet<HeaderValue>> {
-    data.as_ref()
-        .map(|set| set.iter().map(|o| o.0.clone()).collect())
-}
 
 impl<'de> Deserialize<'de> for OriginWrapper {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>

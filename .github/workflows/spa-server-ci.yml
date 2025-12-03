@@ -55,7 +55,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run spa-server docker
         run: |
-          docker run -d  --name=test -p 9000:9000 -p 8080:8080 -v ${{ github.workspace }}/jsclient/test/config.toml:/config/config.toml ghcr.io/fornetcode/spa-server:v2.4.0
+          docker run -d  --name=test -p 9000:9000 -p 8080:8080 -v ${{ github.workspace }}/jsclient/test/config.toml:/config/config.toml ghcr.io/fornetcode/spa-server:v3.0.0
           docker ps
           docker logs --tail 50 test
       - uses: actions/setup-node@v4
