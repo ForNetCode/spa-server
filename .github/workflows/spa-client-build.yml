@@ -1,0 +1,52 @@
+name: spa-client build
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  client:
+    strategy:
+      fail-fast: false
+      matrix:
+        settings:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            name: spa-client-linux-musl-x86_64
+            command: make release-linux-client-musl
+          - os: macos-12
+            target: x86_64-apple-darwin
+            name: spa-client-macos-x86_64
+            command: make release-client-mac
+          - os: macos-14
+            target: aarch64-apple-darwin
+            name: spa-client-macos-aarch64
+            command: make release-client-mac
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            name: spa-client-windows-x86_64
+            command: make release-client-win
+    runs-on: ${{ matrix.settings.os }}
+    steps:
+      - name: Get version
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.settings.target }}
+      - name: Setup MUSL
+        if: matrix.settings.os == 'ubuntu-latest'
+        run: |
+          rustup target add x86_64-unknown-linux-musl
+          sudo apt-get -qq install musl-tools
+
+      - name: Build Release
+        run: ${{ matrix.settings.command }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          path: ./release/*
+          name: ${{ matrix.settings.name }}
+          if-no-files-found: error
