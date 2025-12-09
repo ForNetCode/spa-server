@@ -1,6 +1,6 @@
 # All is from https://github.com/extrawurst/gitui
 
-.PHONY: docker-release, release-doc, release-client-mac, release-client-win, release-linux-client-musl, release-linux-server-musl
+.PHONY: docker-release, release-doc, release-client-mac-arm, release-client-mac-intel, release-client-win, release-linux-client-musl, release-linux-server-musl
 
 build-client-release:
 	cargo build --bin spa-client --release
@@ -29,12 +29,19 @@ release-doc:
 	git push -f git@github.com:fornetcode/spa-server.git master:gh-pages
 	cd -
 
-release-client-mac: build-client-release
+release-client-mac-arm: build-client-release
 	strip target/release/spa-client
 	otool -L target/release/spa-client
 	mkdir -p release
-	tar -C ./target/release/ -czvf ./release/spa-client-mac.tar.gz ./spa-client
-	ls -lisah ./release/spa-client-mac.tar.gz
+	tar -C ./target/release/ -czvf ./release/spa-client-mac-aarch64.tar.gz ./spa-client
+	ls -lisah ./release/spa-client-mac-aarch64.tar.gz
+
+release-client-mac-intel: build-client-release
+	strip target/release/spa-client
+	otool -L target/release/spa-client
+	mkdir -p release
+	tar -C ./target/release/ -czvf ./release/spa-client-mac-x86_64.tar.gz ./spa-client
+	ls -lisah ./release/spa-client-mac-x86_64.tar.gz
 
 release-client-win: build-client-release
 	mkdir -p release
