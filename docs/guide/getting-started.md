@@ -71,8 +71,7 @@ we also support serving multiple SPA in one domain:
 
 ## What's More
 
-- a React example for
-  spa-client: [js-app-example](https://github.com/fornetcode/spa-server/blob/master/example/js-app-example/README.md).
+- a React example for spa-client: [js-app-example](https://github.com/fornetcode/spa-server/blob/master/example/js-app-example/README.md).
 - spa-server [configuration](./spa-server-configuration.md) and its admin-server [http api](./spa-server-api.md)
 - spa-client [npm package](./spa-client-npm-package.md)
 

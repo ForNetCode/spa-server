@@ -1,5 +1,4 @@
 file_dir = "./data"
-cors = []
 [http]
 port = 8080
 addr = "0.0.0.0"

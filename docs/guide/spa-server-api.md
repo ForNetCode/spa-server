@@ -7,7 +7,7 @@ The http api is described by `curl` command. You can run it in linux after varia
 
 ## Authorization
 
-It very simple, put `Token` to request http header: `Authorization: Bearer $TOKEN`
+It's very simple, put `Token` to request http header: `Authorization: Bearer $TOKEN`
 
 ## Simple API Without `spa-client`
 
@@ -151,10 +151,4 @@ curl -X POST "$ADMIN_SERVER/files/revoke_version" \
   "domain":$DOMAIN,
   "version": $TARGET_VERSION
 }`
-```
-
-### Get Cert version
-```shell
-curl -X POST "$ADMIN_SERVER/cert?domain=$DOMAIN_OPT" \
- - H "Authorization: Bearer $TOKEN"
 ```

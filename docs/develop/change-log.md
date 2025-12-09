@@ -1,5 +1,9 @@
 # Change Log
 
+### Version 3.0.1
+- ci: refactor spa-client command line distribution ci.
+- doc: rewrite some docs.
+
 ### Version 3.0.0
 
 - rewrite, remove warp, cors, ssl and openTelemetry.

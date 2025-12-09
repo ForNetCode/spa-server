@@ -6,8 +6,6 @@ The docker image is distributed at `Github Packages` as [`ghcr.io/fornetcode/spa
 docker pull ghcr.io/fornetcode/spa-server:latest
 ```
 ## From Code
-There no plan to release binary package. You can `git clone` the code and build yourself.
-
 ```shell
 git clone --recursive https://github.com/fornetcode/spa-server
 cargo build --package spa-server --release

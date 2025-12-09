@@ -1,9 +1,6 @@
 # Command Line
 
-We have provided command line in 1.x versions, but it seems no one need it. So we removed the binary release and docker
-release.
-
-But you can build it from source.
+We provided command line client for Linux, Mac and Windows, you can download it at [Release Page](https://github.com/ForNetCode/spa-server/releases).
 
 ## Source Code
 
@@ -20,13 +17,10 @@ cd client
 cargo install --bin spa-client  --path .
 ```
 
-## Overview
-
-spa-client it a command line tool to help user upload files and release new SPA.
-
 ## Usage Example
 
 There are some usage examples of `spa-client`, you also can get help by typing `spa-client -h`.
+The `config file path` could also set by environment variable: `SPA_CLIENT_CONFIG`.
 
 ```shell
 # upload static files to admin server, if not set $OPT_VERSION, will try to 
@@ -49,20 +43,9 @@ the config file format is toml:
 
 ```toml
 [server]
-address = "http://127.0.0.1:9000"
-auth_token = "token"
+address = "http://127.0.0.1:9000" # SPA_SERVER_ADDRESS
+auth_token = "token" # SPA_SERVER_AUTH_TOKEN
 # [upload]
 ## default value is:3
-# parallel = 3
-```
-
-the config default file name is `client.conf`.
-
-We also provide http api to interact with admin server, the following command is ok to upload and serve new version.
-
-```shell
-# Uploading Files By scp and release 
-scp $SPA_DIRECTORY \
-user@ip:$(curl "http://$ADMIN_SERVER/upload/position?domain=$DOMAIN" -H "Authorization: Bearer $TOKEN") &&\
-curl "http://$ADMIN_SERVER/update_version?domain=$DOMAIN" -H "Authorization: Bearer $TOKEN"
+# parallel = 3  # SPA_UPLOAD_PARALLEL
 ```
