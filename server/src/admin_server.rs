@@ -73,8 +73,7 @@ impl AdminServer {
         .push(Router::with_path("files/delete").post(service::remove_domain_version))
         .push(Router::with_path("files/revoke_version").post(service::revoke_version));
 
-        let doc = OpenApi::new("SPA Server Admin API", "1.0.0")
-            .merge_router(&api_router);
+        let doc = OpenApi::new("SPA Server Admin API", "1.0.0").merge_router(&api_router);
 
         Router::new()
             .push(doc.into_router("/api-doc/openapi.json"))
