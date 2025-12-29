@@ -122,8 +122,17 @@ pub mod service {
     use std::sync::Arc;
     use tracing::error;
 
-    #[handler]
-    pub(super) async fn get_domain_info(req: &mut Request, res: &mut Response, depot: &mut Depot) {
+    /// Get domain info
+    ///
+    /// Returns information about domains. If domain query parameter is provided,
+    /// returns info for that specific domain only.
+    #[endpoint(
+        responses(
+            (status_code = 200, description = "Domain info retrieved successfully", body = Vec<entity::storage::DomainInfo>),
+            (status_code = 401, description = "Unauthorized")
+        )
+    )]
+    pub async fn get_domain_info(req: &mut Request, res: &mut Response, depot: &mut Depot) {
         let storage = depot.obtain::<Arc<DomainStorage>>().unwrap();
         let option = req.parse_queries::<GetDomainOption>();
         match storage.get_domain_info() {
@@ -147,12 +156,17 @@ pub mod service {
         }
     }
 
-    #[handler]
-    pub(super) async fn update_domain_version(
-        req: &mut Request,
-        res: &mut Response,
-        depot: &mut Depot,
-    ) {
+    /// Update domain version
+    ///
+    /// Changes the current active version for a domain.
+    #[endpoint(
+        responses(
+            (status_code = 200, description = "Version updated successfully"),
+            (status_code = 404, description = "Domain not found"),
+            (status_code = 401, description = "Unauthorized")
+        )
+    )]
+    pub async fn update_domain_version(req: &mut Request, res: &mut Response, depot: &mut Depot) {
         let storage = depot.obtain::<Arc<DomainStorage>>().unwrap();
         if let Ok(option) = req.parse_json::<DomainWithOptVersionOption>().await {
             match storage
@@ -177,12 +191,17 @@ pub mod service {
         }
     }
 
-    #[handler]
-    pub(super) async fn get_upload_position(
-        req: &mut Request,
-        res: &mut Response,
-        depot: &mut Depot,
-    ) {
+    /// Get upload position
+    ///
+    /// Returns the file system path for uploading files to a domain.
+    #[endpoint(
+        responses(
+            (status_code = 200, description = "Upload position retrieved"),
+            (status_code = 400, description = "Bad request"),
+            (status_code = 401, description = "Unauthorized")
+        )
+    )]
+    pub async fn get_upload_position(req: &mut Request, res: &mut Response, depot: &mut Depot) {
         let storage = depot.obtain::<Arc<DomainStorage>>().unwrap();
         let host_alias = depot.obtain::<Arc<HashMap<String, String>>>().unwrap();
         if let Ok(option) = req.parse_queries::<GetDomainPositionOption>() {
@@ -210,12 +229,17 @@ pub mod service {
         }
     }
 
-    #[handler]
-    pub(super) async fn change_upload_status(
-        req: &mut Request,
-        res: &mut Response,
-        depot: &mut Depot,
-    ) {
+    /// Change upload status
+    ///
+    /// Updates the uploading status for a specific domain version.
+    #[endpoint(
+        responses(
+            (status_code = 200, description = "Upload status updated"),
+            (status_code = 400, description = "Bad request"),
+            (status_code = 401, description = "Unauthorized")
+        )
+    )]
+    pub async fn change_upload_status(req: &mut Request, res: &mut Response, depot: &mut Depot) {
         let storage = depot.obtain::<Arc<DomainStorage>>().unwrap();
         let host_alias = depot.obtain::<Arc<HashMap<String, String>>>().unwrap();
         if let Ok(param) = req.parse_json::<UpdateUploadingStatusOption>().await {
@@ -236,8 +260,17 @@ pub mod service {
         }
     }
 
-    #[handler]
-    pub(super) async fn update_file(req: &mut Request, res: &mut Response, depot: &mut Depot) {
+    /// Upload file
+    ///
+    /// Uploads a single file to a domain version. Uses multipart/form-data.
+    #[endpoint(
+        responses(
+            (status_code = 200, description = "File uploaded successfully"),
+            (status_code = 400, description = "Bad request"),
+            (status_code = 401, description = "Unauthorized")
+        )
+    )]
+    pub async fn update_file(req: &mut Request, res: &mut Response, depot: &mut Depot) {
         let storage = depot.obtain::<Arc<DomainStorage>>().unwrap();
         let host_alias = depot.obtain::<Arc<HashMap<String, String>>>().unwrap();
         let query = match req.parse_queries::<UploadFileOption>() {
@@ -279,12 +312,17 @@ pub mod service {
         }
     }
 
-    #[handler]
-    pub(super) async fn get_files_metadata(
-        req: &mut Request,
-        res: &mut Response,
-        depot: &mut Depot,
-    ) {
+    /// Get files metadata
+    ///
+    /// Returns metadata for all files in a specific domain version.
+    #[endpoint(
+        responses(
+            (status_code = 200, description = "Files metadata retrieved"),
+            (status_code = 400, description = "Bad request"),
+            (status_code = 401, description = "Unauthorized")
+        )
+    )]
+    pub async fn get_files_metadata(req: &mut Request, res: &mut Response, depot: &mut Depot) {
         let storage = depot.obtain::<Arc<DomainStorage>>().unwrap();
         if let Ok(query) = req.parse_queries::<DomainWithVersionOption>() {
             match storage.get_files_metadata(query.domain, query.version) {
@@ -339,12 +377,18 @@ pub mod service {
         }
     }
 
-    #[handler]
-    pub(super) async fn remove_domain_version(
-        req: &mut Request,
-        res: &mut Response,
-        depot: &mut Depot,
-    ) {
+    /// Remove domain version
+    ///
+    /// Deletes old versions for domains. Can delete specific domain versions
+    /// or all domains' versions, optionally keeping a maximum number of versions.
+    #[endpoint(
+        responses(
+            (status_code = 200, description = "Domain versions removed"),
+            (status_code = 400, description = "Bad request"),
+            (status_code = 401, description = "Unauthorized")
+        )
+    )]
+    pub async fn remove_domain_version(req: &mut Request, res: &mut Response, depot: &mut Depot) {
         if let Ok(query) = req.parse_json::<DeleteDomainVersionOption>().await {
             let storage = depot.obtain::<Arc<DomainStorage>>().unwrap();
             _remove_domain_version(query.domain, query.max_reserve, storage);
@@ -354,8 +398,18 @@ pub mod service {
     }
 
     //TODO: when delete and revoke occur currently. would have problems.
-    #[handler]
-    pub(super) async fn revoke_version(req: &mut Request, res: &mut Response, depot: &mut Depot) {
+    /// Revoke version
+    ///
+    /// Reverts to a previous version for a domain.
+    #[endpoint(
+        responses(
+            (status_code = 200, description = "Version revoked successfully"),
+            (status_code = 404, description = "Domain or version not found"),
+            (status_code = 400, description = "Bad request"),
+            (status_code = 401, description = "Unauthorized")
+        )
+    )]
+    pub async fn revoke_version(req: &mut Request, res: &mut Response, depot: &mut Depot) {
         let domain_storage = depot.obtain::<Arc<DomainStorage>>().unwrap();
         if let Ok(query) = req.parse_json::<DomainWithVersionOption>().await {
             let DomainWithVersionOption { domain, version } = query;

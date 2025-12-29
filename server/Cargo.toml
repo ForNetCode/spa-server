@@ -61,4 +61,4 @@ walkdir = { workspace = true }
 # time
 chrono = { workspace = true, features = ["serde"] }
 
-salvo = { workspace = true, features = ["serve-static", "size-limiter", "trailing-slash", "affix-state", "basic-auth"] }
+salvo = { workspace = true, features = ["serve-static", "size-limiter", "trailing-slash", "affix-state", "basic-auth", "oapi"] }

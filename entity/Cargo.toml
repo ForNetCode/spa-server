@@ -9,3 +9,4 @@ authors.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_repr = { workspace = true }
 chrono = { workspace = true, features = ["serde"] }
+salvo = { workspace = true, features = ["oapi"] }

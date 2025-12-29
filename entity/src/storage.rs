@@ -1,9 +1,10 @@
 use chrono::{DateTime, Utc};
+use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use std::path::PathBuf;
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, ToSchema)]
 pub struct DomainInfo {
     pub domain: String, // www.example.com|www.example.com/a/b
     pub current_version: Option<u32>,
@@ -12,21 +13,21 @@ pub struct DomainInfo {
     //pub web_path: Vec<String>, // [www.example.com/index.html|www.example.com/a/b/index.html,...]
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, ToSchema)]
 pub struct ShortMetaData {
     pub path: String,
     pub md5: String,
     pub length: u64,
 }
 
-#[derive(Serialize_repr, Deserialize_repr, PartialEq, Debug)]
+#[derive(Serialize_repr, Deserialize_repr, PartialEq, Debug, ToSchema)]
 #[repr(u8)]
 pub enum UploadingStatus {
     Uploading = 0,
     Finish = 1,
 }
 
-#[derive(Serialize_repr, Deserialize_repr, PartialEq, Debug)]
+#[derive(Serialize_repr, Deserialize_repr, PartialEq, Debug, ToSchema)]
 #[repr(u8)]
 pub enum GetDomainPositionStatus {
     NewDomain = 0,
@@ -41,7 +42,7 @@ pub struct UploadDomainPosition {
     pub status: GetDomainPositionStatus,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, ToSchema)]
 pub struct CertInfo {
     pub begin: DateTime<Utc>,
     pub end: DateTime<Utc>,

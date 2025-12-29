@@ -10,7 +10,7 @@ members = [
 [workspace.package]
 authors = ["timzaak <zsy.evan@gmail.com>"]
 edition = "2024"
-version = "3.0.1"
+version = "3.0.2"
 
 [workspace.dependencies]
 anyhow = { version = "1.0" }
@@ -34,4 +34,4 @@ toml_edit = "0.23.7"
 tracing = "0.1.21"
 tracing-subscriber = { version = "0.3" }
 walkdir = "2.5"
-salvo = "0.85.0"
+salvo = "0.86.0"
