@@ -1,6 +1,7 @@
 use crate::config::{AdminConfig, get_host_path_from_domain};
 use crate::domain_storage::DomainStorage;
 use delay_timer::prelude::*;
+use salvo::oapi::OpenApi;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -55,7 +56,7 @@ impl AdminServer {
     }
 
     fn routes(&self) -> Router {
-        Router::with_hoop(BearerValidator {
+        let api_router = Router::with_hoop(BearerValidator {
             token: format!("Bearer {}", self.conf.token),
         })
         .hoop(
@@ -70,7 +71,15 @@ impl AdminServer {
         .push(Router::with_path("file/upload").post(service::update_file))
         .push(Router::with_path("files/metadata").get(service::get_files_metadata))
         .push(Router::with_path("files/delete").post(service::remove_domain_version))
-        .push(Router::with_path("files/revoke_version").post(service::revoke_version))
+        .push(Router::with_path("files/revoke_version").post(service::revoke_version));
+
+        let doc = OpenApi::new("SPA Server Admin API", "1.0.0")
+            .merge_router(&api_router);
+
+        Router::new()
+            .push(doc.into_router("/api-doc/openapi.json"))
+            .push(SwaggerUi::new("/api-doc/openapi.json").into_router("swagger-ui"))
+            .push(api_router)
     }
 
     pub async fn run(&self) -> anyhow::Result<()> {
@@ -116,7 +125,6 @@ pub mod service {
         GetDomainOption, GetDomainPositionFormat, GetDomainPositionOption,
         UpdateUploadingStatusOption, UploadFileOption,
     };
-    use entity::storage::DomainInfo;
     use salvo::prelude::*;
     use std::collections::HashMap;
     use std::sync::Arc;
@@ -129,6 +137,7 @@ pub mod service {
     #[endpoint(
         responses(
             (status_code = 200, description = "Domain info retrieved successfully", body = Vec<entity::storage::DomainInfo>),
+            (status_code = 400, description = "Bad request"),
             (status_code = 401, description = "Unauthorized")
         )
     )]
@@ -143,7 +152,7 @@ pub mod service {
                     if let Some(data) = domain_info.iter().find(|x| x.domain == domain) {
                         res.render(Json(&[data]));
                     } else {
-                        let data: Vec<&DomainInfo> = Vec::new();
+                        let data: Vec<&entity::storage::DomainInfo> = Vec::new();
                         res.render(Json(data));
                     }
                     return;
@@ -161,10 +170,12 @@ pub mod service {
     /// Changes the current active version for a domain.
     #[endpoint(
         responses(
-            (status_code = 200, description = "Version updated successfully"),
+            (status_code = 200, description = "Version updated successfully", body = String),
             (status_code = 404, description = "Domain not found"),
+            (status_code = 400, description = "Bad request"),
             (status_code = 401, description = "Unauthorized")
-        )
+        ),
+        request_body = DomainWithOptVersionOption
     )]
     pub async fn update_domain_version(req: &mut Request, res: &mut Response, depot: &mut Depot) {
         let storage = depot.obtain::<Arc<DomainStorage>>().unwrap();
@@ -194,6 +205,7 @@ pub mod service {
     /// Get upload position
     ///
     /// Returns the file system path for uploading files to a domain.
+    /// Response can be either JSON (with format=json query param) or plain text path.
     #[endpoint(
         responses(
             (status_code = 200, description = "Upload position retrieved"),
@@ -237,7 +249,8 @@ pub mod service {
             (status_code = 200, description = "Upload status updated"),
             (status_code = 400, description = "Bad request"),
             (status_code = 401, description = "Unauthorized")
-        )
+        ),
+        request_body = UpdateUploadingStatusOption
     )]
     pub async fn change_upload_status(req: &mut Request, res: &mut Response, depot: &mut Depot) {
         let storage = depot.obtain::<Arc<DomainStorage>>().unwrap();
@@ -263,6 +276,7 @@ pub mod service {
     /// Upload file
     ///
     /// Uploads a single file to a domain version. Uses multipart/form-data.
+    /// Requires query parameters: domain, version, path.
     #[endpoint(
         responses(
             (status_code = 200, description = "File uploaded successfully"),
@@ -317,7 +331,7 @@ pub mod service {
     /// Returns metadata for all files in a specific domain version.
     #[endpoint(
         responses(
-            (status_code = 200, description = "Files metadata retrieved"),
+            (status_code = 200, description = "Files metadata retrieved", body = Vec<entity::storage::ShortMetaData>),
             (status_code = 400, description = "Bad request"),
             (status_code = 401, description = "Unauthorized")
         )
@@ -386,7 +400,8 @@ pub mod service {
             (status_code = 200, description = "Domain versions removed"),
             (status_code = 400, description = "Bad request"),
             (status_code = 401, description = "Unauthorized")
-        )
+        ),
+        request_body = DeleteDomainVersionOption
     )]
     pub async fn remove_domain_version(req: &mut Request, res: &mut Response, depot: &mut Depot) {
         if let Ok(query) = req.parse_json::<DeleteDomainVersionOption>().await {
@@ -407,7 +422,8 @@ pub mod service {
             (status_code = 404, description = "Domain or version not found"),
             (status_code = 400, description = "Bad request"),
             (status_code = 401, description = "Unauthorized")
-        )
+        ),
+        request_body = DomainWithVersionOption
     )]
     pub async fn revoke_version(req: &mut Request, res: &mut Response, depot: &mut Depot) {
         let domain_storage = depot.obtain::<Arc<DomainStorage>>().unwrap();
